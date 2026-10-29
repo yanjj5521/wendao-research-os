@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{{ nav_labels.review }} · {{ site_name }}{% endblock %}
+{% block content %}
+{% if session %}
+<div class="page-head minimal-head">
+  <div>
+    <span class="eyebrow">{{ {'yesterday':'昨日复盘','quick':'灵光问答','mechanism':'因果迷宫','counterexample':'反证之境','beast':'万象秘境','tribulation':'突破雷劫'}.get(session.mode,'复盘') }}</span>
+    <h1>{{ session.title }}</h1>
+    <p>先独立回答，再查看交付证据。模型评价只是形成性反馈，最终掌握度由你确认。</p>
+  </div>
+  <a class="soft-button" href="{{ url_for('review_page' if session.mode=='yesterday' else 'trials_page') }}">返回{{ '复盘台' if session.mode=='yesterday' else '秘境' }}</a>
+</div>
+
+<section class="panel review-session-meta">
+  <div><small>出题方式</small><strong>{{ session.provider }}</strong></div>
+  <div><small>材料日期</small><strong>{{ session.source_date or '综合题库' }}</strong></div>
+  <div><small>进度</small><strong>{{ answers|length }} / {{ questions|length }}</strong></div>
+  {% if session.fallback_reason %}<p>外部模型未完成本次操作，已安全回退：{{ session.fallback_reason }}</p>{% endif %}
+</section>
+
+<div class="review-source-chips">
+  {% for source in sources %}<span>{{ source.title }} · {{ source.source_date }}</span>{% endfor %}
+</div>
+
+<section class="review-question-stack">
+  {% for question in questions %}
+  {% set answer = answers.get(loop.index0) %}
+  <article class="panel review-question {% if answer %}answered{% endif %}" id="question-{{ loop.index0 }}">
+    <div class="review-question-head">
+      <span class="question-bolt">{{ {'tribulation':'雷','beast':'境','counterexample':'反','mechanism':'因','quick':'闪'}.get(session.mode,loop.index) }}</span>
+      <div><small>{{ question.kind }}</small><h2>{{ question.question }}</h2></div>
+    </div>
+    {% if not answer %}
+    <form method="post" action="{{ url_for('review_answer', session_id=session.id) }}" class="clean-form">
+      <input type="hidden" name="question_index" value="{{ loop.index0 }}">
+      <label><span>你的回答</span><textarea name="answer" rows="5" required placeholder="允许不同表述。写清你真正记得的部分；不确定就直接标注。"></textarea></label>
+      <button class="primary-button">提交后查看证据</button>
+    </form>
+    {% else %}
+    <div class="review-result level-{{ answer.level }}">
+      <div class="review-score"><strong>{{ answer.score }}</strong><span>形成性得分</span></div>
+      <div><b>{{ {'mastered':'基本掌握','partial':'部分掌握','needs_review':'需要复习'}.get(answer.level,'待判断') }}</b><p>{{ answer.feedback }}</p><small>{{ answer.provider }} · 置信度 {{ (answer.confidence * 100)|round|int }}%</small></div>
+    </div>
+    <details class="evidence-reveal">
+      <summary>查看交付证据与评分点</summary>
+      <blockquote>{{ answer.evidence_quote or question.evidence }}</blockquote>
+      <ul>{% for item in question.rubric %}<li>{{ item }}</li>{% endfor %}</ul>
+      <p><b>你的回答：</b>{{ answer.answer }}</p>
+    </details>
+    <form method="post" action="{{ url_for('review_rate', session_id=session.id) }}" class="self-rating">
+      <input type="hidden" name="question_index" value="{{ loop.index0 }}">
+      <span>看完证据后，我认为：</span>
+      <button name="self_rating" value="mastered" class="{% if answer.self_rating=='mastered' %}active{% endif %}">掌握</button>
+      <button name="self_rating" value="partial" class="{% if answer.self_rating=='partial' %}active{% endif %}">模糊</button>
+      <button name="self_rating" value="forgot" class="{% if answer.self_rating=='forgot' %}active{% endif %}">忘了</button>
+      {% if answer.next_due %}<small>下次建议：{{ answer.next_due }}</small>{% endif %}
+    </form>
+    <details class="retry-answer">
+      <summary>重新回答</summary>
+      <form method="post" action="{{ url_for('review_answer', session_id=session.id) }}" class="clean-form">
+        <input type="hidden" name="question_index" value="{{ loop.index0 }}">
+        <textarea name="answer" rows="4" required>{{ answer.answer }}</textarea>
+        <button class="soft-button">重新评价</button>
+      </form>
+    </details>
+    {% endif %}
+  </article>
+  {% endfor %}
+</section>
+
+{% if session.status=='completed' %}
+<section class="panel review-clear">
+  <span>{{ '劫云已散' if session.mode=='tribulation' else '本轮完成' }}</span>
+  {% if session.mode=='tribulation' and trial_result %}
+  <h2>{{ '雷劫通过，下一大境界已解锁。' if trial_result.status=='passed' else '本次均分未达70分，境界仍在关口前。' }}</h2>
+  <p>雷劫得分 {{ trial_result.score }} · {{ {'passed':'已突破','failed':'可重新准备后再试','active':'进行中'}.get(trial_result.status,trial_result.status) }}</p>
+  {% else %}
+  <h2>分数不是终点；真正有效的是你已经完成了一次提取、核对和再判断。</h2>
+  {% endif %}
+  <a class="primary-button" href="{{ url_for('review_page' if session.mode=='yesterday' else 'trials_page') }}">返回{{ '复盘台' if session.mode=='yesterday' else '秘境' }}</a>
+</section>
+{% endif %}
+
+{% else %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Retrieval Practice</span><h1>{{ nav_labels.review }}</h1><p>这里只做低压力的主动回忆；秘境试炼与突破雷劫已经独立移出。</p></div>
+  <div class="ai-state"><strong>{{ ai_status.label }}</strong><small>{{ ai_status.detail }}</small></div>
+</div>
+
+{% if pending %}
+<section class="panel pending-review-card">
+  <div><span class="eyebrow">待复盘</span><h2>{{ pending.source_date }} 的真实交付</h2><p>{{ pending.source_count }} 份关键文本已就绪，预计 3–5 分钟。</p></div>
+  <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="yesterday"><button class="primary-button large-button">开始昨日复盘</button></form>
+</section>
+{% else %}
+<section class="quiet-callout"><b>今天没有新的昨日复盘</b><span>完成任务时填写3–8条复盘关键文本，下一次打开网站后才会生成问题。</span></section>
+{% endif %}
+
+<section class="review-focus-metrics">
+  <article class="panel"><strong>{{ source_count }}</strong><span>可复盘交付</span><small>只读取交付时主动保存的关键文本</small></article>
+  <article class="panel"><strong>{{ due_count }}</strong><span>到期问题</span><small>依据本人掌握度安排再次提取</small></article>
+  <a class="panel review-to-trials" href="{{ url_for('trials_page') }}"><strong>境</strong><span>进入秘境试炼</span><small>综合迁移与雷劫在独立页面进行 →</small></a>
+</section>
+
+<section class="panel">
+  <div class="panel-head simple"><div><span class="eyebrow">History</span><h2>最近复盘</h2></div></div>
+  <div class="review-history">
+    {% for item in history %}
+    <a href="{{ url_for('review_session', session_id=item.id) }}"><span>复</span><div><strong>{{ item.title }}</strong><small>{{ item.created_at|datecn }} · 已答 {{ item.answer_count }} 题 · 均分 {{ item.average_score }}</small></div><b>›</b></a>
+    {% else %}<div class="empty-state"><p>完成第一次关键文本交付后，这里会形成可追踪的复盘记录。</p></div>{% endfor %}
+  </div>
+</section>
+{% endif %}
+{% endblock %}

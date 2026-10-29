@@ -1,0 +1,334 @@
+"""灵知：一只低干扰的桌面研究小灵宠。
+
+互动一览
+--------
+- 单击：报告今日进度与心情
+- 双击：摸头（好感度 +1，连续摸有彩蛋）
+- 滚轮 / 菜单：调整大小
+- 右键菜单：进度、研究提示、安静模式、关闭
+- 闲置时每隔一两分钟主动说一句话（可在菜单里切安静模式）
+
+心情系统：根据今日必做完成度、近 7 天学习活跃天数与当前时段推断心情，
+心情决定灵知的色调、摇摆节奏和说话语气——它不只是贴图，会回应你的状态。
+"""
+from __future__ import annotations
+
+import base64
+import json
+import math
+import random
+import tempfile
+import tkinter as tk
+from datetime import datetime, timedelta
+from pathlib import Path
+
+from PIL import Image, ImageTk
+
+from core.database import connect
+from core.runtime_paths import USER_CONFIG_DIR
+
+PET_LINES = (
+    "先喝一口水，再继续读这一段。",
+    "把这张图讲成一句因果关系，便是进展。",
+    "卡住时，只写下：作者究竟证明了什么？",
+    "休息 30 秒，回来只推进一个最小动作。",
+    "不要替论文补结论，先找它的证据。",
+    "今天只求一个最小交付，不求完美。",
+    "读到反例时别沮丧——它帮你划掉了半条弯路。",
+    "把公式旁边的单位检查一遍，常常有惊喜。",
+    "图比文字诚实：先看坐标轴，再看结论。",
+    "写不下去的时候，假装在写给三天后的自己。",
+)
+CALM_LINES = (
+    "我在这里陪你。慢慢来。",
+    "深呼吸。下一步已经写好了。",
+    "你只需要负责开始，剩下的交给惯性。",
+)
+HAPPY_LINES = (
+    "今天的必做都完成了！奖励自己五分钟发呆。",
+    "灵知很骄傲。尾巴（如果有的话）在摇。",
+    "进度条今天在笑。",
+)
+SLEEPY_LINES = (
+    "这么晚了……灵知困了，你也早点休息。",
+    "深夜的灵感很贵，明早的你更想要睡眠。",
+    "屏幕会等你，身体不会。",
+)
+PAT_LINES = (
+    "被摸头了……很舒服。",
+    "再摸也要做实验的。",
+    "灵知的修为 +0，心情 +10。",
+    "好啦好啦，这就替你盯着进度。",
+)
+PAT_EGG = "摸了这么多下……灵知决定把这份好感存进修为里（并没有）。"
+SETTINGS_PATH = USER_CONFIG_DIR / "desktop_pet.json"
+DEFAULT_SIZE = 132
+MIN_SIZE = 92
+MAX_SIZE = 260
+
+MOOD_TINT = {
+    "happy": (255, 214, 130, 34),
+    "proud": (255, 186, 200, 30),
+    "sleepy": (150, 172, 220, 44),
+    "nudge": (255, 236, 180, 22),
+}
+MOOD_EMOJI = {
+    "happy": "✨",
+    "proud": "🎉",
+    "sleepy": "😴",
+    "calm": "🌿",
+    "nudge": "💡",
+}
+
+
+def _asset_path() -> Path:
+    bundled = Path(__file__).resolve().parent / "static" / "pet" / "lingzhi_3d.png"
+    if bundled.exists():
+        return bundled
+    encoded = bundled.with_suffix(".png.b64")
+    target = Path(tempfile.gettempdir()) / "wendao-lingzhi-assistant.png"
+    if encoded.exists() and not target.exists():
+        target.write_bytes(base64.b64decode(encoded.read_text(encoding="ascii")))
+    return target
+
+
+def _load_settings() -> dict:
+    try:
+        data = json.loads(SETTINGS_PATH.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+def _save_settings(data: dict) -> None:
+    try:
+        USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        SETTINGS_PATH.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _load_size() -> int:
+    settings = _load_settings()
+    # 旧版扁平桌宠很大：一次性迁移，让新 3D 伙伴从最小尺寸开始。
+    if settings.get("appearance") != "3d":
+        return DEFAULT_SIZE
+    return max(MIN_SIZE, min(MAX_SIZE, int(settings.get("size", DEFAULT_SIZE))))
+
+
+def _mission_progress() -> tuple[int, int]:
+    """(必做已完成, 必做总数)；没有活跃计划时返回 (0, 0)。"""
+    try:
+        with connect() as conn:
+            row = conn.execute(
+                """SELECT COUNT(*) total,
+                          COALESCE(SUM(CASE WHEN completed=1 THEN 1 ELSE 0 END), 0) done
+                     FROM daily_missions m
+                     JOIN study_plans p ON p.id=m.plan_id
+                    WHERE p.status='active' AND m.day_index=p.current_day AND m.optional=0"""
+            ).fetchone()
+        return int(row["done"]), int(row["total"])
+    except Exception:
+        return 0, 0
+
+
+def _recent_days() -> int:
+    """最近 7 天里有学习活动的天数（用于「得意」心情）。"""
+    try:
+        since = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
+        with connect() as conn:
+            row = conn.execute(
+                "SELECT COUNT(DISTINCT substr(created_at,1,10)) n FROM activities WHERE substr(created_at,1,10) >= ?",
+                (since,),
+            ).fetchone()
+        return int(row["n"])
+    except Exception:
+        return 0
+
+
+def detect_mood() -> str:
+    """心情 = 时段 + 今日完成度 + 近期活跃。只读，不打扰。"""
+    hour = datetime.now().hour
+    if hour >= 23 or hour < 6:
+        return "sleepy"
+    done, total = _mission_progress()
+    if total > 0 and done >= total:
+        return "happy"
+    if _recent_days() >= 5:
+        return "proud"
+    if total > 0 and done == 0:
+        return "nudge"
+    return "calm"
+
+
+def mood_line(mood: str) -> str:
+    done, total = _mission_progress()
+    emoji = MOOD_EMOJI.get(mood, "🌿")
+    if mood == "sleepy":
+        return f"{emoji} {random.choice(SLEEPY_LINES)}"
+    if mood == "happy":
+        return f"{emoji} {random.choice(HAPPY_LINES)}"
+    if mood == "proud":
+        return f"{emoji} 连续一周都有学习记录。这份惯性很珍贵，别浪费在自责上。"
+    if mood == "nudge":
+        return f"{emoji} 今日进度 {done}/{total}。只推进下一项，不必一次做完。"
+    if total <= 0:
+        return f"{emoji} 今天还没有必做任务。先写下一个 10 分钟的小动作吧。"
+    return f"{emoji} {random.choice(CALM_LINES)}"
+
+
+def _tinted(frame: Image.Image, mood: str) -> Image.Image:
+    color = MOOD_TINT.get(mood)
+    if not color:
+        return frame
+    overlay = Image.new("RGBA", frame.size, color)
+    return Image.alpha_composite(frame.convert("RGBA"), overlay)
+
+
+def run_pet() -> None:
+    root = tk.Tk()
+    root.title("灵知")
+    root.overrideredirect(True)
+    root.attributes("-topmost", True)
+    transparent = "#ff00ff"
+    try:
+        root.wm_attributes("-transparentcolor", transparent)
+    except tk.TclError:
+        transparent = "#f4e7d5"
+    root.configure(bg=transparent)
+
+    settings = _load_settings()
+    original = Image.open(_asset_path()).convert("RGBA")
+    desired_size = _load_size()
+    mood = detect_mood()
+    pats = int(settings.get("pats", 0))
+    muted = tk.BooleanVar(value=bool(settings.get("muted", False)))
+    phase = 0.0
+    squish_until = 0.0
+    dragging = False
+    start_x = start_y = 0
+    image_label = tk.Label(root, bg=transparent, borderwidth=0, cursor="hand2")
+    image_label.pack()
+    hint = tk.Label(
+        root, text="", bg="#213242", fg="#fff4d2",
+        font=("Microsoft YaHei UI", 9), padx=8, pady=4,
+    )
+    menu = tk.Menu(root, tearoff=False)
+
+    def _wobble_scale() -> float:
+        base = {"happy": 0.045, "proud": 0.035, "nudge": 0.03, "calm": 0.025, "sleepy": 0.014}.get(mood, 0.025)
+        speed = {"happy": 0.3, "proud": 0.26, "sleepy": 0.12}.get(mood, 0.22)
+        return 1.0 + (base * math.sin(phase * speed / 0.22))
+
+    def render(*, animate: bool = True, squish: bool = False) -> None:
+        now = datetime.now().timestamp()
+        wobble = _wobble_scale() if animate and not dragging else 1.0
+        if squish or now < squish_until:
+            wobble *= 1.055
+        width = max(MIN_SIZE, round(desired_size * wobble))
+        height_factor = 0.96 if (squish or now < squish_until) else 1.0
+        height = max(MIN_SIZE, round(original.height * width / max(original.width, 1) * height_factor))
+        frame = _tinted(original.resize((width, height), Image.Resampling.LANCZOS), mood)
+        photo = ImageTk.PhotoImage(frame)
+        image_label.configure(image=photo)
+        image_label.image = photo
+
+    def animate() -> None:
+        nonlocal phase
+        phase += 0.22
+        render()
+        root.after(130, animate)
+
+    def _speak(text: str, seconds: int = 4200) -> None:
+        hint.configure(text=text)
+        hint.place(x=4, y=max(0, image_label.winfo_height() - 6), anchor="sw")
+        root.after(seconds, hint.place_forget)
+
+    def show_hint(_event=None) -> None:
+        _speak(f"灵知 · {mood_line(mood)}")
+
+    def pat(_event=None) -> None:
+        nonlocal pats, squish_until, mood
+        pats += 1
+        settings = _load_settings()
+        settings["pats"] = pats
+        _save_settings(settings)
+        squish_until = datetime.now().timestamp() + 0.24
+        render(animate=False, squish=True)
+        mood = detect_mood()
+        line = PAT_EGG if pats % 7 == 0 else random.choice(PAT_LINES)
+        _speak(f"{MOOD_EMOJI.get(mood, '🌿')} {line}", 3200)
+
+    def chatter() -> None:
+        if not muted.get() and not dragging:
+            if random.random() < 0.35:
+                show_hint()
+            else:
+                _speak(f"{MOOD_EMOJI.get(mood, '🌿')} {random.choice(PET_LINES)}", 4600)
+        root.after(random.randint(90_000, 150_000), chatter)
+
+    def resize(delta: int) -> None:
+        nonlocal desired_size
+        desired_size = max(MIN_SIZE, min(MAX_SIZE, desired_size + delta))
+        settings = _load_settings()
+        settings["size"] = desired_size
+        settings["appearance"] = "3d"
+        _save_settings(settings)
+        render(animate=False)
+        _speak(f"灵知 · 当前大小 {desired_size}px", 1600)
+
+    def toggle_mute() -> None:
+        muted.set(not muted.get())
+        settings = _load_settings()
+        settings["muted"] = muted.get()
+        _save_settings(settings)
+        _speak("好的，我会安静待着。" if muted.get() else "灵知回来啦！", 2600)
+
+    def wheel(event) -> None:
+        resize(16 if event.delta > 0 else -16)
+
+    def drag_start(event) -> None:
+        nonlocal dragging, start_x, start_y
+        dragging = True
+        start_x, start_y = event.x, event.y
+
+    def drag_move(event) -> None:
+        root.geometry(f"+{root.winfo_x() + event.x - start_x}+{root.winfo_y() + event.y - start_y}")
+
+    def drag_end(_event) -> None:
+        nonlocal dragging
+        dragging = False
+
+    def popup(event) -> None:
+        menu.tk_popup(event.x_root, event.y_root)
+
+    menu.add_command(label="查看今日进度", command=show_hint)
+    menu.add_command(label="给我一句研究提示", command=lambda: _speak(f"💡 {random.choice(PET_LINES)}"))
+    menu.add_command(label="摸摸头", command=pat)
+    menu.add_separator()
+    menu.add_checkbutton(label="安静模式（不主动说话）", variable=muted, command=toggle_mute)
+    menu.add_separator()
+    menu.add_command(label="放大", command=lambda: resize(16))
+    menu.add_command(label="缩小", command=lambda: resize(-16))
+    menu.add_command(label="恢复小尺寸", command=lambda: resize(DEFAULT_SIZE - desired_size))
+    menu.add_separator()
+    menu.add_command(label="关闭灵知", command=root.destroy)
+    image_label.bind("<Button-1>", show_hint)
+    image_label.bind("<Double-Button-1>", pat)
+    image_label.bind("<ButtonPress-1>", drag_start, add="+")
+    image_label.bind("<B1-Motion>", drag_move)
+    image_label.bind("<ButtonRelease-1>", drag_end)
+    image_label.bind("<MouseWheel>", wheel)
+    image_label.bind("<Button-4>", lambda _event: resize(16))
+    image_label.bind("<Button-5>", lambda _event: resize(-16))
+    image_label.bind("<Button-3>", popup)
+    root.bind("<Escape>", lambda _event: root.destroy())
+    root.geometry("+1040+620")
+    render(animate=False)
+    animate()
+    root.after(45_000, chatter)
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    run_pet()

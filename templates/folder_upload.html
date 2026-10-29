@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}上传文件夹 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head"><div><span class="eyebrow">完整保留目录</span><h1>上传交付文件夹</h1><p>选择一次，子文件夹和文件名都会原样保存。</p></div><a class="soft-button" href="{{ url_for('folders_page') }}">返回</a></div>
+<form method="post" action="{{ url_for('foundation_folder_upload') }}" enctype="multipart/form-data" id="foundationFolderForm" class="panel folder-upload-form">
+  <div class="form-grid compact-form-grid">
+    <label><span>归属学科</span><select name="track_id" id="foundationTrackSelect"><option value="">未分类</option>{% for item in tracks %}<option value="{{ item.id }}" {% if selected_track_id==item.id %}selected{% endif %}>{{ item.name }}</option>{% endfor %}</select></label>
+    <label><span>显示名称</span><input name="folder_name" placeholder="留空则用本地文件夹名"></label>
+    <label class="full"><span>一句说明</span><input name="description" placeholder="例如：Day 1 电化学交付"></label>
+  </div>
+  <label class="folder-picker warm-picker">
+    <input type="file" name="files" id="foundationFolderInput" webkitdirectory directory multiple required>
+    <span>▰</span><strong>选择整个文件夹</strong><small>适合代码案例、实验批次、论文汇报和数据集。</small>
+  </label>
+  <input type="hidden" name="relative_paths" id="foundationRelativePaths" value="[]">
+  <div id="foundationFolderPreview" class="folder-preview"></div>
+  <div class="form-actions"><button class="primary-button">上传并保存</button></div>
+</form>
+{% endblock %}

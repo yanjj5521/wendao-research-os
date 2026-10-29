@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}山门 · {{ site_name }}{% endblock %}
+{% block content %}
+<button class="home-layout-fab" type="button" data-home-layout-fab aria-expanded="false" title="调整主页布局">布局</button>
+<section class="home-layout-toolbar" data-home-toolbar hidden>
+  <div><strong>主页布局</strong><small>拖动排序，拖右下角调整宽度；完成后保存。</small></div>
+  <button class="ghost-button" type="button" data-home-edit>自定义布局</button>
+  <button class="soft-button" type="button" data-home-autofit hidden>一键智能排版</button>
+  <form method="post" action="{{ url_for('home_layout_save') }}" data-home-layout-form hidden>
+    <input type="hidden" name="layout" value="{{ home_layout_json|e }}" data-home-layout-input>
+    <button class="primary-button">保存布局</button>
+  </form>
+  <button class="text-button" type="button" data-home-toolbar-close>收起</button>
+</section>
+<div class="home-layout-grid" data-home-layout-grid>
+<div class="home-layout-block" data-home-block="gate" data-span="{{ home_layout_map.gate.span }}" style="--home-order:{{ home_layout_map.gate.order }};--home-span:{{ home_layout_map.gate.span }}">
+<section class="mountain-gate" data-living-scene>
+  <div class="gate-sky-glow" aria-hidden="true"></div>
+  <div class="gate-sun" aria-hidden="true"><i></i></div>
+  <div class="gate-birds bird-flight-a" aria-hidden="true">
+    <svg viewBox="0 0 210 64" focusable="false">
+      <path d="M4 30 Q16 18 28 30 Q40 18 52 30"/>
+      <path d="M70 18 Q82 7 94 18 Q106 7 118 18"/>
+      <path d="M126 42 Q138 31 150 42 Q162 31 174 42"/>
+    </svg>
+  </div>
+  <div class="gate-birds bird-flight-b" aria-hidden="true">
+    <svg viewBox="0 0 120 46" focusable="false">
+      <path d="M3 23 Q13 14 23 23 Q33 14 43 23"/>
+      <path d="M58 34 Q68 25 78 34 Q88 25 98 34"/>
+    </svg>
+  </div>
+  <div class="gate-embers" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="gate-geometry" aria-hidden="true">
+    <i class="geometry-ring ring-a"></i>
+    <i class="geometry-ring ring-b"></i>
+    <i class="geometry-prism prism-a"></i>
+    <i class="geometry-prism prism-b"></i>
+    <i class="geometry-line line-a"></i>
+    <i class="geometry-line line-b"></i>
+  </div>
+  <form class="gate-constellation-egg" method="post" action="{{ url_for('constellation_egg') }}">
+    <button type="submit" aria-label="触碰几何星图中的隐藏节点" title="这颗节点似乎可以连接"><i></i><i></i><i></i></button>
+  </form>
+  <div class="gate-mountain mountain-far"></div>
+  <div class="gate-mountain mountain-near"></div>
+  <div class="gate-mist mist-one"></div>
+  <div class="gate-mist mist-two"></div>
+
+  <div class="gate-copy">
+    <span class="gate-date">{{ today_label }} · 今日一诗 · 每日更换</span>
+    <blockquote>{{ ui_home_poem }}</blockquote>
+    <p class="gate-motto">科研系统的目标不是让我完成更多任务，而是让我不必每天重新决定如何学习，并在持续的探索中，逐渐具备独立提出问题、获取证据和解决问题的能力。</p>
+    <p>{{ realm.name }}{% if streak %} · 连续学习 {{ streak }} 天{% endif %} · 今天学一点，也算数。</p>
+    <div class="gate-actions">
+      <a class="primary-button gate-primary" href="{{ url_for('daily_page') }}">开始今日学习 <span>→</span></a>
+      <a class="gate-text-link" href="{{ url_for('literature_report_page') }}">读一篇文献</a>
+      <a class="gate-text-link" href="{{ url_for('review_page') }}">温故知新</a>
+      <a class="gate-text-link" href="{{ url_for('note_new') }}">随手归档</a>
+      <a class="gate-text-link gate-text-muted" href="{{ url_for('projects_page') }}">项目{% if home_project_count %} · {{ home_project_count }}{% endif %}</a>
+    </div>
+    {% if career_next %}
+    <a class="gate-next-step" href="{{ career_next.url }}">
+      <small>当前最值得推进的一步 · {{ career_next.kind }}</small>
+      <strong>{{ career_next.title }}</strong>
+      <span>{{ career_next.action }} →</span>
+    </a>
+    {% endif %}
+  </div>
+
+  <a class="gate-profile" href="{{ url_for('profile_page') }}">
+    <span class="gate-avatar">{% if avatar_file %}<img src="/media/profile/{{ avatar_file }}" alt="{{ researcher_name }}的头像">{% else %}{{ profile.avatar_symbol }}{% endif %}</span>
+    <span class="gate-profile-copy"><small>{{ profile.title or '长期学习者' }}</small><strong>{{ profile.display_name }}</strong><em>{{ xp }} 修为 · 连续 {{ streak }} 天</em></span>
+    <span class="gate-profile-arrow">↗</span>
+  </a>
+</section>
+</div>
+
+<div class="home-layout-block" data-home-block="search" data-span="{{ home_layout_map.search.span }}" style="--home-order:{{ home_layout_map.search.order }};--home-span:{{ home_layout_map.search.span }}">
+<form class="home-search gate-dual-search" method="get" aria-label="学习资料检索">
+  <span class="home-search-mark" aria-hidden="true">寻</span>
+  <label for="homeSearch">
+    <small>检索自己学过的东西，或按需联网找论文</small>
+    <input id="homeSearch" name="q" placeholder="膨胀石墨、CV 电压窗口、雅思写作……" autocomplete="off">
+  </label>
+  <button class="search-local" type="submit" formaction="{{ url_for('search') }}">搜知识库</button>
+  <button class="search-world" type="submit" formaction="{{ url_for('discover_page') }}">联网找论文</button>
+</form>
+</div>
+
+<div class="home-layout-block" data-home-block="shortcuts" data-span="{{ home_layout_map.shortcuts.span }}" style="--home-order:{{ home_layout_map.shortcuts.order }};--home-span:{{ home_layout_map.shortcuts.span }}">
+<section class="gate-shortcuts" aria-label="核心入口">
+  <a class="gate-shortcut shortcut-literature" href="{{ url_for('literature_report_page') }}"><span>阅</span><div><small>抽取关键图，讲清证据</small><strong>{{ nav_labels.literature_report }}</strong></div><b>→</b></a>
+  <a class="gate-shortcut shortcut-daily" href="{{ url_for('review_page') }}"><span>温</span><div><small>从自己的交付里出题</small><strong>{{ nav_labels.review }}</strong></div><b>→</b></a>
+  <a class="gate-shortcut shortcut-knowledge" href="{{ url_for('library') }}"><span>藏</span><div><small>{{ stats.total }} 条积累 · 可修改、可检索</small><strong>{{ nav_labels.library }}</strong></div><b>→</b></a>
+  <a class="gate-shortcut shortcut-domain" href="{{ url_for('workspaces_page') }}"><span>域</span><div><small>{{ home_workspace_total }} 个领域 · 可增删、可改名</small><strong>{{ nav_labels.group_workspaces }}</strong></div><b>→</b></a>
+</section>
+</div>
+
+<div class="home-layout-block" data-home-block="workbench" data-span="{{ home_layout_map.workbench.span }}" style="--home-order:{{ home_layout_map.workbench.order }};--home-span:{{ home_layout_map.workbench.span }}">
+<section class="home-workbench-dock" aria-label="学习工作台">
+  <div class="home-dock-label"><span>学习工作台</span><small>读懂、写出、讲清</small></div>
+  <nav>
+    <a href="{{ url_for('workbench_page') }}#english-reading"><b>英</b><span>英文精读</span></a>
+    <a href="{{ url_for('workbench_page') }}#writing"><b>文</b><span>英文写作</span></a>
+    <a href="{{ url_for('workbench_page') }}#figures"><b>图</b><span>图表排版</span></a>
+    <a href="{{ url_for('literature_report_page') }}"><b>阅</b><span>文献图汇报</span></a>
+    <a class="home-dock-more" href="{{ url_for('library') }}"><b>藏</b><span>知识库</span></a>
+  </nav>
+  <a class="home-sync-state" href="{{ url_for('workbench_page') }}">
+    <i></i><span>输出自动归档</span><b>打开 →</b>
+  </a>
+</section>
+</div>
+
+<div class="home-layout-block" data-home-block="continuity" data-span="{{ home_layout_map.continuity.span }}" style="--home-order:{{ home_layout_map.continuity.order }};--home-span:{{ home_layout_map.continuity.span }}">
+<section class="home-continuity-strip" aria-label="学习数据与版本状态">
+  <span><b>近存</b><em>{{ home_last_saved }}</em></span>
+  <span><b>领域</b><em>{{ home_workspace_total }} 个在学 · 可随时增删</em></span>
+  <span><b>数据</b><em>{{ home_data_label }} · 更新不覆盖</em></span>
+  <a href="{{ url_for('settings_page') }}"><b>v{{ app_version }}</b><em>备份与迁移 →</em></a>
+</section>
+</div>
+</div>
+
+{% if pending_review %}
+<div class="review-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="review-modal-title">
+  <section class="review-modal">
+    <span class="review-modal-mark">忆</span>
+    <small>每天只弹一次</small>
+    <h2 id="review-modal-title">{{ pending_review.source_date }} 的交付，到了提取时间</h2>
+    <p>系统找到 {{ pending_review.source_count }} 份复盘关键文本。问题只根据这些交付生成，参考证据会在回答后显示。</p>
+    <div class="review-modal-actions">
+      <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="yesterday"><button class="primary-button large-button">开始 3 分钟复盘</button></form>
+      <form method="post" action="{{ url_for('review_snooze') }}"><button class="text-button">今天先不弹</button></form>
+    </div>
+  </section>
+</div>
+{% endif %}
+{% endblock %}

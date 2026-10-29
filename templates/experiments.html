@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ workspace.name if workspace else '实验台账' }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><span class="eyebrow">Experiment Domain</span><h1>{{ workspace.icon ~ ' ' ~ workspace.name if workspace else '实验台账' }}</h1><p>{{ workspace.description if workspace else '把配比—成型—电化学—力学指标放进同一张可检索、可导出的结构化表。' }}</p></div>
+  <div class="page-actions"><a class="soft-button" href="{{ url_for('workspaces_page') }}">管理领域</a><a class="ghost-button" href="{{ url_for('experiments_export') }}{% if workspace %}?workspace={{ workspace.id }}{% endif %}">导出 CSV</a></div>
+</div>
+
+<div class="content-grid two-one module-layout">
+  <section class="panel module-table-panel">
+    <div class="panel-head"><div><span class="eyebrow">Experiment Records</span><h2>实验批次</h2></div>
+      <form method="get">{% if workspace %}<input type="hidden" name="workspace" value="{{ workspace.id }}">{% endif %}<select name="status" onchange="this.form.submit()"><option value="">全部状态</option>{% for s,l in [('planned','计划'),('running','进行中'),('done','完成'),('failed','失败'),('archived','归档')] %}<option value="{{s}}" {% if selected_status==s %}selected{% endif %}>{{l}}</option>{% endfor %}</select></form>
+    </div>
+    {% if items %}
+    <div class="table-scroll"><table class="preview-table module-table"><thead><tr><th>样品</th><th>日期</th><th>EG</th><th>水胶比</th><th>压实</th><th>电压窗</th><th>比电容</th><th>电导率</th><th>状态</th><th>操作</th></tr></thead><tbody>
+    {% for item in items %}<tr>
+      <td><strong>{{ item.sample_id }}</strong><small>{{ item.title }}</small></td><td>{{ item.experiment_date or '—' }}</td>
+      <td>{{ item.eg_content if item.eg_content is not none else '—' }} wt%</td><td>{{ item.water_cement_ratio if item.water_cement_ratio is not none else '—' }}</td>
+      <td>{{ item.compaction_pressure if item.compaction_pressure is not none else '—' }} MPa</td><td>{% if item.voltage_min is not none %}{{item.voltage_min}}–{{item.voltage_max}} V{% else %}—{% endif %}</td>
+      <td>{{ item.specific_capacitance if item.specific_capacitance is not none else '—' }} F/g</td><td>{{ item.conductivity if item.conductivity is not none else '—' }} S/m</td>
+      <td><span class="status-badge status-{{item.status}}">{{ item.status }}</span></td><td class="row-actions"><a href="{{ url_for('experiments_page') }}?edit={{item.id}}{% if workspace %}&workspace={{ workspace.id }}{% endif %}">编辑</a><form method="post" action="{{ url_for('experiment_delete', experiment_id=item.id) }}" onsubmit="return confirm('删除这个实验批次？')"><button>删除</button></form></td>
+    </tr>{% endfor %}
+    </tbody></table></div>
+    {% else %}<div class="empty-state"><div>🧪</div><h3>还没有实验批次</h3><p>先建立一个预实验记录，不需要等结果完整。</p></div>{% endif %}
+  </section>
+
+  <form class="panel settings-form experiment-form" method="post" action="{{ url_for('experiment_save') }}">
+    <div class="panel-head"><div><span class="eyebrow">{{ 'Edit' if editing else 'New Batch' }}</span><h2>{{ '编辑实验' if editing else '新建实验' }}</h2></div>{% if editing %}<a href="{{url_for('experiments_page')}}{% if workspace %}?workspace={{ workspace.id }}{% endif %}">取消</a>{% endif %}</div>
+    <input type="hidden" name="experiment_id" value="{{ editing.id if editing else 0 }}">
+    <input type="hidden" name="workspace_id" value="{{ workspace.id if workspace else (editing.workspace_id if editing else '') }}">
+    <div class="mini-form-grid">
+      <label><span>样品编号 *</span><input name="sample_id" required value="{{ editing.sample_id if editing else '' }}" placeholder="EG-6-2"></label>
+      <label><span>实验日期</span><input type="date" name="experiment_date" value="{{ editing.experiment_date if editing else '' }}"></label>
+      <label class="full"><span>实验标题</span><input name="title" value="{{ editing.title if editing else '' }}" placeholder="6 wt% EG压实电极预实验"></label>
+      <label><span>状态</span><select name="status">{% for s,l in [('planned','计划'),('running','进行中'),('done','完成'),('failed','失败'),('archived','归档')] %}<option value="{{s}}" {% if editing and editing.status==s %}selected{% endif %}>{{l}}</option>{% endfor %}</select></label>
+      <label><span>EG 含量 / wt%</span><input type="number" step="any" name="eg_content" value="{{ editing.eg_content if editing and editing.eg_content is not none else '' }}"></label>
+      <label><span>水胶比</span><input type="number" step="any" name="water_cement_ratio" value="{{ editing.water_cement_ratio if editing and editing.water_cement_ratio is not none else '' }}"></label>
+      <label><span>压实压力 / MPa</span><input type="number" step="any" name="compaction_pressure" value="{{ editing.compaction_pressure if editing and editing.compaction_pressure is not none else '' }}"></label>
+      <label><span>厚度 / cm</span><input type="number" step="any" name="thickness_cm" value="{{ editing.thickness_cm if editing and editing.thickness_cm is not none else '' }}"></label>
+      <label><span>面积 / cm²</span><input type="number" step="any" name="area_cm2" value="{{ editing.area_cm2 if editing and editing.area_cm2 is not none else '' }}"></label>
+      <label class="full"><span>电解液</span><input name="electrolyte" value="{{ editing.electrolyte if editing else '' }}" placeholder="6 M KOH"></label>
+      <label><span>最低电压 / V</span><input type="number" step="any" name="voltage_min" value="{{ editing.voltage_min if editing and editing.voltage_min is not none else '' }}"></label>
+      <label><span>最高电压 / V</span><input type="number" step="any" name="voltage_max" value="{{ editing.voltage_max if editing and editing.voltage_max is not none else '' }}"></label>
+      <label><span>扫速 / mV s⁻¹</span><input type="number" step="any" name="scan_rate" value="{{ editing.scan_rate if editing and editing.scan_rate is not none else '' }}"></label>
+      <label><span>比电容 / F g⁻¹</span><input type="number" step="any" name="specific_capacitance" value="{{ editing.specific_capacitance if editing and editing.specific_capacitance is not none else '' }}"></label>
+      <label><span>电导率 / S m⁻¹</span><input type="number" step="any" name="conductivity" value="{{ editing.conductivity if editing and editing.conductivity is not none else '' }}"></label>
+      <label><span>抗压强度 / MPa</span><input type="number" step="any" name="compressive_strength" value="{{ editing.compressive_strength if editing and editing.compressive_strength is not none else '' }}"></label>
+      <label class="full"><span>关联资料</span><select name="attachment_entry_id"><option value="">不关联</option>{% for doc in documents %}<option value="{{doc.id}}" {% if editing and editing.attachment_entry_id==doc.id %}selected{% endif %}>{{doc.title}}</option>{% endfor %}</select></label>
+      <label class="full"><span>假设</span><textarea name="hypothesis" rows="2">{{ editing.hypothesis if editing else '' }}</textarea></label>
+      <label class="full"><span>观察与异常</span><textarea name="observations" rows="3">{{ editing.observations if editing else '' }}</textarea></label>
+      <label class="full"><span>当前结论</span><textarea name="conclusion" rows="2">{{ editing.conclusion if editing else '' }}</textarea></label>
+      <label class="full"><span>下一步验证</span><textarea name="next_step" rows="2">{{ editing.next_step if editing else '' }}</textarea></label>
+      <label class="full"><span>标签</span><input name="tags" value="{{ editing.tags if editing else '' }}" placeholder="预实验, CV, 压实"></label>
+    </div>
+    <button class="primary-button full-button">保存实验批次</button>
+  </form>
+</div>
+{% endblock %}

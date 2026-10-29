@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}万卷检索 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><span class="eyebrow">Full-text Search</span><h1>万卷检索</h1><p>检索标题、摘要、正文、标签、领域和来源。中文关键词会自动回退到模糊匹配。</p></div>
+</div>
+<form class="search-stage" method="get">
+  <div class="search-main"><span>⌕</span><input autofocus name="q" value="{{ q }}" placeholder="例如：膨胀石墨 导电网络；CV 电压窗口；LAMMPS pair_coeff"><button class="primary-button">开始检索</button></div>
+  <div class="search-filters"><select name="kind"><option value="">全部类型</option>{% for key, meta in kinds.items() %}<option value="{{ key }}" {% if selected_kind == key %}selected{% endif %}>{{ meta[1] }} {{ meta[0] }}</option>{% endfor %}</select><select name="domain"><option value="">全部领域</option>{% for item in domains %}<option value="{{ item }}" {% if selected_domain == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select><small>{{ used_mode }}</small></div>
+</form>
+{% if q %}<div class="result-summary">找到 <strong>{{ entries|length }}</strong> 条与“{{ q }}”相关的记录</div>{% endif %}
+<div class="search-results">
+{% for entry in entries %}
+  <a class="search-result" href="{{ url_for('entry_view', entry_id=entry.id) }}">
+    <span class="asset-icon large">{{ entry.kind_icon }}</span>
+    <div><div class="tag-row"><span class="type-pill">{{ entry.kind_label }}</span><span>{{ entry.domain }}</span>{% for tag in entry.tags_list[:3] %}<span>#{{ tag }}</span>{% endfor %}</div><h3>{{ entry.title }}</h3><p>{{ entry.summary or entry.content[:180] or '该条目没有可提取文本。' }}</p><small>{{ entry.updated_at|datecn }}</small></div>
+    <span class="arrow">›</span>
+  </a>
+{% else %}
+  {% if q %}<div class="empty-state panel"><div>🧭</div><h3>没有找到匹配项</h3><p>尝试更短的关键词、同义词，或检查资料是否已上传。</p></div>{% endif %}
+{% endfor %}
+</div>
+{% endblock %}

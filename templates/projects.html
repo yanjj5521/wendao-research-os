@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ nav_labels.projects }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div>
+    <span class="eyebrow">Research Control</span>
+    <h1>{{ nav_labels.projects }}</h1>
+    <p>不靠“做了多少天”判断进度，而是看科学问题、相关先例、证据闸门和下一决策。</p>
+  </div>
+  <a class="soft-button" href="{{ url_for('plans_page') }}">查看近期计划</a>
+</div>
+
+<details class="panel project-create" {% if not projects %}open{% endif %}>
+  <summary>＋ 建立一个项目</summary>
+  <form method="post" action="{{ url_for('project_new') }}" class="clean-form">
+    <div class="form-grid two">
+      <label><span>项目名称</span><input name="title" required placeholder="例如：膨胀石墨水泥基结构超级电容器"></label>
+      <label><span>英文检索词</span><input name="search_query" placeholder="expanded graphite cement supercapacitor"></label>
+      <label class="full"><span>我真正要回答的科学问题</span><textarea name="research_question" rows="2" placeholder="什么变量影响什么结果？在什么边界和对照下成立？"></textarea></label>
+      <label class="full"><span>为什么值得做</span><textarea name="rationale" rows="2" placeholder="已有工作留下了什么缺口？这个缺口为什么重要？"></textarea></label>
+      <label><span>目标成果</span><textarea name="target_outcome" rows="3" placeholder="最终要得到什么结论、方法、模型或论文证据链？"></textarea></label>
+      <label><span>成功标准</span><textarea name="success_criteria" rows="3" placeholder="用数值、单位、重复次数或明确的通过条件定义成功。"></textarea></label>
+      <label><span>当前已经做到哪里</span><textarea name="current_state" rows="3" placeholder="已有材料、数据、能力、失败与尚未解决的问题。"></textarea></label>
+      <label><span>现实约束</span><textarea name="constraints_text" rows="3" placeholder="时间、设备、预算、样品、软件与合作条件。"></textarea></label>
+      <fieldset class="workspace-check-field full"><legend>关联领域（可多选，首个作为主要领域）</legend><div class="workspace-check-grid">{% for workspace in workspaces %}<label><input type="checkbox" name="workspace_ids" value="{{ workspace.id }}"><span>{{ workspace.icon }} {{ workspace.name }}</span></label>{% endfor %}</div></fieldset>
+      <label><span>目标日期（可选）</span><input type="date" name="target_date"></label>
+    </div>
+    <button class="primary-button">建立项目并查找先例</button>
+    <small class="form-help">系统会先生成 5 个通用证据闸门。它们都可以修改，不会把你锁进一条长期主线。</small>
+  </form>
+</details>
+
+<nav class="project-filters" aria-label="项目状态">
+  <a class="{% if selected_status=='active' %}active{% endif %}" href="{{ url_for('projects_page') }}?status=active">推进中</a>
+  <a class="{% if selected_status=='paused' %}active{% endif %}" href="{{ url_for('projects_page') }}?status=paused">已暂停</a>
+  <a class="{% if selected_status=='completed' %}active{% endif %}" href="{{ url_for('projects_page') }}?status=completed">已完成</a>
+  <a class="{% if selected_status=='all' %}active{% endif %}" href="{{ url_for('projects_page') }}?status=all">全部</a>
+</nav>
+
+<section class="project-card-grid">
+  {% for project in projects %}
+  <a class="project-card panel" href="{{ url_for('project_page', project_id=project.id) }}">
+    <div class="project-card-top">
+      <span class="status-badge {{ project.status }}">{{ project.state.status_label }}</span>
+      {% if project.workspaces %}<span class="project-workspace-chips">{% for workspace in project.workspaces[:4] %}<small>{{ workspace.icon }} {{ workspace.name }}</small>{% endfor %}</span>{% endif %}
+    </div>
+    <h2>{{ project.title }}</h2>
+    <p>{{ project.research_question or '尚未写清科学问题，点开补全。' }}</p>
+    <div class="project-gate">
+      <span>当前证据闸门</span>
+      <strong>{{ project.state.current.title if project.state.current else '核对成功标准' }}</strong>
+      <div class="mini-progress"><i style="width:{{ project.state.progress }}%"></i></div>
+    </div>
+    <div class="project-card-foot">
+      <span>{{ project.state.passed }}/{{ project.state.total }} 闸门</span>
+      <span>{{ project.case_count }} 篇先例</span>
+      <span>{{ project.update_count }} 条推进记录</span>
+      <b>定义 {{ project.state.readiness }}%</b>
+    </div>
+  </a>
+  {% else %}
+  <div class="empty-state panel">
+    <h2>还没有这个状态的项目</h2>
+    <p>建立项目时先写“要回答什么”和“什么算成功”，其余内容可以边做边修正。</p>
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

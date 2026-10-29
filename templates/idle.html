@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}挂机 · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="idle-stage idle-{{ idle_layout }}" style="--idle-wallpaper:url('{{ idle_wallpaper_url }}')">
+  <div class="idle-vignette"></div>
+  <a class="idle-exit" href="{{ url_for('dashboard') }}">← 返回山门</a>
+  <div class="idle-orb" aria-hidden="true"><i></i><i></i><b>道</b></div>
+  <div class="idle-copy">
+    <span>挂机静修 · 本地专注</span>
+    <h1>让系统在旁，<br>把注意力还给自己。</h1>
+    <p>{{ idle_focus }}</p>
+    <div class="idle-clock" data-idle-clock>00:00:00</div>
+    <small data-idle-note hidden style="display:block;margin-top:6px;color:#8a8278"></small>
+    <div class="idle-actions"><button type="button" class="primary-button" data-idle-toggle>开始静修</button><button type="button" class="soft-button" data-idle-reset>清零</button></div>
+    <small>仅作沉浸计时；修为、灵石与材料只由真实任务、交付或管理员福利记录获得。</small>
+  </div>
+  <form class="idle-controls" method="post" action="{{ url_for('idle_config_save') }}">
+    <label><span>排布</span><select name="layout"><option value="vertical" {% if idle_layout=='vertical' %}selected{% endif %}>竖向静室</option><option value="horizontal" {% if idle_layout=='horizontal' %}selected{% endif %}>横向案台</option></select></label>
+    <label><span>此刻提醒</span><input name="focus" maxlength="160" value="{{ idle_focus }}"></label>
+    <div class="idle-wallpaper-list">
+      {% for key, wallpaper in builtin_wallpapers.items() %}
+      <label class="idle-wallpaper-option {% if idle_wallpaper_kind=='builtin' and selected_builtin==key %}selected{% endif %}" style="--preview:url('{{ wallpaper.path }}')"><input type="radio" name="builtin_wallpaper" value="{{ key }}" {% if idle_wallpaper_kind=='builtin' and selected_builtin==key %}checked{% endif %}><span>{{ wallpaper.name }}</span></label>
+      {% endfor %}
+    </div>
+    {% if custom_wallpapers %}<div class="idle-wallpaper-list custom-wallpaper-list">
+      {% for wallpaper in custom_wallpapers %}
+      <label class="idle-wallpaper-option {% if idle_wallpaper_kind=='custom' and wallpaper.selected %}selected{% endif %}" style="--preview:url('{{ wallpaper.url }}')"><input type="radio" name="custom_wallpaper" value="{{ wallpaper.filename }}" {% if idle_wallpaper_kind=='custom' and wallpaper.selected %}checked{% endif %}><span>我的壁纸 {{ loop.index }}</span></label>
+      {% endfor %}
+    </div>{% endif %}
+    <button class="soft-button">保存界面</button>
+  </form>
+  <form class="idle-upload" method="post" action="{{ url_for('idle_wallpaper_upload') }}" enctype="multipart/form-data">
+    <label>导入自己的壁纸 <input type="file" name="file" accept="image/png,image/jpeg,image/webp" required></label><button class="soft-button">导入</button>
+    <small>{% if idle_wallpaper_kind=='custom' %}当前：{{ idle_wallpaper_file }} · {% endif %}新壁纸会进入本地壁纸库，不会覆盖已有壁纸，也不会上传同行会。</small>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  // 挂机计时 v2：状态持久化、跨标签页单实例、崩溃最多丢 5 秒。
+  const KEY = 'wendao-idle-v2';
+  const OWNER = 'wendao-idle-owner';
+  const PAGE_ID = Math.random().toString(36).slice(2);
+  const clock = document.querySelector('[data-idle-clock]');
+  const toggle = document.querySelector('[data-idle-toggle]');
+  const resetBtn = document.querySelector('[data-idle-reset]');
+  const note = document.querySelector('[data-idle-note]');
+  if (!clock || !toggle) return;
+
+  let state = load();
+  let ownerTimer = null;
+
+  function load() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (raw && typeof raw.total === 'number') return raw;
+    } catch (e) { /* 旧数据或损坏：回落到旧版秒数 */ }
+    const legacy = Number(localStorage.getItem('wendao-idle-seconds') || 0);
+    return { total: Number.isFinite(legacy) ? legacy : 0, running: false, started: 0, owner: '' };
+  }
+
+  function committedSeconds() {
+    // 已结算秒数；运行中的未结算部分由 started 差值表示。
+    return state.running && state.started
+      ? state.total + Math.floor((Date.now() - state.started) / 1000)
+      : state.total;
+  }
+
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 存储满：计时继续 */ }
+  }
+
+  function otherOwnerAlive() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(OWNER) || 'null');
+      return raw && raw.page !== PAGE_ID && (Date.now() - raw.at) < 15000;
+    } catch (e) { return false; }
+  }
+
+  function claimOwner() {
+    try { localStorage.setItem(OWNER, JSON.stringify({ page: PAGE_ID, at: Date.now() })); } catch (e) {}
+  }
+
+  function draw() {
+    const seconds = committedSeconds();
+    clock.textContent = [Math.floor(seconds / 3600), Math.floor(seconds % 3600 / 60), seconds % 60]
+      .map(n => String(n).padStart(2, '0')).join(':');
+  }
+
+  function notify(text) {
+    if (note) { note.textContent = text; note.hidden = false; }
+  }
+
+  toggle.onclick = () => {
+    if (state.running) {
+      state.total = committedSeconds();
+      state.running = false;
+      state.started = 0;
+      save();
+      toggle.textContent = '继续静修';
+    } else {
+      if (otherOwnerAlive()) {
+        notify('已在另一个标签页静修——为避免重复计时，请先在那边暂停。');
+        return;
+      }
+      state.running = true;
+      state.started = Date.now();
+      claimOwner();
+      save();
+      toggle.textContent = '暂停';
+      if (ownerTimer === null) { ownerTimer = setInterval(claimOwner, 5000); }
+    }
+    draw();
+  };
+
+  resetBtn.onclick = () => {
+    state.total = 0;
+    if (state.running) state.started = Date.now(); else state.started = 0;
+    save();
+    draw();
+  };
+
+  // 崩溃保护：运行中每 5 秒落盘（含 owner 心跳）。
+  setInterval(() => { if (state.running) { claimOwner(); save(); } }, 5000);
+  window.addEventListener('beforeunload', () => { if (state.running) save(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && state.running) save(); });
+
+  // 恢复运行态（刷新不丢；浏览器关闭期间不计入挂机时长）。
+  if (state.running) {
+    if (otherOwnerAlive()) {
+      state.running = false; state.started = 0; save();
+      toggle.textContent = '继续静修';
+      notify('已在另一个标签页静修——本页仅展示累计时长。');
+    } else {
+      toggle.textContent = '暂停';
+      if (ownerTimer === null) { ownerTimer = setInterval(claimOwner, 5000); }
+    }
+  }
+  draw();
+})();
+</script>
+{% endblock %}

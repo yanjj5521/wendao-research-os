@@ -1,0 +1,752 @@
+[
+  {
+    "method": "GET",
+    "path": "/",
+    "name": "dashboard"
+  },
+  {
+    "method": "GET",
+    "path": "/achievements",
+    "name": "achievements_page"
+  },
+  {
+    "method": "GET",
+    "path": "/alchemy",
+    "name": "alchemy_page"
+  },
+  {
+    "method": "POST",
+    "path": "/alchemy/craft/{recipe_key}",
+    "name": "alchemy_craft"
+  },
+  {
+    "method": "POST",
+    "path": "/alchemy/pills/{pill_key}/use",
+    "name": "alchemy_pill_use"
+  },
+  {
+    "method": "POST",
+    "path": "/alchemy/tasks/generate",
+    "name": "alchemy_task_generate"
+  },
+  {
+    "method": "POST",
+    "path": "/alchemy/tasks/{task_id}/abandon",
+    "name": "alchemy_task_abandon"
+  },
+  {
+    "method": "POST",
+    "path": "/alchemy/tasks/{task_id}/accept",
+    "name": "alchemy_task_accept"
+  },
+  {
+    "method": "POST",
+    "path": "/alchemy/tasks/{task_id}/complete",
+    "name": "alchemy_task_complete"
+  },
+  {
+    "method": "GET",
+    "path": "/api/stats",
+    "name": "api_stats"
+  },
+  {
+    "method": "GET",
+    "path": "/api/sync/capabilities",
+    "name": "sync_capabilities"
+  },
+  {
+    "method": "GET",
+    "path": "/assistant",
+    "name": "assistant_page"
+  },
+  {
+    "method": "POST",
+    "path": "/assistant/save",
+    "name": "assistant_result_save"
+  },
+  {
+    "method": "GET",
+    "path": "/backup",
+    "name": "backup"
+  },
+  {
+    "method": "GET",
+    "path": "/career",
+    "name": "career_page"
+  },
+  {
+    "method": "POST",
+    "path": "/career/focus",
+    "name": "career_focus_save"
+  },
+  {
+    "method": "POST",
+    "path": "/career/moments/new",
+    "name": "career_moment_new"
+  },
+  {
+    "method": "GET",
+    "path": "/cultivation",
+    "name": "cultivation_page"
+  },
+  {
+    "method": "GET",
+    "path": "/daily",
+    "name": "daily_page"
+  },
+  {
+    "method": "POST",
+    "path": "/daily/advance",
+    "name": "daily_advance"
+  },
+  {
+    "method": "GET",
+    "path": "/daily/deliveries/{delivery_id}/download",
+    "name": "daily_delivery_download"
+  },
+  {
+    "method": "GET",
+    "path": "/daily/deliveries/{delivery_id}/file/{file_id}",
+    "name": "daily_delivery_file"
+  },
+  {
+    "method": "POST",
+    "path": "/daily/log",
+    "name": "daily_log_save"
+  },
+  {
+    "method": "POST",
+    "path": "/daily/missions/{mission_id}/deliver",
+    "name": "daily_delivery_submit"
+  },
+  {
+    "method": "POST",
+    "path": "/daily/missions/{mission_id}/postpone",
+    "name": "daily_mission_postpone"
+  },
+  {
+    "method": "POST",
+    "path": "/daily/quick-note",
+    "name": "daily_quick_note"
+  },
+  {
+    "method": "GET",
+    "path": "/datasets",
+    "name": "datasets_page"
+  },
+  {
+    "method": "GET",
+    "path": "/discover",
+    "name": "discover_page"
+  },
+  {
+    "method": "POST",
+    "path": "/eggs/constellation",
+    "name": "constellation_egg"
+  },
+  {
+    "method": "GET",
+    "path": "/entry/{entry_id}",
+    "name": "entry_view"
+  },
+  {
+    "method": "POST",
+    "path": "/entry/{entry_id}/analysis-to-note",
+    "name": "analysis_to_note"
+  },
+  {
+    "method": "POST",
+    "path": "/entry/{entry_id}/analyze",
+    "name": "entry_analyze"
+  },
+  {
+    "method": "POST",
+    "path": "/entry/{entry_id}/delete",
+    "name": "entry_delete"
+  },
+  {
+    "method": "GET",
+    "path": "/entry/{entry_id}/edit",
+    "name": "entry_edit"
+  },
+  {
+    "method": "POST",
+    "path": "/entry/{entry_id}/edit",
+    "name": "entry_edit_post"
+  },
+  {
+    "method": "POST",
+    "path": "/entry/{entry_id}/favorite",
+    "name": "entry_favorite"
+  },
+  {
+    "method": "POST",
+    "path": "/entry/{entry_id}/reindex",
+    "name": "entry_reindex"
+  },
+  {
+    "method": "GET",
+    "path": "/experiments",
+    "name": "experiments_page"
+  },
+  {
+    "method": "GET",
+    "path": "/experiments/export.csv",
+    "name": "experiments_export"
+  },
+  {
+    "method": "POST",
+    "path": "/experiments/save",
+    "name": "experiment_save"
+  },
+  {
+    "method": "POST",
+    "path": "/experiments/{experiment_id}/delete",
+    "name": "experiment_delete"
+  },
+  {
+    "method": "GET",
+    "path": "/export/json",
+    "name": "export_json"
+  },
+  {
+    "method": "POST",
+    "path": "/feedback/save",
+    "name": "feedback_save"
+  },
+  {
+    "method": "GET",
+    "path": "/files/{entry_id}",
+    "name": "entry_file"
+  },
+  {
+    "method": "GET",
+    "path": "/folders",
+    "name": "folders_page"
+  },
+  {
+    "method": "GET",
+    "path": "/foundation",
+    "name": "foundation_page"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/folders/upload",
+    "name": "foundation_folder_upload"
+  },
+  {
+    "method": "GET",
+    "path": "/foundation/folders/{folder_id}",
+    "name": "foundation_folder_view"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/folders/{folder_id}/delete",
+    "name": "foundation_folder_delete"
+  },
+  {
+    "method": "GET",
+    "path": "/foundation/folders/{folder_id}/download",
+    "name": "foundation_folder_download"
+  },
+  {
+    "method": "GET",
+    "path": "/foundation/folders/{folder_id}/files/{file_id}",
+    "name": "foundation_folder_file"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/sync",
+    "name": "foundation_sync"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/tasks/{task_id}/delete",
+    "name": "foundation_task_delete"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/tasks/{task_id}/save",
+    "name": "foundation_task_save"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/tasks/{task_id}/toggle",
+    "name": "foundation_task_toggle"
+  },
+  {
+    "method": "GET",
+    "path": "/foundation/track/{track_id}",
+    "name": "foundation_track_page"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/tracks/new",
+    "name": "foundation_track_new"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/tracks/{track_id}/delete",
+    "name": "foundation_track_delete"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/tracks/{track_id}/save",
+    "name": "foundation_track_save"
+  },
+  {
+    "method": "POST",
+    "path": "/foundation/tracks/{track_id}/tasks/new",
+    "name": "foundation_task_new"
+  },
+  {
+    "method": "GET",
+    "path": "/foundation/upload-folder",
+    "name": "foundation_folder_upload_page"
+  },
+  {
+    "method": "POST",
+    "path": "/home/layout",
+    "name": "home_layout_save"
+  },
+  {
+    "method": "GET",
+    "path": "/idle",
+    "name": "idle_page"
+  },
+  {
+    "method": "POST",
+    "path": "/idle/config",
+    "name": "idle_config_save"
+  },
+  {
+    "method": "POST",
+    "path": "/idle/wallpaper",
+    "name": "idle_wallpaper_upload"
+  },
+  {
+    "method": "GET",
+    "path": "/knowledge/export",
+    "name": "knowledge_export"
+  },
+  {
+    "method": "GET",
+    "path": "/library",
+    "name": "library"
+  },
+  {
+    "method": "GET",
+    "path": "/literature-report",
+    "name": "literature_report_page"
+  },
+  {
+    "method": "POST",
+    "path": "/literature-report/draft",
+    "name": "literature_report_draft"
+  },
+  {
+    "method": "POST",
+    "path": "/literature-report/extract",
+    "name": "literature_report_extract"
+  },
+  {
+    "method": "POST",
+    "path": "/literature-report/pptx",
+    "name": "literature_report_pptx"
+  },
+  {
+    "method": "POST",
+    "path": "/literature-report/save",
+    "name": "literature_report_save"
+  },
+  {
+    "method": "GET",
+    "path": "/notes/new",
+    "name": "note_new"
+  },
+  {
+    "method": "POST",
+    "path": "/notes/new",
+    "name": "note_new_post"
+  },
+  {
+    "method": "POST",
+    "path": "/notes/paste-image",
+    "name": "note_paste_image"
+  },
+  {
+    "method": "GET",
+    "path": "/online",
+    "name": "online_page"
+  },
+  {
+    "method": "POST",
+    "path": "/online/connect",
+    "name": "online_connect"
+  },
+  {
+    "method": "POST",
+    "path": "/online/hub-host/start",
+    "name": "online_hub_host_start"
+  },
+  {
+    "method": "POST",
+    "path": "/online/hub-host/stop",
+    "name": "online_hub_host_stop"
+  },
+  {
+    "method": "GET",
+    "path": "/online/personalization/export",
+    "name": "online_personalization_export"
+  },
+  {
+    "method": "POST",
+    "path": "/online/personalization/import",
+    "name": "online_personalization_import"
+  },
+  {
+    "method": "POST",
+    "path": "/online/retry-paused",
+    "name": "online_retry_paused"
+  },
+  {
+    "method": "POST",
+    "path": "/online/settings",
+    "name": "online_settings_save"
+  },
+  {
+    "method": "POST",
+    "path": "/online/sync",
+    "name": "online_sync_now"
+  },
+  {
+    "method": "POST",
+    "path": "/online/test",
+    "name": "online_connection_test"
+  },
+  {
+    "method": "POST",
+    "path": "/online/theme",
+    "name": "online_theme_save"
+  },
+  {
+    "method": "POST",
+    "path": "/online/update/check",
+    "name": "online_update_check"
+  },
+  {
+    "method": "POST",
+    "path": "/online/update/latest",
+    "name": "online_update_latest"
+  },
+  {
+    "method": "GET",
+    "path": "/plans",
+    "name": "plans_page"
+  },
+  {
+    "method": "POST",
+    "path": "/plans/import",
+    "name": "plan_import"
+  },
+  {
+    "method": "POST",
+    "path": "/plans/{plan_id}/activate",
+    "name": "plan_activate"
+  },
+  {
+    "method": "POST",
+    "path": "/plans/{plan_id}/day",
+    "name": "plan_set_day"
+  },
+  {
+    "method": "POST",
+    "path": "/plans/{plan_id}/delete",
+    "name": "plan_delete"
+  },
+  {
+    "method": "GET",
+    "path": "/plans/{plan_id}/export",
+    "name": "plan_export"
+  },
+  {
+    "method": "POST",
+    "path": "/plans/{plan_id}/mission/{mission_id}/save",
+    "name": "plan_mission_save"
+  },
+  {
+    "method": "POST",
+    "path": "/plans/{plan_id}/missions/new",
+    "name": "plan_mission_new"
+  },
+  {
+    "method": "GET",
+    "path": "/portable",
+    "name": "portable_export"
+  },
+  {
+    "method": "GET",
+    "path": "/profile",
+    "name": "profile_page"
+  },
+  {
+    "method": "POST",
+    "path": "/profile",
+    "name": "profile_save"
+  },
+  {
+    "method": "POST",
+    "path": "/profile/avatar",
+    "name": "profile_avatar_save"
+  },
+  {
+    "method": "GET",
+    "path": "/projects",
+    "name": "projects_page"
+  },
+  {
+    "method": "POST",
+    "path": "/projects/new",
+    "name": "project_new"
+  },
+  {
+    "method": "GET",
+    "path": "/projects/{project_id}",
+    "name": "project_page"
+  },
+  {
+    "method": "POST",
+    "path": "/projects/{project_id}/cases/save",
+    "name": "project_case_save"
+  },
+  {
+    "method": "POST",
+    "path": "/projects/{project_id}/cases/{case_id}/save",
+    "name": "project_case_edit"
+  },
+  {
+    "method": "POST",
+    "path": "/projects/{project_id}/milestones/new",
+    "name": "project_milestone_new"
+  },
+  {
+    "method": "POST",
+    "path": "/projects/{project_id}/milestones/{milestone_id}/save",
+    "name": "project_milestone_save"
+  },
+  {
+    "method": "GET",
+    "path": "/projects/{project_id}/plan",
+    "name": "project_plan"
+  },
+  {
+    "method": "POST",
+    "path": "/projects/{project_id}/save",
+    "name": "project_save"
+  },
+  {
+    "method": "POST",
+    "path": "/projects/{project_id}/status",
+    "name": "project_status"
+  },
+  {
+    "method": "POST",
+    "path": "/projects/{project_id}/updates/new",
+    "name": "project_update_new"
+  },
+  {
+    "method": "POST",
+    "path": "/quests/new",
+    "name": "quest_new"
+  },
+  {
+    "method": "POST",
+    "path": "/quests/{quest_id}/delete",
+    "name": "quest_delete"
+  },
+  {
+    "method": "POST",
+    "path": "/quests/{quest_id}/toggle",
+    "name": "quest_toggle"
+  },
+  {
+    "method": "GET",
+    "path": "/retreat",
+    "name": "retreat_page"
+  },
+  {
+    "method": "GET",
+    "path": "/review",
+    "name": "review_page"
+  },
+  {
+    "method": "GET",
+    "path": "/review/sessions/{session_id}",
+    "name": "review_session"
+  },
+  {
+    "method": "POST",
+    "path": "/review/sessions/{session_id}/answer",
+    "name": "review_answer"
+  },
+  {
+    "method": "POST",
+    "path": "/review/sessions/{session_id}/rate",
+    "name": "review_rate"
+  },
+  {
+    "method": "POST",
+    "path": "/review/snooze",
+    "name": "review_snooze"
+  },
+  {
+    "method": "POST",
+    "path": "/review/start",
+    "name": "review_start"
+  },
+  {
+    "method": "GET",
+    "path": "/search",
+    "name": "search"
+  },
+  {
+    "method": "GET",
+    "path": "/settings",
+    "name": "settings_page"
+  },
+  {
+    "method": "POST",
+    "path": "/settings",
+    "name": "settings_post"
+  },
+  {
+    "method": "GET",
+    "path": "/simulations",
+    "name": "simulations_page"
+  },
+  {
+    "method": "POST",
+    "path": "/simulations/new",
+    "name": "simulation_new"
+  },
+  {
+    "method": "POST",
+    "path": "/simulations/{simulation_id}/delete",
+    "name": "simulation_delete"
+  },
+  {
+    "method": "GET",
+    "path": "/simulations/{simulation_id}/files/{file_id}",
+    "name": "simulation_file"
+  },
+  {
+    "method": "POST",
+    "path": "/simulations/{simulation_id}/update",
+    "name": "simulation_update"
+  },
+  {
+    "method": "GET",
+    "path": "/trials",
+    "name": "trials_page"
+  },
+  {
+    "method": "GET",
+    "path": "/upload",
+    "name": "upload"
+  },
+  {
+    "method": "POST",
+    "path": "/upload",
+    "name": "upload_post"
+  },
+  {
+    "method": "GET",
+    "path": "/workbench",
+    "name": "workbench_page"
+  },
+  {
+    "method": "POST",
+    "path": "/workbench/figure-board",
+    "name": "workbench_figure_board"
+  },
+  {
+    "method": "POST",
+    "path": "/workbench/image",
+    "name": "workbench_image"
+  },
+  {
+    "method": "POST",
+    "path": "/workbench/polish",
+    "name": "workbench_polish"
+  },
+  {
+    "method": "POST",
+    "path": "/workbench/polish/save",
+    "name": "workbench_polish_save"
+  },
+  {
+    "method": "POST",
+    "path": "/workbench/reading",
+    "name": "workbench_reading"
+  },
+  {
+    "method": "POST",
+    "path": "/workbench/reading/save",
+    "name": "workbench_reading_save"
+  },
+  {
+    "method": "GET",
+    "path": "/workspaces",
+    "name": "workspaces_page"
+  },
+  {
+    "method": "POST",
+    "path": "/workspaces/new",
+    "name": "workspace_new"
+  },
+  {
+    "method": "GET",
+    "path": "/workspaces/{workspace_id}",
+    "name": "workspace_open"
+  },
+  {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/reset",
+    "name": "workspace_reset"
+  },
+  {
+    "method": "POST",
+    "path": "/workspaces/{workspace_id}/save",
+    "name": "workspace_save"
+  },
+  {
+    "method": "GET",
+    "path": "/world",
+    "name": "world_page"
+  },
+  {
+    "method": "POST",
+    "path": "/world/artifacts/{artifact_key}/buy",
+    "name": "world_artifact_buy"
+  },
+  {
+    "method": "POST",
+    "path": "/world/artifacts/{artifact_key}/equip",
+    "name": "world_artifact_equip"
+  },
+  {
+    "method": "POST",
+    "path": "/world/artifacts/{artifact_key}/upgrade",
+    "name": "world_artifact_upgrade"
+  },
+  {
+    "method": "POST",
+    "path": "/world/buildings/{building_key}/upgrade",
+    "name": "world_building_upgrade"
+  },
+  {
+    "method": "POST",
+    "path": "/world/eggs/moon-well",
+    "name": "world_moon_well"
+  }
+]

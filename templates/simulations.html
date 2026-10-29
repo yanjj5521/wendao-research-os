@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ workspace.name if workspace else '模拟案例' }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head"><div><span class="eyebrow">Simulation Domain</span><h1>{{ workspace.icon ~ ' ' ~ workspace.name if workspace else '可复现模拟案例库' }}</h1><p>{{ workspace.description if workspace else '上传输入、日志、轨迹或整个 ZIP；系统自动识别日志并提取版本、原子数、步数、温度和最终能量。' }}</p></div><a class="soft-button" href="{{ url_for('workspaces_page') }}">管理领域</a></div>
+<div class="content-grid two-one module-layout">
+  <section class="simulation-list">
+    {% if items %}{% for item in items %}<article class="panel simulation-card">
+      <div class="simulation-head"><div><span class="status-badge status-{{item.status|lower}}">{{item.status}}</span><h2>{{item.case_name}}</h2><p>{{item.project_name or '未设置项目' }} · {{item.engine}} {{item.engine_version}}</p></div><strong class="simulation-score">{{item.atoms or '—'}}<small>atoms</small></strong></div>
+      <div class="sim-metrics"><div><span>步数</span><strong>{{item.steps or item.last_step or '—'}}</strong></div><div><span>末温度</span><strong>{{ '%.3f'|format(item.last_temp) if item.last_temp is not none else '—' }}</strong></div><div><span>末总能</span><strong>{{ '%.4f'|format(item.last_etotal) if item.last_etotal is not none else '—' }}</strong></div><div><span>警告/错误</span><strong>{{item.warnings}} / {{item.errors}}</strong></div></div>
+      {% if item.files %}<div class="file-chip-row">{% for f in item.files %}<a href="{{url_for('simulation_file',simulation_id=item.id,file_id=f.id)}}">{{f.role}} · {{f.original_name}}</a>{% endfor %}</div>{% endif %}
+      <form class="sim-update" method="post" action="{{url_for('simulation_update',simulation_id=item.id)}}"><input type="hidden" name="workspace_id" value="{{ workspace.id if workspace else item.workspace_id or '' }}"><select name="status">{% for s in ['NEW','RUNNING','PASS','INCOMPLETE','ERROR','ARCHIVED'] %}<option value="{{s}}" {% if item.status==s %}selected{% endif %}>{{s}}</option>{% endfor %}</select><input name="tags" value="{{item.tags}}" placeholder="标签"><textarea name="notes" rows="2" placeholder="可复现说明、问题与下一步">{{item.notes}}</textarea><button class="ghost-button">更新</button></form>
+      <form method="post" action="{{url_for('simulation_delete',simulation_id=item.id)}}" onsubmit="return confirm('删除该案例及其本地文件？')"><button class="danger-link">删除案例</button></form>
+    </article>{% endfor %}{% else %}<div class="panel empty-state"><div>⚛</div><h3>还没有模拟案例</h3><p>可以直接上传 LJ_baseline.zip，系统会自动解析 log.lammps。</p></div>{% endif %}
+  </section>
+
+  <form class="panel settings-form simulation-upload" method="post" action="{{url_for('simulation_new')}}" enctype="multipart/form-data">
+    <div class="panel-head"><div><span class="eyebrow">New Case</span><h2>归档模拟案例</h2></div></div>
+    <label><span>案例名称 *</span><input name="case_name" required placeholder="LJ_baseline"></label>
+    <input type="hidden" name="workspace_id" value="{{ workspace.id if workspace else '' }}">
+    <label><span>所属项目</span><input name="project_name" placeholder="CSH_CarbonCap"></label>
+    <div class="mini-form-grid"><label><span>系综</span><input name="ensemble" placeholder="NVT"></label><label><span>力场</span><input name="forcefield" placeholder="LJ / CLAYFF"></label><label><span>目标温度</span><input type="number" step="any" name="temperature"></label><label><span>时间步长</span><input type="number" step="any" name="timestep"></label></div>
+    <label><span>运行命令</span><input name="run_command" placeholder="lmp -in in.lj"></label>
+    <label><span>标签</span><input name="tags" placeholder="baseline, reproducible"></label>
+    <label><span>说明</span><textarea name="notes" rows="4" placeholder="目的、输入、输出、判定标准"></textarea></label>
+    <label class="compact-drop"><span>上传文件或 ZIP</span><input type="file" name="files" multiple><small>推荐上传完整案例 ZIP；也可同时选择 input、log、dump、data。</small></label>
+    <button class="primary-button full-button">归档并解析</button>
+  </form>
+</div>
+{% endblock %}

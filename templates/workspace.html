@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ workspace.name }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div>
+    <span class="eyebrow">{{ workspace_guide.kicker }}</span>
+    <h1>{{ workspace.icon }} {{ workspace.name }}</h1>
+    <p>{{ workspace.description or '这是一个由你定义的专题学习空间。' }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="soft-button" href="{{ url_for('workspaces_page') }}">个性化搭配</a>
+    <a class="primary-button" href="{{ primary_action.url }}">{{ primary_action.label }}</a>
+  </div>
+</div>
+
+<section class="workspace-mission panel workspace-accent-{{ workspace.accent }}">
+  <div>
+    <span class="eyebrow">Current Objective</span>
+    <h2>{{ workspace.objective or workspace_guide.objective }}</h2>
+  </div>
+  <p><b>最小证据链</b>{{ workspace_guide.evidence }}</p>
+</section>
+
+<section class="workspace-guide panel workspace-accent-{{ workspace.accent }}">
+  <div><span class="eyebrow">Your Workflow</span><strong>这条流程可在“个性化搭配”中逐行修改。</strong></div>
+  <ol>{% for stage in workspace.workflow %}<li><span>{{ loop.index }}</span>{{ stage }}</li>{% endfor %}</ol>
+  <div class="workspace-guide-actions">
+    <a href="{{ url_for('note_new') }}?workspace_id={{ workspace.id }}">写判断</a>
+    <a href="{{ url_for('upload') }}?workspace_id={{ workspace.id }}">收证据</a>
+  </div>
+</section>
+
+<section class="workspace-tool-grid" aria-label="领域组件">
+  {% for tool in tool_cards %}
+  <a class="workspace-tool-card workspace-accent-{{ workspace.accent }}" href="{{ tool.url }}">
+    <span>{{ tool.mark }}</span>
+    <div><small>{{ tool.count }} 条相关记录</small><h3>{{ tool.label }}</h3><p>{{ tool.description }}</p></div>
+    <b>→</b>
+  </a>
+  {% endfor %}
+</section>
+
+<section class="panel workspace-recent">
+  <div class="panel-head simple">
+    <div><span class="eyebrow">Recent Evidence</span><h2>最近留下的证据</h2></div>
+    <a href="{{ url_for('search') }}">全库检索</a>
+  </div>
+  {% if recent_records %}
+  <div class="workspace-recent-list">
+    {% for item in recent_records %}
+    <a href="{{ item.url }}"><span>{{ item.mark }}</span><div><strong>{{ item.title }}</strong><small>{{ item.meta }}</small></div><b>↗</b></a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="workspace-empty-line">
+    <span>{{ workspace.icon }}</span>
+    <p>这里还没有记录。先写一条假设、上传一个文件，或进入对应台账建立第一份证据。</p>
+    <a class="ghost-button" href="{{ primary_action.url }}">开始</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

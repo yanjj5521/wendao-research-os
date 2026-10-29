@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}近期计划 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Flexible Plans</span><h1>近期计划</h1><p>修炼任务管跨天成果，每日计划管3–7天具体行动。二者可在一次文本中导入，但会保存到两套独立记录。</p></div>
+</div>
+{% if nav_artifact and nav_artifact.key == 'measuring_ruler' %}
+<aside class="artifact-effect-banner"><span>⌇</span><div><strong>量天尺正在校核</strong><p>每项任务请确认：变量是什么、单位是否统一、比较基线是谁、最小重复数是否足够。</p></div></aside>
+{% endif %}
+
+{% if selected %}
+<section class="panel current-plan-card {% if selected.status != 'active' %}archived-plan-card{% endif %}">
+  <div>
+    <span class="eyebrow">{{ '正在使用' if selected.status == 'active' else '计划预览 · 尚未启用' }}</span>
+    <h2>{{ selected.name }}</h2>
+    <p>{{ selected.description }}</p>
+  </div>
+  <div class="current-plan-actions">
+    <strong>Day {{ selected.current_day }} / {{ selected.total_days }}</strong>
+    {% if selected.status == 'active' %}
+    <a class="primary-button" href="{{ url_for('daily_page') }}">继续今天</a>
+    {% else %}
+    <form method="post" action="{{ url_for('plan_activate', plan_id=selected.id) }}">
+      <button class="primary-button" type="submit">启用这份计划</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+{% if plan_health %}
+<section class="panel plan-health-card">
+  <div class="plan-health-score">
+    <span class="eyebrow">Plan Check</span>
+    <strong>{{ plan_health.score }}</strong>
+    <small>可执行度</small>
+  </div>
+  <div class="plan-health-copy">
+    <h2>{{ plan_health.balanced_days }} / {{ plan_health.days|length }} 天节奏合适</h2>
+    <p>必做完成 {{ plan_health.required_done }} / {{ plan_health.required_total }}；系统只检查数量、时长和最小交付，不替你判断学习质量。</p>
+    <span class="game-progress"><i style="width:{{ plan_health.completion }}%"></i></span>
+    {% if plan_health.warnings %}
+    <details><summary>{{ plan_health.warnings|length }} 条可调整建议</summary><ul>{% for warning in plan_health.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></details>
+    {% else %}
+    <small class="plan-health-ok">✓ 每天 1–3 项必做、最多 1 项可选、60–150 分钟，且都有最小交付。</small>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+{% endif %}
+
+<div class="simple-plan-grid">
+  <section class="panel">
+    <details class="import-box" open>
+      <summary>粘贴 AI 计划</summary>
+      <p>无需逐项创建。可粘贴 Markdown，也可直接粘贴网页复制的纯文本；系统会识别 #、项目符号和中文“第一天”。</p>
+      <form method="post" action="{{ url_for('plan_import') }}" id="planImportForm">
+        <textarea name="plan_text" id="planImportText" rows="15" required placeholder="# 我的计划
+> 用三天推进一个眼前问题
+## 修炼任务
+- [进阶] 能够独立判断CV曲线主要问题 | 验收：完成3张盲测判读记录 | 领域：EG 实验
+## Day 1 | 电化学起点
+- [重点] 判读一张CV曲线 | 45min | 交付：三句话判读 | 领域：EG 实验 | 项目：膨胀石墨水泥基结构超级电容器 | 关联修炼：能够独立判断CV曲线主要问题
+- [工具] 整理LJ案例 | 30min | 交付：README或ZIP
+- [可选] 局部精读 | 20min | 交付：词卡或TXT"></textarea>
+        <button class="primary-button full-button" id="planImportButton" type="submit">导入并立即进入 Day 1</button>
+      </form>
+      <small class="form-help">导入成功后会自动归档旧计划并启用新计划，不删除任何旧任务。不要写 XP；旧文案里的 XP 也会被忽略。</small>
+    </details>
+  </section>
+
+  <section class="panel prompt-panel plan-prompt-panel">
+    <div class="panel-head simple"><div><span class="eyebrow">Context-aware Prompt</span><h2>按当前网站状态生成</h2></div><button class="soft-button" type="button" id="copyPromptButton">复制提示词</button></div>
+    <p>这段提示词已经带上未完成任务、最近交付和最近状态。复制给任意大模型即可。</p>
+    <textarea id="promptText" rows="18" readonly>{{ plan_prompt }}</textarea>
+    <div id="copyFeedback" class="copy-feedback" aria-live="polite"></div>
+  </section>
+</div>
+
+<section class="panel plan-library">
+  <div class="panel-head simple"><div><span class="eyebrow">Plans</span><h2>已有近期计划</h2></div></div>
+  <div class="plan-switcher compact-switcher">
+    {% for plan in plans %}
+    <div class="plan-switch-row {% if selected and selected.id==plan.id %}selected{% endif %}">
+      <a class="plan-switch {% if selected and selected.id==plan.id %}active{% endif %}" href="{{ url_for('plans_page') }}?plan_id={{ plan.id }}">
+        <strong>{{ plan.name }}</strong>
+        <small>{{ plan.total_days }}天 · Day {{ plan.current_day }}{% if plan.status=='active' %} · 使用中{% else %} · 已归档{% endif %}</small>
+      </a>
+      {% if plan.status == 'active' %}
+      <a class="plan-row-action active" href="{{ url_for('daily_page') }}">今日</a>
+      {% else %}
+      <form method="post" action="{{ url_for('plan_activate', plan_id=plan.id) }}">
+        <button class="plan-row-action" type="submit">启用</button>
+      </form>
+      {% endif %}
+    </div>
+    {% else %}
+    <p class="empty-state">尚无计划，可在上方粘贴导入。</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% if selected %}
+<details class="panel simple-details plan-tuning">
+  <summary>高级：微调某一天</summary>
+  <nav class="day-map plan-day-map">{% for day_index in day_map %}<a href="{{ url_for('plans_page') }}?plan_id={{ selected.id }}&day={{ day_index }}" class="day-dot {% if day_index==selected_day %}active{% endif %}">{{ day_index }}</a>{% endfor %}</nav>
+  <div class="day-editor-body standalone">
+    <form method="post" action="{{ url_for('plan_mission_new', plan_id=selected.id) }}" class="mission-edit-card quick-mission-card">
+      <div class="panel-head simple"><div><span class="eyebrow">Quick Add</span><h3>给 Day {{ selected_day }} 加一步</h3></div></div>
+      <input type="hidden" name="day_index" value="{{ selected_day }}">
+      <div class="form-grid two"><label><span>任务</span><input name="title" required placeholder="例如：核对异常组接触电阻"></label><label><span>分类</span><input name="category" value="重点"></label></div>
+      <div class="form-grid two"><label><span>最小交付</span><input name="deliverable" required placeholder="一张核对表 + 一句结论"></label><label><span>预计分钟</span><input type="number" min="5" max="240" name="duration_minutes" value="30"></label></div>
+      <div class="form-grid two">
+        <label><span>领域</span><select name="workspace_id"><option value="">不限定</option>{% for workspace in workspaces %}<option value="{{ workspace.id }}">{{ workspace.icon }} {{ workspace.name }}</option>{% endfor %}</select></label>
+        <label><span>关联项目</span><select name="project_id"><option value="">不关联</option>{% for project in projects %}<option value="{{ project.id }}">{{ project.title }}</option>{% endfor %}</select></label>
+      </div>
+      <label class="check-label"><input type="checkbox" name="optional" value="1">作为可选任务，不阻塞下一关</label>
+      <button class="soft-button">加入当天</button>
+    </form>
+    {% for mission in missions %}
+    <form method="post" action="{{ url_for('plan_mission_save', plan_id=selected.id, mission_id=mission.id) }}" class="mission-edit-card">
+      <div class="mission-link-strip">
+        {% if mission.workspace_name %}<span>领域 · {{ mission.workspace_name }}</span>{% endif %}
+        {% if mission.project_title %}<span>项目 · {{ mission.project_title }}</span>{% endif %}
+      </div>
+      <div class="form-grid two"><label><span>任务</span><input name="title" value="{{ mission.title }}" required></label><label><span>关联领域（可选）</span><select name="track_id"><option value="">自动判断</option>{% for track in tracks %}<option value="{{ track.id }}" {% if mission.track_id==track.id %}selected{% endif %}>{{ track.name }}</option>{% endfor %}</select></label></div>
+      <div class="form-grid two"><label><span>分类</span><input name="category" value="{{ mission.category }}"></label><label><span>最小交付</span><input name="deliverable" value="{{ mission.deliverable }}"></label></div>
+      <div class="form-grid two"><label><span>预计分钟</span><input type="number" min="5" max="240" name="duration_minutes" value="{{ mission.duration_minutes }}"><small>当前统一奖励：{{ mission.xp }}修为</small></label><label><span>关联修炼任务（可选）</span><select name="quest_id"><option value="">不关联</option>{% for task in cultivation_tasks %}<option value="{{ task.id }}" {% if mission.quest_id==task.id %}selected{% endif %}>{{ task.title }}</option>{% endfor %}</select></label></div>
+      <div class="form-grid two">
+        <label><span>领域</span><select name="workspace_id"><option value="">不限定</option>{% for workspace in workspaces %}<option value="{{ workspace.id }}" {% if mission.workspace_id==workspace.id %}selected{% endif %}>{{ workspace.icon }} {{ workspace.name }}</option>{% endfor %}</select></label>
+        <label><span>关联项目</span><select name="project_id"><option value="">不关联</option>{% for project in projects %}<option value="{{ project.id }}" {% if mission.project_id==project.id %}selected{% endif %}>{{ project.title }}</option>{% endfor %}</select></label>
+      </div>
+      <input type="hidden" name="description" value="{{ mission.description }}"><input type="hidden" name="optional" value="{{ 1 if mission.optional else 0 }}">
+      <button class="soft-button">保存这项</button>
+    </form>
+    {% endfor %}
+  </div>
+</details>
+{% endif %}
+{% endblock %}

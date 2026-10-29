@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ folder.name }} · 科研底座{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><span class="eyebrow">Research Deliverable Folder</span><h1>{{ folder.name }}</h1><p>{{ folder.track_name or '未分类' }} · {{ folder.file_count }} 个文件 · {{ folder.total_size|filesize }}</p></div>
+  <div class="page-actions"><a class="ghost-button" href="{{ url_for('foundation_page') }}">返回底座</a><a class="primary-button" href="{{ url_for('foundation_folder_download', folder_id=folder.id) }}">下载整个文件夹</a></div>
+</div>
+<section class="panel simple-panel">
+  {% if folder.description %}<p class="folder-description">{{ folder.description }}</p>{% endif %}
+  <div class="folder-tree">
+    {% for file in files %}
+    <a href="{{ url_for('foundation_folder_file', folder_id=folder.id, file_id=file.id) }}">
+      <span class="file-node-icon">{% if '/' in file.relative_path %}└{% else %}•{% endif %}</span>
+      <code>{{ file.relative_path }}</code>
+      <small>{{ file.file_size|filesize }}</small>
+    </a>
+    {% else %}<div class="empty-inline">文件夹为空。</div>{% endfor %}
+  </div>
+  <form class="folder-delete-row" method="post" action="{{ url_for('foundation_folder_delete', folder_id=folder.id) }}" onsubmit="return confirm('删除这个文件夹及其中所有文件？')"><button class="danger-button">删除整个文件夹</button></form>
+</section>
+{% endblock %}

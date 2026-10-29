@@ -1,0 +1,284 @@
+name: Validate modular Wendao v3 candidate
+
+on:
+  push:
+    branches:
+      - main
+      - development/next
+      - "release/wendao-v3.*"
+      - "agent/wendao-v3.*"
+  pull_request:
+    branches:
+      - development/next
+      - "release/wendao-v3.*"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  cleanup-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Remove historical Actions artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.paginate(
+              github.rest.actions.listArtifactsForRepo,
+              { owner: context.repo.owner, repo: context.repo.repo, per_page: 100 }
+            );
+            core.info(`Deleting ${artifacts.length} historical Actions artifacts.`);
+            for (const artifact of artifacts) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+            }
+            await core.summary
+              .addHeading("Actions artifact cleanup")
+              .addRaw(`Deleted ${artifacts.length} historical artifacts. Releases and source were not changed.`)
+              .write();
+
+  windows:
+    needs: cleanup-artifacts
+    runs-on: windows-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install locked dependencies
+        run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
+      - name: Verify source and original v3 behavior
+        run: |
+          $ErrorActionPreference = "Stop"
+          $PSNativeCommandUseErrorActionPreference = $true
+          python -m compileall -q core features hub launchers services web tools tests run_local.py run_hub.py hub_db.py desktop_pet.py workspace_profiles.py
+          python -m ruff check core features hub launchers services web tools tests run_local.py run_hub.py hub_db.py desktop_pet.py workspace_profiles.py
+          python -m pytest -q tests
+          python self_test.py
+          python hub_self_test.py
+          python online_integration_test.py
+      - name: Verify wheel contains hub and runtime assets
+        shell: pwsh
+        run: |
+          $wheelDir = Join-Path $env:RUNNER_TEMP "wheelhouse"
+          New-Item -ItemType Directory -Path $wheelDir -Force | Out-Null
+          python -m pip wheel . --no-deps --wheel-dir $wheelDir
+          $wheel = (Get-ChildItem $wheelDir -Filter *.whl | Select-Object -First 1).FullName
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $archive = [IO.Compression.ZipFile]::OpenRead($wheel)
+          try {
+            $names = @($archive.Entries | ForEach-Object FullName)
+            if (-not ($names | Where-Object { $_ -like "hub/*" })) { throw "wheel is missing hub/" }
+            if (-not ($names | Where-Object { $_ -like "*share/wendao-research/templates/*" })) { throw "wheel is missing templates" }
+            if (-not ($names | Where-Object { $_ -like "*share/wendao-research/static/*" })) { throw "wheel is missing static assets" }
+          } finally {
+            $archive.Dispose()
+          }
+      - name: Build the single Windows program and portable package
+        run: python tools/build.py --assemble --output out
+      - name: Verify frozen personal and team modes
+        shell: pwsh
+        run: |
+          $exe = (Resolve-Path ".\dist\WendaoResearchV3.exe").Path
+          $personal = Join-Path $env:RUNNER_TEMP "wendao-v3-personal"
+          $team = Join-Path $env:RUNNER_TEMP "wendao-v3-team"
+
+          $personalCheck = Start-Process -FilePath $exe -ArgumentList @(
+            "--data-dir", $personal, "--self-check", "--no-browser"
+          ) -Wait -PassThru -NoNewWindow
+          if ($personalCheck.ExitCode -ne 0) { throw "Frozen personal self-check failed." }
+          $teamCheck = Start-Process -FilePath $exe -ArgumentList @(
+            "--mode", "team", "--data-dir", $team, "--self-check", "--no-browser"
+          ) -Wait -PassThru -NoNewWindow
+          if ($teamCheck.ExitCode -ne 0) { throw "Frozen team self-check failed." }
+
+          $serverInfo = [System.Diagnostics.ProcessStartInfo]::new()
+          $serverInfo.FileName = $exe
+          $serverInfo.UseShellExecute = $false
+          foreach ($argument in @(
+            "--host", "127.0.0.1", "--port", "5000",
+            "--data-dir", $personal, "--no-browser"
+          )) { $serverInfo.ArgumentList.Add($argument) }
+          $personalProcess = [System.Diagnostics.Process]::Start($serverInfo)
+          try {
+            $ready = $false
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              Start-Sleep -Milliseconds 500
+              if ($personalProcess.HasExited) { break }
+              try {
+                $page = Invoke-WebRequest "http://127.0.0.1:5000/" -TimeoutSec 2 -NoProxy
+                if (
+                  $page.StatusCode -eq 200 `
+                  -and $page.Content -match "问道科研" `
+                  -and $page.Content -match "gate-birds" `
+                  -and $page.Content -match "motion-vnext.css"
+                ) { $ready = $true; break }
+              } catch {}
+            }
+            if (-not $ready) { throw "Frozen personal mode did not render v3." }
+
+            $edge = @(
+              "${env:ProgramFiles(x86)}\Microsoft\Edge\Application\msedge.exe",
+              "$env:ProgramFiles\Microsoft\Edge\Application\msedge.exe"
+            ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $edge) { throw "Microsoft Edge was not found." }
+            New-Item -ItemType Directory -Path "ui-preview" -Force | Out-Null
+            $uiDir = (Resolve-Path "ui-preview").Path
+            foreach ($capture in @(
+              @{ Size = "1440,900"; Name = "home-desktop.png" },
+              @{ Size = "390,844"; Name = "home-mobile.png" }
+            )) {
+              $target = Join-Path $uiDir $capture.Name
+              $profile = Join-Path $env:RUNNER_TEMP "edge-$($capture.Name)"
+              $edgeInfo = [System.Diagnostics.ProcessStartInfo]::new()
+              $edgeInfo.FileName = $edge
+              $edgeInfo.UseShellExecute = $false
+              foreach ($argument in @(
+                "--headless", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
+                "--user-data-dir=$profile", "--window-size=$($capture.Size)",
+                "--screenshot=$target", "http://127.0.0.1:5000/"
+              )) { $edgeInfo.ArgumentList.Add($argument) }
+              $edgeProcess = [System.Diagnostics.Process]::Start($edgeInfo)
+              if (-not $edgeProcess.WaitForExit(30000)) {
+                $edgeProcess.Kill($true)
+                throw "Edge screenshot timed out: $($capture.Name)"
+              }
+              if ($edgeProcess.ExitCode -ne 0 -or -not (Test-Path $target)) {
+                throw "Edge screenshot failed: $($capture.Name)"
+              }
+            }
+          } finally {
+            if (-not $personalProcess.HasExited) {
+              $personalProcess.Kill($true)
+              $personalProcess.WaitForExit()
+            }
+          }
+
+          $teamInfo = [System.Diagnostics.ProcessStartInfo]::new()
+          $teamInfo.FileName = $exe
+          $teamInfo.UseShellExecute = $false
+          foreach ($argument in @(
+            "--mode", "team", "--host", "127.0.0.1", "--port", "5050",
+            "--data-dir", $team, "--no-browser"
+          )) { $teamInfo.ArgumentList.Add($argument) }
+          $teamProcess = [System.Diagnostics.Process]::Start($teamInfo)
+          try {
+            $ready = $false
+            for ($attempt = 0; $attempt -lt 30; $attempt++) {
+              Start-Sleep -Milliseconds 500
+              if ($teamProcess.HasExited) { break }
+              try {
+                $health = Invoke-RestMethod "http://127.0.0.1:5050/health" -TimeoutSec 2 -NoProxy
+                if ($health.status -eq "ok") { $ready = $true; break }
+              } catch {}
+            }
+            if (-not $ready) { throw "Frozen team mode did not become ready." }
+          } finally {
+            if (-not $teamProcess.HasExited) {
+              $teamProcess.Kill($true)
+              $teamProcess.WaitForExit()
+            }
+          }
+      - name: Verify release file set
+        shell: pwsh
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          $expected = @(
+            "WendaoResearch-v$version-Windows-x64.exe",
+            "WendaoResearch-v$version-Portable.zip",
+            "WendaoResearch-v$version-Team-Update.zip"
+          )
+          $actual = @(Get-ChildItem out -File | Select-Object -ExpandProperty Name | Sort-Object)
+          if (Compare-Object ($expected | Sort-Object) $actual) {
+            throw "Windows output set is not exact: $($actual -join ', ')"
+          }
+          $expanded = Join-Path $env:RUNNER_TEMP "wendao-v3-portable"
+          Expand-Archive "out\WendaoResearch-v$version-Portable.zip" $expanded -Force
+          $portable = @(Get-ChildItem $expanded -File -Recurse | Select-Object -ExpandProperty Name | Sort-Object)
+          $expectedPortable = @(
+            "WendaoResearchV3.exe", "portable.flag", "使用说明.txt"
+          ) | Sort-Object
+          if (Compare-Object $expectedPortable $portable) {
+            throw "Portable package is not the required four-file set."
+          }
+          $update = Join-Path $env:RUNNER_TEMP "wendao-v3-update"
+          Expand-Archive "out\WendaoResearch-v$version-Team-Update.zip" $update -Force
+          $updateFiles = @(Get-ChildItem $update -File -Recurse | Select-Object -ExpandProperty Name | Sort-Object)
+          if (Compare-Object $expectedPortable $updateFiles) {
+            throw "Team update package is not the required safe portable file set."
+          }
+      - name: Publish verified Windows candidate release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $version = (Get-Content VERSION -Raw).Trim()
+          $tag = "wendao-v$version-candidate-windows-$env:GITHUB_RUN_ID"
+          $assets = @(Get-ChildItem out -File | Select-Object -ExpandProperty FullName)
+          if ($assets.Count -ne 3) { throw "Expected three verified Windows assets." }
+          gh release create $tag $assets `
+            --repo $env:GITHUB_REPOSITORY `
+            --target $env:GITHUB_SHA `
+            --title "Wendao v$version Windows candidate (run $env:GITHUB_RUN_NUMBER)" `
+            --notes "CI-verified temporary candidate for transfer to the public release. GitHub Actions artifacts are intentionally bypassed because their storage quota is pending recalculation." `
+            --prerelease
+
+  android:
+    needs: cleanup-artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.9"
+      - name: Test, lint and assemble Android
+        run: |
+          gradle --no-daemon -p mobile/android \
+            :app:testDebugUnitTest \
+            :app:lintDebug \
+            :app:assembleDebug
+      - name: Verify and stage installable APK
+        shell: bash
+        run: |
+          version="$(tr -d '\r\n ' < VERSION)"
+          source_apk="mobile/android/app/build/outputs/apk/debug/app-debug.apk"
+          target_apk="out/WendaoResearch-Mobile-v${version}-Android.apk"
+          apksigner="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          aapt="$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -n 1)"
+          test -s "$source_apk"
+          test -x "$apksigner"
+          test -x "$aapt"
+          mkdir -p out
+          cp "$source_apk" "$target_apk"
+          "$apksigner" verify --verbose "$target_apk"
+          "$aapt" dump badging "$target_apk" |
+            grep "package: name='cn.wendao.research.v3.mobile'"
+          unzip -t "$target_apk"
+          test "$(find out -maxdepth 1 -type f | wc -l)" -eq 1
+      - name: Publish verified Android candidate release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="$(tr -d '\r\n ' < VERSION)"
+          tag="wendao-v${version}-candidate-android-${GITHUB_RUN_ID}"
+          test "$(find out -maxdepth 1 -type f | wc -l)" -eq 1
+          gh release create "$tag" out/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --title "Wendao v${version} Android candidate (run ${GITHUB_RUN_NUMBER})" \
+            --notes "CI-verified temporary candidate for transfer to the public release. GitHub Actions artifacts are intentionally bypassed because their storage quota is pending recalculation." \
+            --prerelease

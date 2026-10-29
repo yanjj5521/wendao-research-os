@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}炼丹炉 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Special Tasks & Alchemy</span><h1>炼丹炉</h1><p>特殊任务必须产生真实交付；灵草和丹药只是这份能力证据的奖励外观。</p></div>
+  <div class="ai-state"><strong>{{ ai_status.label }}</strong><small>{{ ai_status.detail }}</small></div>
+</div>
+
+<section class="panel task-generator">
+  <div><span class="eyebrow">接取特殊任务</span><h2>让系统根据近期所学出一项可交付挑战</h2><p>难度决定灵草等级，不决定答案是否唯一。</p></div>
+  <form method="post" action="{{ url_for('alchemy_task_generate') }}" class="task-generator-form">
+    <label><span>难度</span><select name="difficulty">{% for grade,spec in grades.items() %}<option value="{{ grade }}" {% if grade==2 %}selected{% endif %}>{{ grade }}级 · {{ spec.label }}</option>{% endfor %}</select></label>
+    <label><span>想训练的内容（可留空）</span><input name="focus" placeholder="例如：CV曲线解释、量纲检查、论文证据链"></label>
+    <button class="primary-button">生成任务</button>
+  </form>
+</section>
+
+<div class="alchemy-main-grid">
+  <section class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">Quest Board</span><h2>特殊任务榜</h2></div></div>
+    <div class="special-task-list">
+      {% for task in tasks %}
+      <article class="special-task {% if task.status=='active' %}active{% endif %}">
+        <div class="task-grade"><span>{{ grades[task.difficulty].icon }}</span><small>{{ grades[task.difficulty].label }}</small></div>
+        <div class="task-copy"><small>{{ task.provider }}</small><h3>{{ task.title }}</h3><p>{{ task.description }}</p><b>交付 · {{ task.deliverable }}</b><em>{{ task.why_it_matters }}</em>
+        {% if task.fallback_reason %}<details><summary>模型回退说明</summary><small>{{ task.fallback_reason }}</small></details>{% endif %}</div>
+        <div class="task-actions">
+          {% if task.status=='offered' %}
+          <form method="post" action="{{ url_for('alchemy_task_accept', task_id=task.id) }}"><button class="primary-button">接取</button></form>
+          <form method="post" action="{{ url_for('alchemy_task_abandon', task_id=task.id) }}"><button class="text-button">放下</button></form>
+          {% else %}
+          <details class="delivery-box" open>
+            <summary class="primary-button">提交特殊交付</summary>
+            <form method="post" enctype="multipart/form-data" action="{{ url_for('alchemy_task_complete', task_id=task.id) }}" class="clean-form">
+              <label><span>交付说明</span><textarea name="evidence" rows="3" required placeholder="我完成了什么，证据在哪里？"></textarea></label>
+              <label><span>复盘关键文本</span><textarea name="review_text" rows="5" required placeholder="3–8条事实、结论、因果关系或仍不确定之处。明天只从这里出题。"></textarea></label>
+              <label><span>附件（可选）</span><input type="file" name="files" multiple></label>
+              <button class="primary-button">确认交付并领取灵草</button>
+            </form>
+          </details>
+          <form method="post" action="{{ url_for('alchemy_task_abandon', task_id=task.id) }}"><button class="text-button">放弃任务</button></form>
+          {% endif %}
+        </div>
+      </article>
+      {% else %}<div class="empty-state"><p>还没有特殊任务。生成一项真正能训练科研能力的小挑战。</p></div>{% endfor %}
+    </div>
+  </section>
+
+  <aside class="panel herb-inventory">
+    <div class="panel-head simple"><div><span class="eyebrow">Herbs</span><h2>灵草囊</h2></div></div>
+    {% for herb in herbs %}
+    <div class="herb-row grade-{{ herb.grade }}"><span>{{ herb.icon }}</span><div><strong>{{ herb.label }} · {{ herb.name }}</strong><small>{{ herb.grade }}级特殊任务产出</small></div><b>×{{ herb.quantity }}</b></div>
+    {% endfor %}
+  </aside>
+</div>
+
+<section class="panel furnace-panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Nine Recipes</span><h2>丹方谱</h2><p>九类丹方对应专注、复盘、证据、方法、综合迁移与突破；只消费真实任务获得的灵草。</p></div><strong>{{ recipes|length }} 方</strong></div>
+  <div class="recipe-grid">
+    {% for recipe in recipes %}
+    <article class="recipe-card"><span class="pill-orb">丹</span><div><h3>{{ recipe.name }}</h3><p>{{ recipe.desc }}</p><small>{{ recipe.cost_text }}</small></div><form method="post" action="{{ url_for('alchemy_craft', recipe_key=recipe.key) }}"><button class="soft-button">炼制</button></form></article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Pills</span><h2>丹药囊</h2></div><a href="{{ url_for('review_page') }}">前往挑战</a></div>
+  <div class="pill-grid">
+    {% for pill in pills %}
+    <article><span>丹</span><div><strong>{{ pill.name }} ×{{ pill.quantity }}</strong><small>{{ pill.desc }}</small></div>{% if pill.xp %}<form method="post" action="{{ url_for('alchemy_pill_use', pill_key=pill.key) }}"><button class="text-button" {% if pill.quantity<1 %}disabled{% endif %}>服用</button></form>{% else %}<a class="text-button" href="{{ url_for('review_page') }}">用于雷劫</a>{% endif %}</article>
+    {% endfor %}
+  </div>
+</section>
+
+{% if completed %}
+<details class="panel completed-tasks"><summary>最近完成的特殊任务</summary>{% for task in completed %}<div><b>{{ grades[task.difficulty].label }} · {{ task.title }}</b><small>{{ task.completed_at|datecn }}</small></div>{% endfor %}</details>
+{% endif %}
+{% endblock %}

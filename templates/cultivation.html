@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ nav_labels.cultivation }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Cultivation Record</span><h1>{% if selected_workspace %}{{ selected_workspace.icon }} {{ selected_workspace.name }} · {% endif %}{{ nav_labels.cultivation }}</h1><p>修炼任务记录跨天的能力与成果；每日任务只记录今天要做的下一行动。两者可以关联，但分别完成、分别验收。</p></div>
+  <div class="page-actions">{% if selected_workspace %}<a class="ghost-button" href="{{ url_for('cultivation_page') }}">全部任务</a>{% endif %}<a class="primary-button" href="#new-cultivation-task">建立修炼任务</a></div>
+</div>
+
+<section class="panel cultivation-hero">
+  <div><span class="eyebrow">Current Realm</span><h2>{{ realm.name }}</h2><p>{{ realm.description }}</p><div class="realm-progress"><span style="width:{{ realm.progress }}%"></span></div><small>{% if realm.tribulation_required %}{{ xp }} 修为 · 已达 {{ realm.next_name }} 门槛，需通过突破雷劫{% else %}{{ xp }} 修为 · 距 {{ realm.next_name }} 还差 {{ realm.remaining }} 修为{% endif %}</small></div>
+  <div class="quality-ring"><strong>{{ quality }}%</strong><span>知识库完整度</span></div>
+  <div class="cultivation-stat"><strong>{{ streak }}</strong><span>连续修炼天数</span></div>
+</section>
+
+{% if realm.tribulation_required %}
+<section class="panel breakthrough-callout">
+  <span>雷</span>
+  <div><small>Major breakthrough</small><strong>{{ realm.tribulation_title }}</strong><p>修为不会丢失，但下一大境界要在五问雷劫均分达到 70 分后解锁。</p></div>
+  <a class="primary-button" href="{{ url_for('trials_page') }}">前往渡劫</a>
+</section>
+{% endif %}
+
+<section class="task-type-contrast">
+  <article><span>跨天</span><h2>修炼任务</h2><p>“能够独立判读 CV 曲线”“形成可复现 LJ 案例”。完成依据是证据，不是日期。</p></article>
+  <i>→</i>
+  <article><span>当天</span><h2>每日任务</h2><p>“用三句话判读一张 CV 图”“补齐 LJ README”。完成依据是当天交付。</p></article>
+</section>
+
+<div class="cultivation-task-layout" id="quests">
+  <section class="panel cultivation-task-list">
+    <div class="panel-head simple"><div><span class="eyebrow">Milestones</span><h2>独立修炼任务</h2></div><small>{{ quests|rejectattr('completed')|list|length }} 项进行中</small></div>
+    {% for q in quests %}
+    <article class="cultivation-task-card {% if q.completed %}done{% endif %}">
+      <div class="cultivation-task-top">
+        <span class="difficulty-badge difficulty-{{ q.difficulty }}">{{ difficulty_labels[q.difficulty] }}</span>
+        {% if q.workspace_name %}<span class="workspace-chip">{{ q.workspace_name }}</span>{% endif %}
+        <span class="fixed-xp">固定 +{{ q.xp }} 修为</span>
+      </div>
+      <h3>{{ q.title }}</h3>
+      {% if q.description %}<p>{{ q.description }}</p>{% endif %}
+      <small>验收标准 · {{ q.deliverable or '提交能证明能力或成果已经形成的证据' }}</small>
+      {% if q.linked_total %}<div class="linked-progress"><i style="width:{{ (q.linked_done / q.linked_total * 100)|round }}%"></i></div><small>已有 {{ q.linked_done }} / {{ q.linked_total }} 项每日行动推进它；这些行动不会自动替你判定里程碑完成。</small>{% endif %}
+      {% if q.completed %}
+      <div class="cultivation-evidence"><strong>验收证据</strong><p>{{ q.evidence }}</p></div>
+      <form method="post" action="{{ url_for('quest_toggle', quest_id=q.id) }}"><button class="text-button">重新开启</button></form>
+      {% else %}
+      <form class="quest-evidence-form" method="post" action="{{ url_for('quest_toggle', quest_id=q.id) }}">
+        <input name="evidence" required minlength="3" placeholder="填写文件、记录、结果或能够证明达成的简短证据">
+        <button class="soft-button">提交证据并完成</button>
+      </form>
+      {% endif %}
+    </article>
+    {% else %}
+    <div class="empty-state"><div>境</div><h3>还没有修炼任务</h3><p>先建立一个跨天、可验收的能力或成果里程碑。</p></div>
+    {% endfor %}
+  </section>
+
+  <form class="panel settings-form" id="new-cultivation-task" method="post" action="{{ url_for('quest_new') }}">
+    <div class="panel-head simple"><div><span class="eyebrow">New Milestone</span><h2>建立修炼任务</h2></div></div>
+    <label><span>能力或成果</span><input name="title" placeholder="例如：能够独立判读基础 CV 曲线" required></label>
+    <label><span>为什么做</span><textarea name="description" rows="3" placeholder="它会改变哪一种能力或产出？"></textarea></label>
+    <label><span>验收标准</span><textarea name="deliverable" rows="3" placeholder="例如：随机选择3张曲线，完成盲测判读并与参考结论核对"></textarea></label>
+    <label><span>难度</span><select name="difficulty"><option value="1">小成 · 固定25修为</option><option value="2">进阶 · 固定50修为</option><option value="3">突破 · 固定90修为</option></select></label>
+    <label><span>所属领域（可选）</span><select name="workspace_id"><option value="">不关联</option>{% for workspace in workspaces %}<option value="{{ workspace.id }}" {% if selected_workspace and selected_workspace.id == workspace.id %}selected{% endif %}>{{ workspace.name }}</option>{% endfor %}</select></label>
+    <button class="primary-button full-button">加入修炼记录</button>
+    <small class="form-help">经验值不能输入，也不会从 AI 计划中读取；所有人使用同一套固定难度表。</small>
+  </form>
+</div>
+
+<details class="panel realm-roadmap">
+  <summary><span><small>Realm Roadmap</small><strong>查看完整境界谱 · 共 {{ realm_path|length }} 阶，直至圣人</strong></span><b>⌄</b></summary>
+  <div class="realm-roadmap-grid">
+    {% for stage in realm_path %}
+    <article class="realm-step {{ stage.state }}"><span>{{ '雷' if stage.state=='tribulation' else loop.index }}</span><div><strong>{{ stage.name }}</strong><small>本阶需 {{ stage.required_xp }} · 累计 {{ stage.threshold }} 修为<br>{{ stage.description }}</small></div></article>
+    {% endfor %}
+  </div>
+</details>
+
+<details class="panel compact-records">
+  <summary><span><small>Records</small><strong>查看修为来源与成长成就</strong></span><b>⌄</b></summary>
+  <div class="content-grid equal">
+    <section><h3>修为来源</h3><div class="xp-ledger">{% for row in activity_rows %}<div><span>{{ row.action }}</span><b>{{ row.n }} 次</b><strong>{{ row.xp }} XP</strong></div>{% endfor %}</div></section>
+    <section><h3>成长成就</h3><div class="achievement-grid">{% for item in achievements %}<div class="achievement {% if item.unlocked %}unlocked{% endif %}"><span>{{ item.icon }}</span><div><strong>{{ item.name }}</strong><small>{{ item.desc }}</small></div></div>{% endfor %}</div></section>
+  </div>
+</details>
+{% endblock %}

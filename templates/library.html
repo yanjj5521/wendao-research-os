@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}我的知识库 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><span class="eyebrow">Personal Knowledge Base</span><h1>{% if selected_workspace %}{{ selected_workspace.icon }} {{ selected_workspace.name }}资料{% else %}我的知识库{% endif %}</h1><p>文献、实验、图像、代码和思考统一归档；先留下，再在真正需要时整理。</p></div>
+  <div class="page-actions"><a class="ghost-button" href="{{ url_for('knowledge_export') }}">↓ 一键导出</a><a class="ghost-button" href="{{ url_for('note_new') }}{% if selected_workspace %}?workspace_id={{ selected_workspace.id }}{% endif %}">＋ 新记录</a><a class="primary-button" href="{{ url_for('upload') }}{% if selected_workspace %}?workspace_id={{ selected_workspace.id }}{% endif %}">↑ 上传文件</a></div>
+</div>
+<form class="filter-bar" method="get">
+  {% if selected_workspace %}<input type="hidden" name="workspace" value="{{ selected_workspace.id }}">{% endif %}
+  <select name="kind"><option value="">全部类型</option>{% for key, meta in kinds.items() %}<option value="{{ key }}" {% if selected_kind == key %}selected{% endif %}>{{ meta[1] }} {{ meta[0] }}</option>{% endfor %}</select>
+  <select name="domain"><option value="">全部领域</option>{% for item in domains %}<option value="{{ item }}" {% if selected_domain == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select>
+  <label class="check-label"><input type="checkbox" name="favorite" value="1" {% if favorite == '1' %}checked{% endif %}> 只看星标</label>
+  <button class="ghost-button">筛选</button>
+  <a href="{{ url_for('library') }}{% if selected_workspace %}?workspace={{ selected_workspace.id }}{% endif %}">清除</a>
+</form>
+{% if entries %}
+<div class="card-grid">
+  {% for entry in entries %}
+  <article class="asset-card">
+    <div class="asset-card-top"><span class="asset-icon large">{{ entry.kind_icon }}</span><form method="post" action="{{ url_for('entry_favorite', entry_id=entry.id) }}"><button class="star-button {% if entry.favorite %}active{% endif %}">★</button></form></div>
+    <a href="{{ url_for('entry_view', entry_id=entry.id) }}"><h3>{{ entry.title }}</h3></a>
+    <p>{{ entry.summary or (entry.content[:110] if entry.content else '尚未添加摘要，可在以后需要时再补充。') }}</p>
+    <div class="tag-row"><span class="type-pill">{{ entry.kind_label }}</span><span>{{ entry.domain }}</span>{% for tag in entry.tags_list[:3] %}<span>#{{ tag }}</span>{% endfor %}</div>
+    <div class="asset-card-foot"><small>{{ entry.updated_at|datecn }}</small>{% if entry.file_size %}<small>{{ entry.file_size|filesize }}</small>{% endif %}</div>
+  </article>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state panel"><div>📚</div><h3>没有符合条件的资料</h3><p>降低筛选条件，或收录新的学习资料。</p><a class="primary-button" href="{{ url_for('upload') }}">上传第一份资料</a></div>
+{% endif %}
+{% endblock %}

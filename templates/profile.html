@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}个人主页 · {{ site_name }}{% endblock %}
+{% block content %}
+{% if edit_mode %}
+<div class="page-head minimal-head"><div><span class="eyebrow">Edit Profile</span><h1>编辑个人主页</h1><p>写你已经会什么，以及能够稳定做到什么程度。</p></div></div>
+<section class="avatar-editor panel">
+  <div class="avatar-preview">{% if avatar_file %}<img src="/media/profile/{{ avatar_file }}" alt="当前头像">{% else %}{{ profile.avatar_symbol }}{% endif %}</div>
+  <form method="post" action="{{ url_for('profile_avatar_save') }}" enctype="multipart/form-data">
+    <div><span class="eyebrow">Avatar</span><h2>选择或上传头像</h2><p>字印最轻量；上传图片会自动裁到 512 像素以内，并随完整备份和个性化包迁移。</p></div>
+    <div class="avatar-seals">
+      {% for symbol in ['道','研','砼','墨','山','鹤'] %}
+      <label><input type="radio" name="avatar_choice" value="{{ symbol }}" {% if profile.avatar_symbol == symbol %}checked{% endif %}><span>{{ symbol }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="avatar-fields"><label><span>自定义字印（最多 2 字）</span><input name="avatar_custom" maxlength="2" placeholder="可选"></label><label><span>上传 JPG、PNG 或 WebP（≤ 5 MB）</span><input type="file" name="avatar" accept="image/jpeg,image/png,image/webp,image/gif"></label></div>
+    <div class="page-actions"><button class="soft-button" name="avatar_action" value="symbol">使用所选字印</button><button class="primary-button" name="avatar_action" value="upload">上传并使用图片</button></div>
+  </form>
+</section>
+<form method="post" action="{{ url_for('profile_save') }}" class="profile-edit panel">
+  <div class="form-grid two"><label><span>显示名称</span><input name="display_name" value="{{ profile.display_name }}" required></label><label><span>身份标题</span><input name="title" value="{{ profile.title }}"></label></div>
+  <label><span>一句自我介绍</span><textarea name="bio" rows="3">{{ profile.bio }}</textarea></label>
+  <div class="form-grid two"><label><span>我会什么（每行一项）</span><textarea name="skills" rows="8">{{ profile.skills }}</textarea></label><label><span>我能做到什么程度（每行一项）</span><textarea name="capabilities" rows="8">{{ profile.capabilities }}</textarea></label></div>
+  <label><span>当前目标</span><textarea name="goals" rows="3">{{ profile.goals }}</textarea></label>
+  <label><span>头像字符</span><input name="avatar_symbol" maxlength="2" value="{{ profile.avatar_symbol }}"></label>
+  <div class="page-actions"><button class="primary-button">保存主页</button><a class="soft-button" href="{{ url_for('profile_page') }}">取消</a></div>
+</form>
+{% else %}
+<section class="profile-hero panel">
+  <div class="profile-avatar">{% if avatar_file %}<img src="/media/profile/{{ avatar_file }}" alt="{{ profile.display_name }}的头像">{% else %}{{ profile.avatar_symbol }}{% endif %}</div>
+  <div class="profile-copy"><span class="eyebrow">{{ realm.name }}</span><h1>{{ profile.display_name }}</h1><strong>{{ profile.title }}</strong><p>{{ profile.bio }}</p></div>
+  <div class="profile-actions"><a class="soft-button" href="{{ url_for('profile_page') }}?edit=1">编辑主页</a><a class="primary-button" href="{{ url_for('world_page') }}">返回洞府</a></div>
+</section>
+
+<section class="profile-metrics">
+  <div><strong>{{ xp }}</strong><small>修为</small></div><div><strong>{{ wallet.spirit_stone }}</strong><small>灵石</small></div><div><strong>{{ stats.deliveries }}</strong><small>真实交付</small></div><div><strong>{{ stats.documents + stats.notes + stats.datasets }}</strong><small>知识资产</small></div>
+</section>
+
+<div class="profile-columns">
+  <section class="panel"><div class="panel-head simple"><h2>我会什么</h2></div><div class="skill-cloud">{% for item in profile.skills_list %}<span>{{ item }}</span>{% else %}<small>编辑主页后显示技能。</small>{% endfor %}</div></section>
+  <section class="panel"><div class="panel-head simple"><h2>我能做到什么</h2></div><ul class="capability-list">{% for item in profile.capabilities_list %}<li>{{ item }}</li>{% else %}<li>尚未填写。</li>{% endfor %}</ul></section>
+</div>
+
+<section class="panel profile-goal"><span class="eyebrow">当前道心</span><h2>{{ profile.goals or '持续留下真实、可复用的学习与研究成果。' }}</h2></section>
+
+<div class="profile-columns">
+  <section class="panel"><div class="panel-head simple"><h2>已获法器</h2></div><div class="artifact-grid">{% for item in artifacts %}<div class="artifact-card {% if item.equipped %}equipped{% endif %}"><span>{{ item.icon }}</span><div><strong>{{ item.name }}</strong><small>{{ '佩戴中' if item.equipped else item.desc }}</small></div></div>{% else %}<small>完成任务获得灵石，在洞府购买第一件法器。</small>{% endfor %}</div></section>
+  <section class="panel"><div class="panel-head simple"><h2>能力证据</h2></div><div class="evidence-grid"><span>文献 {{ stats.documents }}</span><span>笔记 {{ stats.notes }}</span><span>数据集 {{ stats.datasets }}</span><span>实验批次 {{ stats.experiments }}</span><span>模拟案例 {{ stats.simulations }}</span></div></section>
+</div>
+{% endif %}
+{% endblock %}

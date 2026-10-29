@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#f2e5d4"><title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', path='/app-icon.png') }}" type="image/png">
+  <link rel="stylesheet" href="{{ url_for('static', path='/hub.css') }}">
+</head>
+<body class="hub-role-{{ user.role if user else 'guest' }}">
+  <header class="hub-topbar">
+    <a class="hub-brand" href="{{ url_for('hub_home') }}"><span>道</span><b>{{ site_name }}</b><small>问道科研内置模块 · 资料留在个人电脑</small></a>
+    {% if user %}
+    <nav>
+      <a class="{% if active=='home' %}active{% endif %}" href="{{ url_for('hub_home') }}">{{ '管理总览' if user.role=='admin' else '同行厅' }}</a>
+      <a class="{% if active=='forum' %}active{% endif %}" href="{{ url_for('hub_forum') }}">论坛</a>
+      <a class="{% if active=='chat' %}active{% endif %}" href="{{ url_for('hub_chat') }}">聊天</a>
+      <a class="{% if active=='market' %}active{% endif %}" href="{{ url_for('hub_market') }}">坊市</a>
+      <a class="{% if active=='resources' %}active{% endif %}" href="{{ url_for('hub_resources') }}">资料</a>
+      <a class="{% if active=='me' %}active{% endif %}" href="{{ url_for('hub_me') }}">我</a>
+      {% if user.role=='admin' %}<a class="admin-nav {% if active=='admin' %}active{% endif %}" href="{{ url_for('hub_admin') }}">管理控制台</a>{% endif %}
+    </nav>
+    <div class="hub-account"><span class="role-badge">{{ '管理员' if user.role=='admin' else '普通成员' }}</span><span>修{{ nav_balances.cultivation }} · ◆{{ nav_balances.spirit_stone }}</span><b>{{ user.display_name }}</b><form method="post" action="{{ url_for('hub_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf }}"><button>退出</button></form></div>
+    {% endif %}
+  </header>
+  <main class="hub-shell">
+    {% if flashes %}<div class="flashes">{% for item in flashes %}<div class="flash {{ item.category }}">{{ item.message }}</div>{% endfor %}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer>
+    <span>科研系统同行会 v{{ version }} · 中心只保存账号、公开主页、公开交流与虚拟资产；科研原文件始终留在个人电脑</span>
+    <a class="mobile-deep-link" href="researchos://connect?hub={{ request.base_url|string|urlencode }}">在 Android App 中打开当前中心</a>
+  </footer>
+</body></html>

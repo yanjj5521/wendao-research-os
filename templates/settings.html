@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block title %}系统设置 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><span class="eyebrow">Local System</span><h1>系统设置与备份</h1><p>自定义研究领域，并定期导出。数据库和附件都保存在当前项目文件夹。</p></div>
+</div>
+<div class="content-grid equal">
+  <form class="panel settings-form" method="post">
+    <div class="panel-head"><div><span class="eyebrow">Identity</span><h2>洞府信息</h2></div></div>
+    <label><span>网站名称</span><input name="site_name" value="{{ current_site_name }}"></label>
+    <label><span>研究者称号</span><input name="researcher_name" value="{{ current_researcher_name }}"></label>
+    <label><span>研究领域（每行一个）</span><textarea name="domains" rows="12">{{ domain_text }}</textarea></label>
+    <div class="settings-divider"></div>
+    <div><span class="eyebrow">Paper Assistant</span><h2>论文摘要方式</h2></div>
+    <label><span>模式</span><select name="ai_mode"><option value="offline" {% if ai_mode=='offline' %}selected{% endif %}>纯本地规则（零配置）</option><option value="ollama" {% if ai_mode=='ollama' %}selected{% endif %}>本地 Ollama 模型</option><option value="openai" {% if ai_mode=='openai' %}selected{% endif %}>外部 OpenAI / 兼容接口</option></select></label>
+    <label><span>AI 接口</span><input name="ai_endpoint" value="{{ai_endpoint}}" placeholder="Ollama: http://127.0.0.1:11434/api/generate；OpenAI: https://api.openai.com/v1/responses"></label>
+    <label><span>模型名称</span><input name="ai_model" value="{{ai_model}}"></label>
+    <small class="form-help">{{ ai_status.label }}：{{ ai_status.detail }} 外部密钥只从 <code>OPENAI_API_KEY</code> 环境变量读取，不保存到数据库，也不会进入个性化包或 GitHub。</small>
+    <div class="settings-divider"></div>
+    <div><span class="eyebrow">Review</span><h2>昨日复盘</h2></div>
+    <label class="check-label"><input type="checkbox" name="review_popup" value="1" {% if review_popup %}checked{% endif %}>打开主页时弹出尚未复盘的最近交付</label>
+    <small class="form-help">系统只使用交付文件夹里的“复盘关键文本.txt”，不会悄悄扫描你的全部论文和私人资料。</small>
+    <div class="settings-divider"></div>
+    <div><span class="eyebrow">Workflow First</span><h2>趣味层</h2></div>
+    <label class="check-label"><input type="checkbox" name="gamification" value="1" {% if gamification %}checked{% endif %}>显示炼丹炉、洞府、成就图鉴与挂机静修</label>
+    <small class="form-help">关闭时只隐藏这些入口与灵石，修为和境界照常累计；秘境试炼属于练习，始终保留在“温故知新”里。</small>
+    <div class="settings-divider"></div>
+    <div id="visual-personalization"><span class="eyebrow">Local Appearance</span><h2>本地外观与动态</h2></div>
+    <p class="form-help">所有选择只保存在本机；可以丰富，也可以一键保持安静。系统会尊重操作系统的“减少动态效果”设置。</p>
+    <div class="form-grid two">
+      <label><span>主色</span><select name="ui_accent">
+        <option value="terracotta" {% if current_ui_accent=='terracotta' %}selected{% endif %}>陶土橙</option>
+        <option value="amber" {% if current_ui_accent=='amber' %}selected{% endif %}>琥珀黄</option>
+        <option value="sage" {% if current_ui_accent=='sage' %}selected{% endif %}>鼠尾草绿</option>
+        <option value="ink" {% if current_ui_accent=='ink' %}selected{% endif %}>深墨蓝</option>
+        <option value="cobalt" {% if current_ui_accent=='cobalt' %}selected{% endif %}>钴蓝</option>
+        <option value="plum" {% if current_ui_accent=='plum' %}selected{% endif %}>梅子紫</option>
+        <option value="coral" {% if current_ui_accent=='coral' %}selected{% endif %}>珊瑚红</option>
+      </select></label>
+      <label><span>场景光色</span><select name="ui_scene">
+        <option value="warm" {% if current_ui_scene=='warm' %}selected{% endif %}>暖白山门</option>
+        <option value="paper" {% if current_ui_scene=='paper' %}selected{% endif %}>素纸</option>
+        <option value="forest" {% if current_ui_scene=='forest' %}selected{% endif %}>林间</option>
+        <option value="dusk" {% if current_ui_scene=='dusk' %}selected{% endif %}>落日</option>
+        <option value="aurora" {% if current_ui_scene=='aurora' %}selected{% endif %}>极光</option>
+        <option value="night" {% if current_ui_scene=='night' %}selected{% endif %}>星夜</option>
+      </select></label>
+      <label><span>动效强度</span><select name="ui_motion">
+        <option value="reduced" {% if current_ui_motion=='reduced' %}selected{% endif %}>安静</option>
+        <option value="balanced" {% if current_ui_motion=='balanced' %}selected{% endif %}>平衡</option>
+        <option value="lively" {% if current_ui_motion=='lively' %}selected{% endif %}>灵动</option>
+      </select></label>
+      <label><span>几何语言</span><select name="ui_geometry">
+        <option value="soft" {% if current_ui_geometry=='soft' %}selected{% endif %}>柔和圆角</option>
+        <option value="sharp" {% if current_ui_geometry=='sharp' %}selected{% endif %}>利落切角</option>
+        <option value="orbital" {% if current_ui_geometry=='orbital' %}selected{% endif %}>轨道与圆环</option>
+      </select></label>
+      <label><span>信息密度</span><select name="ui_density">
+        <option value="focus" {% if current_ui_density=='focus' %}selected{% endif %}>专注（最疏朗）</option>
+        <option value="compact" {% if current_ui_density=='compact' %}selected{% endif %}>紧凑</option>
+        <option value="comfortable" {% if current_ui_density=='comfortable' %}selected{% endif %}>舒适</option>
+        <option value="spacious" {% if current_ui_density=='spacious' %}selected{% endif %}>宽松</option>
+        <option value="ultra" {% if current_ui_density=='ultra' %}selected{% endif %}>极简高密</option>
+      </select></label>
+      <label><span>字号</span><select name="ui_font_scale">
+        <option value="compact" {% if current_ui_font_scale=='compact' %}selected{% endif %}>小</option>
+        <option value="normal" {% if current_ui_font_scale=='normal' %}selected{% endif %}>标准</option>
+        <option value="large" {% if current_ui_font_scale=='large' %}selected{% endif %}>大</option>
+      </select></label>
+      <label><span>主页几何效果</span><select name="ui_home_effect">
+        <option value="orbits" {% if current_ui_home_effect=='orbits' %}selected{% endif %}>研究轨道</option>
+        <option value="prism" {% if current_ui_home_effect=='prism' %}selected{% endif %}>折射棱镜</option>
+        <option value="constellation" {% if current_ui_home_effect=='constellation' %}selected{% endif %}>证据星图</option>
+        <option value="none" {% if current_ui_home_effect=='none' %}selected{% endif %}>关闭</option>
+      </select></label>
+      <label><span>主页短句</span><input name="ui_home_motto" value="{{ current_ui_home_motto }}" maxlength="80"></label>
+    </div>
+    <div class="settings-divider"></div>
+    <div id="personalization"><span class="eyebrow">Personalization</span><h2>诗句、境界与导航</h2></div>
+    <label><span>山门每日诗句池（每行一句）</span><textarea name="poem_pool" rows="10">{{ poem_pool_text }}</textarea></label>
+    <small class="form-help">系统按日期轮换，同一天刷新不乱跳；留空则使用内置古诗池，完全离线也能每日更换。</small>
+    <label><span>境界名称（只修改等号右边，共{{ realm_names_text.splitlines()|length }}阶）</span><textarea name="realm_names" rows="18">{{ realm_names_text }}</textarea></label>
+    <label><span>导航名称与分组标题（只修改等号右边）</span><textarea name="nav_labels" rows="24">{{ nav_labels_text }}</textarea></label>
+    <section class="nav-layout-editor" id="navigation-layout" data-nav-layout-editor>
+      <div class="nav-layout-head">
+        <div><span class="eyebrow">Navigation Layout</span><h3>导航顺序与显示</h3><p>拖动分组或条目调整顺序；眼睛开关决定侧栏中是否显示。手机上可使用上下箭头。</p></div>
+        <button class="ghost-button" type="button" data-nav-reset>恢复默认</button>
+      </div>
+      <input type="hidden" name="nav_layout" id="navLayoutInput" value="{{ nav_layout_json|e }}">
+      <div class="nav-layout-groups">
+        {% for group in nav_layout_editor %}
+        <section class="nav-layout-group" draggable="true" data-nav-group="{{ group.key }}" data-default-order="{{ group.default_order }}">
+          <header>
+            <button class="nav-drag-handle" type="button" data-nav-drag-group aria-label="拖动{{ group.label }}分组" title="拖动分组">⋮⋮</button>
+            <strong>{{ group.label }}</strong>
+            <span>{{ group["items"]|selectattr('visible')|list|length }}/{{ group["items"]|length }} 显示</span>
+            <span class="nav-order-buttons">
+              <button type="button" data-nav-move="group-up" aria-label="分组上移">↑</button>
+              <button type="button" data-nav-move="group-down" aria-label="分组下移">↓</button>
+            </span>
+          </header>
+          <div class="nav-layout-items" data-nav-items>
+            {% for item in group["items"] %}
+            <article class="nav-layout-item {% if not item.visible %}is-hidden{% endif %}" draggable="true" data-nav-item-key="{{ item.key }}" data-default-order="{{ item.default_order }}">
+              <button class="nav-drag-handle" type="button" data-nav-drag-item aria-label="拖动{{ item.label }}" title="拖动条目">⋮</button>
+              <span class="nav-layout-icon">{{ item.icon }}</span>
+              <div><strong>{{ item.label }}</strong><small>{{ item.key }}</small></div>
+              <label class="nav-visibility-toggle" title="在侧栏显示">
+                <input type="checkbox" data-nav-visible {% if item.visible %}checked{% endif %}>
+                <span aria-hidden="true"></span>
+              </label>
+              <span class="nav-order-buttons">
+                <button type="button" data-nav-move="item-up" aria-label="条目上移">↑</button>
+                <button type="button" data-nav-move="item-down" aria-label="条目下移">↓</button>
+              </span>
+            </article>
+            {% endfor %}
+          </div>
+        </section>
+        {% endfor %}
+      </div>
+      <small class="nav-layout-status" id="navLayoutStatus">当前布局会随“保存设置”一起生效。即使隐藏“设置与备份”，侧栏底部仍保留“调整导航”安全入口。</small>
+    </section>
+    <small class="form-help">稳定键和网页路由不会随显示名称改变。外观动效、诗句、39阶境界、全部导航标签与布局，以及领域目标、流程、组件与首页固定都会进入 v8 个性化包；旧版个性化包仍可导入。</small>
+    <button class="primary-button">保存设置</button>
+  </form>
+  <section class="panel backup-panel">
+    <div class="panel-head"><div><span class="eyebrow">Backup</span><h2>数据安全</h2></div></div>
+    <div class="backup-card featured-backup"><span>📚</span><div><h3>统一数据中心</h3><p>从这里统一处理个人知识库、完整备份与结构化数据。同行会不再重复提供个人导出；管理员的团队备份仅在同行会管理控制台显示。</p><a class="primary-button" href="{{ url_for('knowledge_export') }}">导出我的知识库</a></div></div>
+    <div class="backup-card"><span>🗄️</span><div><h3>完整备份</h3><p>打包 SQLite 数据库、科研文件和用户配置，适合迁移到移动硬盘或另一台电脑。</p><a class="primary-button" href="{{ url_for('backup') }}">下载完整 ZIP</a></div></div>
+    <div class="backup-card"><span>▦</span><div><h3>学习领域</h3><p>修改 EG、LAMMPS、数据集、ML、MD、COMSOL 的目标、流程、组件与首页固定，或建立自己的学习方向。</p><a class="ghost-button" href="{{ url_for('workspaces_page') }}">个性化搭配</a></div></div>
+    <div class="backup-card"><span>🧾</span><div><h3>元数据导出</h3><p>将条目、活动和任务导出为 JSON，便于以后写脚本、做统计或迁移。</p><a class="ghost-button" href="{{ url_for('export_json') }}">导出 JSON</a></div></div>
+    <div class="backup-card"><span>📦</span><div><h3>整套便携迁移包</h3><p>版本 {{portable_version}} 会打包程序、数据库和全部资料，但自动排除不可迁移的虚拟环境。到新电脑解压后双击启动即可。</p><a class="primary-button" href="{{url_for('portable_export')}}">生成便携 ZIP</a></div></div>
+    <div class="local-note"><strong>本地化边界</strong><p>程序默认仅监听 127.0.0.1，局域网和互联网无法直接访问。请仍然定期备份，因为“本地”不等于“不会硬盘损坏”。</p></div>
+  </section>
+</div>
+
+<section class="panel feedback-panel">
+  <div class="section-head"><div><small>帮你把问题送达到开发者</small><h2>问题反馈</h2></div></div>
+  <p class="form-help">遇到 bug、有建议、或某个功能不好用——写下来提交。反馈会保存在本机，并尝试自动送到同行会中心（需在联机通道配置中心地址）。</p>
+  <form class="form-grid" method="post" action="{{ url_for('feedback_save') }}">
+    <label><span>类型</span><select name="kind"><option value="bug">问题（bug）</option><option value="idea">功能建议</option><option value="other">其他</option></select></label>
+    <label><span>描述（至少 10 个字）</span><textarea name="content" rows="4" required minlength="10" placeholder="做了什么操作、期望发生什么、实际发生了什么"></textarea></label>
+    <label><span>联系方式（可选）</span><input name="contact" maxlength="160" placeholder="邮箱或同行会用户名"></label>
+    <button class="primary-button">提交反馈</button>
+  </form>
+</section>
+{% endblock %}
+

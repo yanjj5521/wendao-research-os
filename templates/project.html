@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}{{ project.title }} · 项目{% endblock %}
+{% block content %}
+{% if nav_artifact and nav_artifact.key in ['evidence_seal','star_compass','measuring_ruler'] %}
+<aside class="artifact-effect-banner"><span>{{ nav_artifact.icon }}</span><div><strong>{{ nav_artifact.name }}正在生效</strong><p>{% if nav_artifact.key == 'evidence_seal' %}过闸门前依次核对：实际证据、通过或修改理由、唯一下一行动。{% elif nav_artifact.key == 'measuring_ruler' %}记录证据前先核对变量、单位、样本或重复数，以及比较基线是否一致。{% else %}把所有分支重新投影到一个问题：哪条证据最可能改变当前判断？{% endif %}</p></div></aside>
+{% endif %}
+<div class="page-head minimal-head project-head">
+  <div>
+    <span class="eyebrow">{{ state.status_label }}{% if project_workspaces %} · {{ project_workspaces|length }} 个领域协同{% endif %}</span>
+    <h1>{{ project.title }}</h1>
+    <p>{{ project.research_question or '先把这个项目要回答的科学问题写清楚。' }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="soft-button" href="{{ url_for('projects_page') }}">全部项目</a>
+    <a class="primary-button" href="{{ url_for('project_plan', project_id=project.id) }}">生成三日推进计划</a>
+  </div>
+</div>
+
+{% if project_workspaces %}
+<nav class="project-workspace-bar" aria-label="项目关联领域">
+  {% for item in project_workspaces %}
+  <a href="{{ url_for('workspace_open', workspace_id=item.id) }}" class="workspace-chip workspace-accent-{{ item.accent }}">{{ item.icon }} {{ item.name }}{% if item.is_primary %}<small>主要</small>{% endif %}</a>
+  {% endfor %}
+</nav>
+{% endif %}
+
+<section class="project-metrics">
+  <div class="metric-card"><small>项目定义</small><strong>{{ state.readiness }}%</strong><span>5 项必要信息</span></div>
+  <div class="metric-card"><small>证据闸门</small><strong>{{ state.passed }}/{{ state.total }}</strong><span>按证据通过</span></div>
+  <div class="metric-card"><small>已存先例</small><strong>{{ cases|length }}</strong><span>基线、方法、反例</span></div>
+  <div class="metric-card"><small>推进记录</small><strong>{{ updates|length }}</strong><span>最近显示 30 条</span></div>
+</section>
+
+<section class="panel project-next">
+  <div><span class="eyebrow">只看下一步</span><h2>{{ state.next_action }}</h2></div>
+  {% if state.current %}<span class="gate-badge">{{ state.current.title }}</span>{% endif %}
+</section>
+
+<section class="panel project-chain">
+  <div class="panel-head simple">
+    <div><span class="eyebrow">Evidence Chain</span><h2>证据链</h2></div>
+    <small>哪一环是空的，研究就卡在哪</small>
+  </div>
+  <div class="project-chain-flow">
+    {% for node in chain %}
+    <a class="chain-node {% if node.count %}filled{% else %}empty{% endif %}" href="{{ node.url }}">
+      <small>{{ node.label }}</small>
+      <strong>{{ node.count }}</strong>
+      {% if not node.count %}<em>{{ node.hint }}</em>{% endif %}
+    </a>
+    {% endfor %}
+  </div>
+  {% if not project_workspaces %}
+  <p class="chain-note">这个项目还没有关联学习领域，前五环暂时无法统计。<a href="{{ url_for('project_page', project_id=project.id) }}#workspaces">先关联一个领域</a>，文献、实验与数据才会被计入。</p>
+  {% endif %}
+</section>
+
+{% if state.warnings %}
+<section class="project-warnings">
+  {% for warning in state.warnings %}<p><b>需留意</b>{{ warning }}</p>{% endfor %}
+</section>
+{% endif %}
+
+<div class="project-main-grid">
+  <section class="panel project-gates" id="gates">
+    <div class="panel-head simple">
+      <div><span class="eyebrow">Go / Revise / Stop</span><h2>证据闸门</h2></div>
+      <strong>{{ state.progress }}%</strong>
+    </div>
+    {% for milestone in milestones %}
+    <details class="milestone-row {{ milestone.status }}" {% if milestone.status=='active' %}open{% endif %}>
+      <summary>
+        <span class="milestone-index">{{ loop.index }}</span>
+        <div><small>{{ milestone.status_label }}</small><strong>{{ milestone.title }}</strong></div>
+        <b>{{ '✓' if milestone.status=='passed' else '→' if milestone.status=='active' else '○' }}</b>
+      </summary>
+      <form method="post" action="{{ url_for('project_milestone_save', project_id=project.id, milestone_id=milestone.id) }}" class="clean-form">
+        <div class="form-grid two">
+          <label><span>闸门名称</span><input name="title" value="{{ milestone.title }}" required></label>
+          <label><span>状态</span><select name="status">{% for key,label in milestone_statuses.items() %}<option value="{{ key }}" {% if milestone.status==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+          <label class="full"><span>通过条件</span><textarea name="criterion" rows="2">{{ milestone.criterion }}</textarea></label>
+          <label><span>最小交付</span><input name="deliverable" value="{{ milestone.deliverable }}"></label>
+          <label><span>目标日期</span><input type="date" name="due_date" value="{{ milestone.due_date or '' }}"></label>
+          <label><span>证据</span><textarea name="evidence" rows="3" placeholder="数据、文件、对照、重复性或明确观察。">{{ milestone.evidence }}</textarea></label>
+          <label><span>决策理由</span><textarea name="decision" rows="3" placeholder="为什么 Go、Revise 或 Stop？">{{ milestone.decision }}</textarea></label>
+        </div>
+        <button class="soft-button">保存闸门</button>
+      </form>
+    </details>
+    {% endfor %}
+    <details class="add-simple-task">
+      <summary>＋ 添加自定义证据闸门</summary>
+      <form method="post" action="{{ url_for('project_milestone_new', project_id=project.id) }}" class="clean-form">
+        <input name="title" required placeholder="闸门名称">
+        <input name="criterion" placeholder="什么证据出现才算通过？">
+        <input name="deliverable" placeholder="最小交付">
+        <button class="soft-button">添加</button>
+      </form>
+    </details>
+  </section>
+
+  <section class="panel project-checkin">
+    <div class="panel-head simple"><div><span class="eyebrow">Evidence Log</span><h2>写一条推进记录</h2></div></div>
+    <form method="post" action="{{ url_for('project_update_new', project_id=project.id) }}" class="clean-form">
+      <div class="form-grid two">
+        <label><span>类型</span><select name="update_type">{% for key,label in update_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label>
+        <label><span>当前把握度</span><input type="number" min="0" max="100" name="confidence" value="50"></label>
+        <label class="full"><span>这次真正发生了什么</span><textarea name="summary" rows="3" required placeholder="不要只写“做了实验”，要写得到或否定了什么。"></textarea></label>
+        <label><span>证据</span><textarea name="evidence" rows="3" placeholder="文件、数据、曲线、日志、对照或失败条件。"></textarea></label>
+        <label><span>唯一下一行动</span><textarea name="next_action" rows="3" placeholder="下一次打开系统后能直接执行的一步。"></textarea></label>
+      </div>
+      <button class="primary-button">保存并更新当前基础</button>
+    </form>
+    <div class="project-timeline">
+      {% for update in updates %}
+      <article>
+        <span>{{ update_types.get(update.update_type, update.update_type) }}</span>
+        <div><strong>{{ update.summary }}</strong>{% if update.evidence %}<p>证据：{{ update.evidence }}</p>{% endif %}{% if update.next_action %}<p>下一步：{{ update.next_action }}</p>{% endif %}<small>{{ update.created_at|datecn }} · 把握 {{ update.confidence }}%</small></div>
+      </article>
+      {% else %}<p class="empty-compact">还没有推进记录。</p>{% endfor %}
+    </div>
+  </section>
+</div>
+
+<section class="panel project-cases">
+  <div class="panel-head simple">
+    <div><span class="eyebrow">Related Cases</span><h2>联网查找相关先例</h2><p>先找“别人做到了什么”，再判断你的差距和验证路线。</p></div>
+    <span class="source-badge">Crossref · 无需账号</span>
+  </div>
+  <form class="discover-search" method="get" action="{{ url_for('project_page', project_id=project.id) }}">
+    <input name="q" value="{{ q or project.search_query }}" placeholder="建议使用英文关键词">
+    <input type="hidden" name="search" value="1">
+    <button class="primary-button">搜索相关论文</button>
+  </form>
+  {% if search_error %}<div class="flash error">联网检索暂时不可用：{{ search_error }}。已保存内容和项目推进不受影响。</div>{% endif %}
+  {% if search_results %}
+  <div class="project-search-results">
+    {% for item in search_results %}
+    <article class="project-search-card">
+      <div><small>{{ item.year }}{% if item.source %} · {{ item.source }}{% endif %}</small><h3>{{ item.title }}</h3><p>{{ item.authors }}</p></div>
+      <form method="post" action="{{ url_for('project_case_save', project_id=project.id) }}">
+        <input type="hidden" name="provider" value="{{ item.provider }}">
+        <input type="hidden" name="external_id" value="{{ item.external_id }}">
+        <input type="hidden" name="title" value="{{ item.title }}">
+        <input type="hidden" name="authors" value="{{ item.authors }}">
+        <input type="hidden" name="publication_year" value="{{ item.year }}">
+        <input type="hidden" name="source" value="{{ item.source }}">
+        <input type="hidden" name="doi" value="{{ item.doi }}">
+        <input type="hidden" name="url" value="{{ item.url }}">
+        <input type="hidden" name="cited_by" value="{{ item.cited_by }}">
+        <select name="relation">{% for key,label in case_relations.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+        <button class="soft-button">保存先例</button>
+        {% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">打开来源 ↗</a>{% endif %}
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+  {% endif %}
+  <div class="saved-cases">
+    {% for item in cases %}
+    <details class="saved-case">
+      <summary><span>{{ item.publication_year or '—' }}</span><div><strong>{{ item.title }}</strong><small>{{ case_relations.get(item.relation, '待判断') }}{% if item.source %} · {{ item.source }}{% endif %}</small></div><b>›</b></summary>
+      <form method="post" action="{{ url_for('project_case_edit', project_id=project.id, case_id=item.id) }}" class="clean-form">
+        <p>{{ item.authors }}</p>
+        <div class="form-grid two">
+          <label><span>与本项目的关系</span><select name="relation">{% for key,label in case_relations.items() %}<option value="{{ key }}" {% if item.relation==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+          <label><span>我的判断</span><input name="note" value="{{ item.note }}" placeholder="它解决了什么，又没解决什么？"></label>
+        </div>
+        <div class="case-actions"><button class="soft-button">保存判断</button>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">打开 DOI/来源 ↗</a>{% endif %}</div>
+      </form>
+    </details>
+    {% else %}<p class="empty-compact">尚未保存先例。搜索并保存后，它们会长期留在本项目中。</p>{% endfor %}
+  </div>
+</section>
+
+<div class="project-bottom-grid">
+  <details class="panel project-definition">
+    <summary>修改项目定义与成功标准</summary>
+    <form method="post" action="{{ url_for('project_save', project_id=project.id) }}" class="clean-form">
+      <div class="form-grid two">
+        <label><span>项目名称</span><input name="title" value="{{ project.title }}" required></label>
+        <label><span>英文检索词</span><input name="search_query" value="{{ project.search_query }}"></label>
+        <label class="full"><span>科学问题</span><textarea name="research_question" rows="2">{{ project.research_question }}</textarea></label>
+        <label class="full"><span>为什么值得做</span><textarea name="rationale" rows="2">{{ project.rationale }}</textarea></label>
+        <label><span>目标成果</span><textarea name="target_outcome" rows="3">{{ project.target_outcome }}</textarea></label>
+        <label><span>成功标准</span><textarea name="success_criteria" rows="3">{{ project.success_criteria }}</textarea></label>
+        <label><span>当前基础</span><textarea name="current_state" rows="3">{{ project.current_state }}</textarea></label>
+        <label><span>现实约束</span><textarea name="constraints_text" rows="3">{{ project.constraints_text }}</textarea></label>
+        <fieldset class="workspace-check-field full"><legend>关联领域（可多选）</legend><div class="workspace-check-grid">{% for item in workspaces %}<label><input type="checkbox" name="workspace_ids" value="{{ item.id }}" {% if item.id in project_workspace_ids %}checked{% endif %}><span>{{ item.icon }} {{ item.name }}</span></label>{% endfor %}</div><small>第一个勾选项作为主要领域；取消勾选不会删除领域资料。</small></fieldset>
+        <label><span>目标日期</span><input type="date" name="target_date" value="{{ project.target_date or '' }}"></label>
+      </div>
+      <button class="primary-button">保存项目定义</button>
+    </form>
+    <form method="post" action="{{ url_for('project_status', project_id=project.id) }}" class="project-status-form">
+      <label><span>项目状态</span><select name="status">{% for key,label in project_statuses.items() %}<option value="{{ key }}" {% if project.status==key %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <button class="soft-button">更新状态</button>
+    </form>
+  </details>
+
+  <section class="panel prompt-panel">
+    <div class="panel-head simple"><div><span class="eyebrow">Deep Review Prompt</span><h2>让大模型审查，而不是包装</h2></div><button class="soft-button" type="button" id="copyPromptButton">复制提示词</button></div>
+    <textarea id="promptText" rows="17" readonly>{{ project_prompt }}</textarea>
+    <div id="copyFeedback" class="copy-feedback" aria-live="polite"></div>
+  </section>
+</div>
+{% endblock %}

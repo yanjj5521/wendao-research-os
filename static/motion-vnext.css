@@ -1,0 +1,63 @@
+/* Motion layer from the current formal edition, isolated from the v3 layout. */
+.vnext-ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.vnext-ambient-grid {
+  position: absolute;
+  inset: 0;
+  opacity: .16;
+  background-image:
+    linear-gradient(rgba(121, 93, 73, .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(121, 93, 73, .08) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to bottom right, transparent 15%, black, transparent 85%);
+}
+.vnext-ambient-orbit {
+  position: absolute;
+  width: 38rem;
+  height: 38rem;
+  right: -16rem;
+  top: 8rem;
+  border: 1px solid rgba(73, 112, 105, .18);
+  border-radius: 50%;
+  animation: vnext-drift 24s ease-in-out infinite alternate;
+}
+.vnext-ambient-orbit::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  left: 16%;
+  top: 11%;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 8px rgba(184, 103, 73, .08);
+}
+.vnext-ambient-sun {
+  position: absolute;
+  width: 18rem;
+  height: 18rem;
+  left: 18%;
+  bottom: -11rem;
+  border-radius: 50%;
+  background: rgba(211, 155, 72, .14);
+  filter: blur(4px);
+}
+.main-shell {
+  position: relative;
+  z-index: 1;
+}
+@keyframes vnext-drift {
+  to { transform: translate(-24px, 18px) rotate(5deg); }
+}
+body.motion-reduced .vnext-ambient,
+body.motion-off .vnext-ambient {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vnext-ambient { display: none; }
+}

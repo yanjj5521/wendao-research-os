@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}{{ nav_labels.online }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div>
+    <span class="eyebrow">Local-first ResearchHub</span>
+    <h1>{{ nav_labels.online }}</h1>
+    <p>同行会就在这个桌面程序里：登录后自动按管理员或成员身份显示不同界面；论文、数据集、笔记及实验附件始终留在个人电脑。</p>
+  </div>
+  <span class="sync-provider-badge {% if sync_provider == 'disabled' %}disabled{% endif %}">{{ sync_capabilities.label }}</span>
+</div>
+
+<section class="sync-contract-hero panel">
+  <div>
+    <span class="eyebrow">Channel ready</span>
+    <h2>一个程序，两种身份</h2>
+    <p>普通成员看到同行、资料卡、福利和更新；管理员额外看到邀请、成员、版本和审计。中心只在需要组队时启动，不让所有人都背负一套服务器流程。</p>
+  </div>
+  <div class="contract-status">
+    <div><small>契约版本</small><strong>{{ contract_version }}</strong></div>
+    <div><small>本地版本</small><strong>{{ local_version }}</strong></div>
+    <div><small>当前是否上传</small><strong>{{ '是' if sync_capabilities.enabled else '否' }}</strong></div>
+  </div>
+</section>
+
+<section class="sync-summary">
+  <div class="metric-card sync-health-{{ sync_health.tone }}"><small>保护状态</small><strong>{{ sync_health.label }}</strong><span>{% if sync_health.circuit_open %}本地功能继续工作，自动同步稍后恢复{% else %}失败不会阻塞本地科研流程{% endif %}</span></div>
+  <div class="metric-card"><small>待同步 / 延后</small><strong>{{ queue_stats.pending or 0 }} / {{ queue_stats.deferred or 0 }}</strong><span>按退避时间逐步重试</span></div>
+  <div class="metric-card"><small>已同步 / 暂停</small><strong>{{ queue_stats.synced or 0 }} / {{ queue_stats.paused or 0 }}</strong><span>永久错误等待人工处理</span></div>
+  <div class="metric-card"><small>科研原文件</small><strong>本地</strong><span>不进入联机事件</span></div>
+</section>
+
+<div class="content-grid equal">
+  <form method="post" action="{{ url_for('online_settings_save') }}" class="panel clean-form">
+    <div class="panel-head simple"><div><span class="eyebrow">成员连接</span><h2>连接同行会</h2></div></div>
+    <ol class="connection-steps">
+      <li><b>1</b><span>管理员在本页点击“启动本机同行会中心”</span></li>
+      <li><b>2</b><span>所有人用同一个问道科研 EXE，在“同行会”登录</span></li>
+      <li><b>3</b><span>成员在“我的联机主页”复制 Token，再在此保存连接</span></li>
+    </ol>
+    <label>
+      <span>当前模式</span>
+      <select name="sync_provider">
+        <option value="disabled" {% if sync_provider=='disabled' %}selected{% endif %}>关闭 · 只保留扩展接口</option>
+        <option value="legacy_hub" {% if sync_provider=='legacy_hub' %}selected{% endif %}>ResearchHub · 十人以内联机</option>
+        <option value="cloud_v2" disabled>规模化云端 v2 · 尚未实现</option>
+      </select>
+    </label>
+    <label><span>轻量中心地址</span><input name="hub_url" value="{{ hub_url }}" placeholder="例如 http://192.168.1.20:5050"></label>
+    <small class="form-help {% if not hub_url_ok %}text-danger{% endif %}">{{ hub_url_policy }}</small>
+    <label><span>轻量中心 Token</span><input type="password" name="hub_api_token" autocomplete="new-password" placeholder="{% if hub_token_configured %}已安全保存；留空保持不变{% else %}从“我的联机主页”复制{% endif %}"></label>
+    <label class="check-label"><input type="checkbox" name="auto_sync" value="1" {% if auto_sync or sync_provider == 'disabled' %}checked{% endif %}>连接成功后自动同步轻量状态</label>
+    <div class="button-row">
+      <button class="primary-button" name="connect_now" value="1">保存并联机</button>
+      <button class="soft-button" name="connect_now" value="0">只保存</button>
+    </div>
+    <small class="form-help">选择“关闭”后不会新建同步队列；启用时，公网地址必须使用 HTTPS，HTTP 只允许本机或私有局域网。</small>
+  </form>
+
+  <section class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">使用边界</span><h2>现在能联什么，不能联什么</h2></div></div>
+    <div class="future-boundary-list">
+      <div><span>1</span><p><strong>已经可用</strong><small>账号、公开主页、灵石、法器、个性化、资料卡与版本提醒。</small></p></div>
+      <div><span>2</span><p><strong>手机入口</strong><small>Android 客户端连接同一个 ResearchHub，随时查看同行会与个人联机主页。</small></p></div>
+      <div><span>3</span><p><strong>断网保护</strong><small>本地操作先完成；断网事件排队、退避重试，不阻塞科研工作。</small></p></div>
+      <div><span>4</span><p><strong>隐私边界</strong><small>论文、实验原始数据、笔记和附件不进入联机中心。</small></p></div>
+    </div>
+    <a class="soft-button" href="{{ url_for('sync_capabilities') }}">查看机器可读能力接口</a>
+  </section>
+</div>
+
+<section class="content-grid equal online-control-grid">
+  <article class="panel admin-explainer">
+    <div class="panel-head simple"><div><span class="eyebrow">管理员托管</span><h2>无需再双击 CMD</h2></div><span class="control-seal">主</span></div>
+    <p>点击一次后，同行会中心作为当前 EXE 的后台能力运行。关闭问道科研，中心也会安全停止；重新打开后再按需启动。</p>
+    {% if hub_host.running %}
+      <div class="privacy-note"><b>本机中心正在运行</b><p>成员地址：<code>{{ hub_host.lan_url }}</code></p></div>
+      <div class="button-row"><a class="primary-button" href="/team/">进入同行会</a><form method="post" action="{{ url_for('online_hub_host_stop') }}"><button class="soft-button">停止本机中心</button></form></div>
+    {% else %}
+      <form method="post" action="{{ url_for('online_hub_host_start') }}" class="button-row"><input type="hidden" name="port" value="5050"><button class="primary-button">启动本机同行会中心</button><a class="soft-button" href="/team/">先打开内嵌同行会</a></form>
+    {% endif %}
+    <small class="form-help">管理员与普通成员的差别只来自登录身份，不来自另一套程序。中心不会读取成员本地论文、附件或笔记。</small>
+  </article>
+  <article class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">内嵌同行会</span><h2>按身份显示对应界面</h2></div></div>
+    <p>管理员登录后自动出现成员、邀请、福利、版本和审计控制台；成员只看到个人联机主页、资料驿站、更新与领取福利。</p>
+    <a class="primary-button" href="/team/">打开同行会</a>
+  </article>
+</section>
+
+<section class="content-grid equal online-control-grid">
+  <article class="panel admin-explainer">
+    <div class="panel-head simple"><div><span class="eyebrow">Administrator</span><h2>管理员是怎样建立的</h2></div><span class="control-seal">主</span></div>
+    <ol class="admin-setup-steps">
+      <li><b>1</b><span><strong>首次启动自动建立</strong><small>中心数据库中没有管理员时，系统只创建一个 <code>admin</code> 角色。</small></span></li>
+      <li><b>2</b><span><strong>一次性凭据留在主机</strong><small>用户名、随机密码和 Token 写入 <code>instance/HUB_ADMIN_CREDENTIALS.txt</code>，不会进入 Git 或便携包。</small></span></li>
+      <li><b>3</b><span><strong>登录后立即换密码</strong><small>管理员生成邀请码、停用成员、发布版本和备份中心；普通成员不能把自己升为管理员。</small></span></li>
+    </ol>
+    <p class="privacy-boundary"><b>权限边界：</b>管理员只能看中心里的公开主页、资料卡、资产和同步审计，不能读取成员电脑上的论文、实验、数据集或附件。</p>
+  </article>
+
+  <article class="panel reliability-guard">
+    <div class="panel-head simple"><div><span class="eyebrow">Offline-first guard</span><h2>联机不稳定保护</h2></div><span class="control-seal">稳</span></div>
+    <div class="guardrail-grid">
+      <div><b>{{ sync_health.policy.auto_timeout_seconds }}s</b><span>自动同步超时</span></div>
+      <div><b>{{ sync_health.policy.failure_threshold }}次</b><span>失败后熔断</span></div>
+      <div><b>5min</b><span>暂停后探测</span></div>
+      <div><b>{{ sync_health.policy.dead_letter_attempts }}次</b><span>转人工处理</span></div>
+    </div>
+    <ul>
+      <li>每个事件有唯一编号，重复发送不会重复奖励或重复写入。</li>
+      <li>临时断网按指数退避并加入抖动，同时遵守中心的 Retry-After。</li>
+      <li>地址或 Token 错误不会无限重试；事件保留本地，修复后手动恢复。</li>
+    </ul>
+    <div class="button-row">
+      <form method="post" action="{{ url_for('online_connection_test') }}"><button class="soft-button" {% if sync_provider != 'legacy_hub' %}disabled{% endif %}>检测地址与 Token</button></form>
+      {% if queue_stats.paused %}<form method="post" action="{{ url_for('online_retry_paused') }}"><button class="primary-button">恢复 {{ queue_stats.paused }} 个暂停事件</button></form>{% endif %}
+    </div>
+    {% if sync_health.last_probe.message %}<small class="probe-result">{{ sync_health.last_probe.at[:16].replace('T',' ') }} · {{ sync_health.last_probe.message }}</small>{% endif %}
+  </article>
+</section>
+
+<section class="panel legacy-sync-panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Version center</span><h2>更新与同步</h2><p>版本检查、更新和轻量状态同步都在同一程序中完成。</p></div><a class="primary-button" href="/team/">进入同行会</a></div>
+  <div class="button-row"><form method="post" action="{{ url_for('online_update_check') }}"><button class="soft-button">检查新版本</button></form>{% if latest_release and latest_release.version != local_version %}<form method="post" action="{{ url_for('online_update_latest') }}"><button class="primary-button">更新到 v{{ latest_release.version }}</button><small>自动校验更新包、备份个人数据库并重启；不会覆盖 user_data。</small></form>{% endif %}</div>
+    <p>ResearchHub 服务十人以内的小团队；本地操作先完成，联机成功与否不会决定资料是否保存。</p>
+  <div class="button-row">
+    <form method="post" action="{{ url_for('online_connect') }}"><button class="primary-button">连接并合并状态</button></form>
+    <form method="post" action="{{ url_for('online_sync_now') }}"><button class="soft-button">立即同步</button></form>
+  </div>
+  {% if last_error.message %}<div class="sync-error">{{ last_error.message }}</div>{% endif %}
+</section>
+
+<section class="content-grid equal">
+  <form method="post" action="{{ url_for('online_theme_save') }}" class="panel clean-form">
+    <div class="panel-head simple"><div><span class="eyebrow">Local personalization</span><h2>本地个性化</h2></div></div>
+    <label><span>强调色</span><select name="accent"><option value="terracotta" {% if theme.accent=='terracotta' %}selected{% endif %}>陶土</option><option value="amber" {% if theme.accent=='amber' %}selected{% endif %}>暖金</option><option value="sage" {% if theme.accent=='sage' %}selected{% endif %}>鼠尾草</option><option value="ink" {% if theme.accent=='ink' %}selected{% endif %}>墨色</option><option value="cobalt" {% if theme.accent=='cobalt' %}selected{% endif %}>钴蓝</option><option value="plum" {% if theme.accent=='plum' %}selected{% endif %}>梅紫</option><option value="coral" {% if theme.accent=='coral' %}selected{% endif %}>珊瑚</option></select></label>
+    <label><span>界面密度</span><select name="density"><option value="comfortable" {% if theme.density=='comfortable' %}selected{% endif %}>舒展</option><option value="compact" {% if theme.density=='compact' %}selected{% endif %}>紧凑</option><option value="spacious" {% if theme.density=='spacious' %}selected{% endif %}>宽松</option></select></label>
+    <label><span>主页场景</span><select name="scene"><option value="warm" {% if theme.scene=='warm' %}selected{% endif %}>暖色洞府</option><option value="forest" {% if theme.scene=='forest' %}selected{% endif %}>灵植庭院</option><option value="paper" {% if theme.scene=='paper' %}selected{% endif %}>素纸书房</option><option value="dusk" {% if theme.scene=='dusk' %}selected{% endif %}>落日山门</option><option value="aurora" {% if theme.scene=='aurora' %}selected{% endif %}>极光观测台</option><option value="night" {% if theme.scene=='night' %}selected{% endif %}>星夜观测台</option></select></label>
+    <label><span>动效强度</span><select name="motion"><option value="reduced" {% if theme.motion=='reduced' %}selected{% endif %}>安静</option><option value="balanced" {% if theme.motion=='balanced' %}selected{% endif %}>平衡</option><option value="lively" {% if theme.motion=='lively' %}selected{% endif %}>灵动</option></select></label>
+    <label><span>几何语言</span><select name="geometry"><option value="soft" {% if theme.geometry=='soft' %}selected{% endif %}>柔和</option><option value="sharp" {% if theme.geometry=='sharp' %}selected{% endif %}>切角</option><option value="orbital" {% if theme.geometry=='orbital' %}selected{% endif %}>轨道</option></select></label>
+    <label><span>字号</span><select name="font_scale"><option value="compact" {% if theme.font_scale=='compact' %}selected{% endif %}>小</option><option value="normal" {% if theme.font_scale=='normal' %}selected{% endif %}>标准</option><option value="large" {% if theme.font_scale=='large' %}selected{% endif %}>大</option></select></label>
+    <label><span>主页几何效果</span><select name="home_effect"><option value="orbits" {% if theme.home_effect=='orbits' %}selected{% endif %}>研究轨道</option><option value="prism" {% if theme.home_effect=='prism' %}selected{% endif %}>折射棱镜</option><option value="constellation" {% if theme.home_effect=='constellation' %}selected{% endif %}>证据星图</option><option value="none" {% if theme.home_effect=='none' %}selected{% endif %}>关闭</option></select></label>
+    <label><span>主页短句</span><input name="home_motto" value="{{ theme.home_motto }}"></label>
+    <label><span>每日诗句池</span><textarea name="poem_pool" rows="5">{% if theme.poem_pool %}{{ theme.poem_pool|join('\n') }}{% else %}{{ theme.home_poem }}{% endif %}</textarea></label>
+    <input type="hidden" name="home_poem" value="{{ theme.home_poem }}">
+    <button class="primary-button">保存个性化</button>
+  </form>
+
+  <section class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">Portable v8</span><h2>个性化包</h2></div></div>
+    <p>v8 包含个人主页、头像、色彩、场景、动效、几何语言、每日诗句池、39阶境界名、导航布局、复盘开关，以及领域目标、流程与组件；不包含论文、数据、密钥或 Token，并兼容 v1–v7。</p>
+    <a class="soft-button" href="{{ url_for('online_personalization_export') }}">导出 JSON 个性化包</a>
+    <form method="post" action="{{ url_for('online_personalization_import') }}" enctype="multipart/form-data" class="clean-form import-pack">
+      <label><span>导入个性化包</span><input type="file" name="file" accept=".json" required></label>
+      <button class="primary-button">导入</button>
+    </form>
+  </section>
+</section>
+
+{% if recent %}
+<section class="panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Legacy queue</span><h2>历史同步队列</h2></div></div>
+  <div class="sync-events">{% for e in recent %}<div><span class="status-badge {{ e.status }}">{{ e.status }}</span><b>{{ e.event_type }}</b><small>{{ e.created_at[:16].replace('T',' ') }} · 尝试 {{ e.attempts }} 次</small>{% if e.last_error %}<p>{{ e.last_error }}</p>{% endif %}</div>{% endfor %}</div>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,45 @@
+plugins {
+    id "com.android.application"
+}
+
+def releaseVersion = rootProject.file("../../VERSION").text.trim()
+def versionParts = releaseVersion.tokenize(".").collect { it as int }
+def calculatedVersionCode = versionParts[0] * 10000 + versionParts[1] * 100 + versionParts[2]
+
+android {
+    namespace "cn.wendao.researchos.mobile"
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "cn.wendao.research.v3.mobile"
+        minSdk 26
+        targetSdk 35
+        versionCode calculatedVersionCode
+        versionName releaseVersion
+    }
+
+    buildTypes {
+        debug {
+            applicationIdSuffix ""
+            versionNameSuffix ""
+        }
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError true
+        checkReleaseBuilds true
+    }
+}
+
+dependencies {
+    testImplementation "junit:junit:4.13.2"
+}

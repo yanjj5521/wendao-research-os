@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest>=8,<9
+httpx2>=2.15,<3
+pyinstaller>=6.10,<7
+pyyaml>=6,<7
+ruff==0.16.0

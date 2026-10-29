@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4e7d5">
+  <title>{% block title %}{{ site_name }}{% endblock %}</title>
+  <link rel="icon" href="{{ url_for('static', path='/app-icon.png') }}" type="image/png">
+  <link rel="stylesheet" href="{{ url_for('static', path='/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='/motion-vnext.css') }}">
+</head>
+<body class="theme-{{ ui_accent }} density-{{ ui_density }} scene-{{ ui_scene }} motion-{{ ui_motion }} geometry-{{ ui_geometry }} font-{{ ui_font_scale }} home-effect-{{ ui_home_effect }} day-phase-{{ day_phase }} {% if nav_artifact %}artifact-{{ nav_artifact.key }} artifact-level-{{ nav_artifact.level }}{% endif %} {% if active_page == 'dashboard' %}landing-mode{% endif %} {% if active_page == 'idle' %}idle-mode{% endif %}">
+  <div class="vnext-ambient" aria-hidden="true">
+    <span class="vnext-ambient-orbit"></span>
+    <span class="vnext-ambient-sun"></span>
+    <span class="vnext-ambient-grid"></span>
+  </div>
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="{{ url_for('dashboard') }}">
+      <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
+      <span class="brand-copy"><strong>{{ site_name }}</strong><small>{{ ui_home_motto }}</small></span>
+    </a>
+
+    <a class="player-card" href="{{ url_for('cultivation_page') }}">
+      <span class="player-avatar">{% if avatar_file %}<img src="/media/profile/{{ avatar_file }}" alt="{{ researcher_name }}的头像">{% else %}{{ nav_avatar_symbol }}{% endif %}</span>
+      <span class="player-copy"><small>{{ researcher_name }}</small><strong>{{ nav_realm.name }}</strong></span>
+      <span class="player-level">{{ nav_xp }} XP{% if nav_show_currency %} · ◆{{ nav_assets.spirit_stone }}{% endif %}</span>
+      <span class="mini-progress"><i style="width: {{ nav_realm.progress }}%"></i></span>
+    </a>
+    {% if nav_artifact and nav_artifact.key == 'archive_key' %}
+    <a class="artifact-sidebar-action" href="{{ url_for('search') }}"><span>钥</span><div><strong>万卷快寻</strong><small>直接进入全文检索</small></div></a>
+    {% elif nav_artifact and nav_artifact.key == 'echo_bell' and artifact_notice_count %}
+    <a class="artifact-sidebar-action ringing" href="{{ url_for('review_page') }}"><span>◌</span><div><strong>{{ artifact_notice_count }} 个问题到期</strong><small>回响铃只提醒已授权复盘</small></div></a>
+    {% endif %}
+
+    <nav class="side-nav" aria-label="主导航">
+      {% for section in nav_sections %}
+      <div class="nav-group {% if section.key == 'workspaces' %}workspace-nav{% endif %}" data-nav-section="{{ section.key }}">
+        <span class="nav-label">{{ section.label }}</span>
+        {% for item in section["items"] %}
+          {% if item.kind|default('page') == 'workspace_shortcuts' %}
+            {% for workspace in nav_workspaces %}
+            <a class="nav-item workspace-nav-item {% if active_workspace_id|default(0) == workspace.id %}active{% endif %}" href="{{ url_for('workspace_open', workspace_id=workspace.id) }}"><b>{{ workspace.icon }}</b><span>{{ workspace.name }}</span></a>
+            {% endfor %}
+          {% else %}
+          <a class="nav-item {% if active_page == item.key %}active{% endif %}" href="{{ url_for(item.endpoint) }}" data-nav-item="{{ item.key }}"{% if active_page == item.key %} aria-current="page"{% endif %}>
+            <b>{{ item.icon }}</b><span>{{ item.label }}</span>
+            {% if item.key == 'trials' and nav_realm.tribulation_required %}<i class="tribulation-dot" title="已到突破关口">雷</i>{% endif %}
+            {% if item.key == 'online' and hub_configured %}<i class="online-dot" title="已配置轻量同行会"></i>{% endif %}
+          </a>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <a href="{{ url_for('knowledge_export') }}">{{ nav_labels.knowledge_export }}</a>
+      <small><a href="{{ url_for('backup') }}">{{ nav_labels.backup }}</a> · <a href="{{ url_for('settings_page') }}#navigation-layout">调整导航</a></small>
+    </div>
+  </aside>
+  <button class="sidebar-scrim" id="sidebarScrim" type="button" aria-label="关闭菜单"></button>
+
+  <main class="main-shell">
+    <header class="topbar">
+      <button class="menu-button" id="menuButton" type="button" aria-label="打开菜单">☰</button>
+      {% if active_page == 'dashboard' %}
+      <a class="landing-brand" href="{{ url_for('dashboard') }}"><strong>{{ site_name }}</strong><small>{{ ui_home_motto }}</small></a>
+      {% else %}
+      <form class="global-search" action="{{ url_for('search') }}" method="get">
+        <span>⌕</span>
+        <input name="q" value="{{ request.query_params.get('q', '') }}" placeholder="搜论文、笔记、数据……">
+      </form>
+      {% endif %}
+      <div class="top-actions">
+        {% if active_page == 'dashboard' %}
+        <a class="top-avatar-link" href="{{ url_for('profile_page') }}" aria-label="打开个人主页"><span class="player-avatar">{% if avatar_file %}<img src="/media/profile/{{ avatar_file }}" alt="">{% else %}{{ nav_avatar_symbol }}{% endif %}</span><span>{{ researcher_name }}</span></a>
+        {% else %}
+        <a class="soft-button" href="{{ url_for('assistant_page') }}">{{ nav_labels.assistant }}</a>
+        {% endif %}
+        <a class="primary-button" href="{{ url_for('literature_report_page') }}">开始读文献</a>
+      </div>
+    </header>
+
+    <section class="page-wrap">
+      {% if flashes %}
+      <div class="flash-stack" aria-live="polite">
+        {% for item in flashes %}<div class="flash {{ item.category }}">{{ item.message }}</div>{% endfor %}
+      </div>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', path='/app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

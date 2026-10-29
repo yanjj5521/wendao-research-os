@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{% if entry %}编辑 {{ entry.title }}{% else %}写笔记{% endif %} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Research Note</span><h1>{% if entry %}继续完善{% else %}写一条笔记{% endif %}</h1><p>可以直接粘贴截图或图片。只记录值得未来再次使用的内容。</p></div>
+</div>
+<form class="editor-layout" method="post" enctype="multipart/form-data" id="richNoteForm">
+  <section class="panel editor-main rich-editor-shell">
+    <input class="title-input" name="title" required value="{{ entry.title if entry else '' }}" placeholder="一个未来能被检索到的标题">
+    <div class="rich-toolbar" aria-label="格式工具栏">
+      <button type="button" data-command="bold"><b>粗体</b></button>
+      <button type="button" data-command="insertUnorderedList">列表</button>
+      <button type="button" data-command="formatBlock" data-value="blockquote">引用</button>
+      <span>Ctrl+V 可粘贴图片</span>
+    </div>
+    <div class="rich-editor" id="richEditor" contenteditable="true" data-placeholder="现象 / 问题：\n我的判断：\n依据：\n下一步：">{% if entry and entry.content_format == 'html' %}{{ entry.content|safe }}{% elif entry %}<p>{{ entry.content }}</p>{% endif %}</div>
+    <input type="hidden" name="content" id="contentInput">
+    <div class="editor-status"><span id="wordCount">0 字</span><span id="pasteStatus">图片会保存在本地</span><span>Ctrl + S 保存</span></div>
+  </section>
+  <aside class="panel editor-side">
+    <label><span>类型</span><select name="kind">{% for key, meta in kinds.items() %}<option value="{{ key }}" {% if (entry and entry.kind == key) or (not entry and key == 'note') %}selected{% endif %}>{{ meta[1] }} {{ meta[0] }}</option>{% endfor %}</select></label>
+    <label><span>领域</span><select name="domain">{% for item in domains %}<option value="{{ item }}" {% if entry and entry.domain == item %}selected{% endif %}>{{ item }}</option>{% endfor %}</select></label>
+    <label><span>领域（可选）</span><select name="workspace_id"><option value="">不指定</option>{% for workspace in workspaces %}<option value="{{ workspace.id }}" {% if selected_workspace_id==workspace.id %}selected{% endif %}>{{ workspace.name }}</option>{% endfor %}</select></label>
+    <label><span>标签</span><input name="tags" value="{{ entry.tags if entry else '' }}" placeholder="例如：CV, 电压窗口"></label>
+    <label><span>一句话摘要</span><textarea name="summary" rows="4" placeholder="为什么值得保留？">{{ entry.summary if entry else '' }}</textarea></label>
+    <label><span>来源 / 关联路径</span><input name="source" value="{{ entry.source if entry else '' }}" placeholder="DOI、实验编号或仓库路径"></label>
+    {% if entry %}<label><span>替换附件（可选）</span><input type="file" name="file"></label>{% endif %}
+    <button class="primary-button full-button" type="submit">保存笔记</button>
+    {% if entry %}<a class="ghost-button full-button" href="{{ url_for('entry_view', entry_id=entry.id) }}">返回详情</a>{% endif %}
+  </aside>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+const form = document.getElementById('richNoteForm');
+const editor = document.getElementById('richEditor');
+const hidden = document.getElementById('contentInput');
+const counter = document.getElementById('wordCount');
+const pasteStatus = document.getElementById('pasteStatus');
+function sync(){ hidden.value = editor.innerHTML; counter.textContent = (editor.innerText || '').replace(/\s/g,'').length + ' 字'; }
+editor.addEventListener('input', sync); sync();
+document.querySelectorAll('.rich-toolbar button').forEach(btn => btn.addEventListener('click', () => {
+  document.execCommand(btn.dataset.command, false, btn.dataset.value || null); editor.focus(); sync();
+}));
+editor.addEventListener('paste', async event => {
+  const items = Array.from(event.clipboardData?.items || []);
+  const imageItem = items.find(item => item.type.startsWith('image/'));
+  if (!imageItem) return;
+  event.preventDefault();
+  const file = imageItem.getAsFile();
+  if (!file) return;
+  pasteStatus.textContent = '正在保存图片…';
+  const data = new FormData(); data.append('file', file, file.name || 'pasted.png');
+  try {
+    const response = await fetch('{{ url_for("note_paste_image") }}', {method:'POST', body:data});
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || '上传失败');
+    const img = document.createElement('img'); img.src = result.url; img.alt = '粘贴到笔记中的图片';
+    const paragraph = document.createElement('p'); paragraph.appendChild(img);
+    editor.appendChild(paragraph); editor.appendChild(document.createElement('p'));
+    pasteStatus.textContent = '图片已保存到本地笔记目录'; sync();
+  } catch (error) { pasteStatus.textContent = error.message; }
+});
+form.addEventListener('submit', sync);
+document.addEventListener('keydown', event => { if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase()==='s') { event.preventDefault(); sync(); form.requestSubmit(); }});
+</script>
+{% endblock %}

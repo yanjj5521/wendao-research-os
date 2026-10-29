@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ entry.title }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="entry-head">
+  <div>
+    <div class="tag-row"><span class="type-pill">{{ entry.kind_icon }} {{ entry.kind_label }}</span><span>{{ entry.domain }}</span>{% for tag in entry.tags_list %}<span>#{{ tag }}</span>{% endfor %}</div>
+    <h1>{{ entry.title }}</h1>
+    <p>{{ entry.summary or '尚未填写摘要。你可以在真正需要时再补充。' }}</p>
+    <small>创建于 {{ entry.created_at|datecn }} · 更新于 {{ entry.updated_at|datecn }}</small>
+  </div>
+  <div class="entry-actions">
+    <form method="post" action="{{ url_for('entry_favorite', entry_id=entry.id) }}"><button class="ghost-button">{% if entry.favorite %}★ 已星标{% else %}☆ 星标{% endif %}</button></form>
+    {% if entry.content %}<form method="post" action="{{ url_for('entry_analyze', entry_id=entry.id) }}"><button class="ghost-button">生成研读卡</button></form>{% endif %}
+    <a class="primary-button" href="{{ url_for('entry_edit', entry_id=entry.id) }}">编辑</a>
+    <form method="post" action="{{ url_for('entry_delete', entry_id=entry.id) }}" onsubmit="return confirm('确定永久删除这条记录及其本地附件？')"><button class="danger-button">删除</button></form>
+  </div>
+</div>
+
+<div class="content-grid two-one entry-layout">
+  <section class="panel">
+    {% if entry.file_path and entry.mime_type.startswith('image/') %}
+      <img class="image-preview" src="{{ url_for('entry_file', entry_id=entry.id) }}?inline=1" alt="{{ entry.title }}">
+    {% elif entry.file_path and entry.mime_type == 'application/pdf' %}
+      <object class="pdf-preview" data="{{ url_for('entry_file', entry_id=entry.id) }}?inline=1" type="application/pdf"><a href="{{ url_for('entry_file', entry_id=entry.id) }}">下载 PDF</a></object>
+    {% endif %}
+
+    {% if entry.kind == 'dataset' and entry.preview %}
+      <div class="section-title"><span class="eyebrow">Data Preview</span><h2>数据预览</h2></div>
+      <div class="table-scroll"><table class="preview-table">
+        {% if entry.schema %}<thead><tr>{% for col in entry.schema %}<th>{{ col }}</th>{% endfor %}</tr></thead>{% endif %}
+        <tbody>{% for row in entry.preview[1:] if entry.schema %}<tr>{% for value in row %}<td>{{ value }}</td>{% endfor %}</tr>{% else %}{% for row in entry.preview %}<tr>{% for value in row %}<td>{{ value }}</td>{% endfor %}</tr>{% endfor %}{% endfor %}</tbody>
+      </table></div>
+    {% endif %}
+
+
+    {% if entry.analysis %}
+      <section class="analysis-card">
+        <div class="panel-head"><div><span class="eyebrow">Research Reading Card</span><h2>论文研读卡</h2></div><span class="type-pill">{{ entry.analysis.mode }}</span></div>
+        <div class="analysis-grid">
+          <div class="analysis-block full"><span>作者真正想解决的问题</span><p>{{ entry.analysis.research_question or '原文未明确说明' }}</p></div>
+          <div class="analysis-block"><span>主要方法</span><p>{{ entry.analysis.method or '原文未明确说明' }}</p></div>
+          <div class="analysis-block"><span>一句话结论</span><p>{{ entry.analysis.takeaway or '原文未明确说明' }}</p></div>
+          <div class="analysis-block full"><span>关键发现</span><ul>{% for point in entry.analysis.key_points %}<li>{{ point }}</li>{% endfor %}</ul></div>
+          <div class="analysis-block"><span>与你研究的关联</span><p>{{ entry.analysis.relevance }}</p></div>
+          <div class="analysis-block"><span>重点质疑</span><p>{{ entry.analysis.limitations_prompt }}</p></div>
+        </div>
+        <form method="post" action="{{ url_for('analysis_to_note', entry_id=entry.id) }}"><button class="primary-button">转为可编辑笔记</button></form>
+      </section>
+    {% endif %}
+    <div class="section-title"><span class="eyebrow">Indexed Content</span><h2>{% if entry.file_path %}可检索内容{% else %}记录正文{% endif %}</h2></div>
+    {% if entry.content %}{% if entry.content_format == 'html' %}<div class="rich-content content-view">{{ entry.content|safe }}</div>{% else %}<pre class="content-view">{{ entry.content }}</pre>{% endif %}{% else %}<div class="empty-compact">该文件没有可提取文本；文件本身仍已安全保存在本机。</div>{% endif %}
+  </section>
+
+  <aside class="side-stack">
+    <section class="panel detail-list">
+      <div class="panel-head"><h2>条目信息</h2></div>
+      <div><span>类型</span><strong>{{ entry.kind_label }}</strong></div>
+      <div><span>领域</span><strong>{{ entry.domain }}</strong></div>
+      {% if entry.original_name %}<div><span>原文件</span><strong>{{ entry.original_name }}</strong></div>{% endif %}
+      {% if entry.file_size %}<div><span>大小</span><strong>{{ entry.file_size|filesize }}</strong></div>{% endif %}
+      {% if entry.dataset_rows is not none %}<div><span>数据规模</span><strong>{{ entry.dataset_rows }} 行 × {{ entry.dataset_columns }} 列</strong></div>{% endif %}
+      {% if entry.source %}<div class="vertical"><span>来源</span><strong>{{ entry.source }}</strong></div>{% endif %}
+      {% if entry.file_path %}<a class="primary-button full-button" href="{{ url_for('entry_file', entry_id=entry.id) }}">下载原文件</a>
+      <form method="post" action="{{url_for('entry_reindex',entry_id=entry.id)}}"><button class="ghost-button full-button">重新提取全文</button></form>{% endif %}
+    </section>
+    {% if related %}<section class="panel"><div class="panel-head"><h2>相关资产</h2></div><div class="related-list">{% for item in related %}<a href="{{ url_for('entry_view', entry_id=item.id) }}"><span>{{ item.kind_icon }}</span><div><strong>{{ item.title }}</strong><small>{{ item.domain }} · {{ item.kind_label }}</small></div></a>{% endfor %}</div></section>{% endif %}
+  </aside>
+</div>
+{% endblock %}

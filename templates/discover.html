@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}联网找论文 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">联网可用，离线不受影响</span><h1>找一篇论文</h1><p>只做轻量发现。找到后下载，再上传进本地资料库。</p></div>
+</div>
+<form class="discover-search panel" method="get">
+  <input name="q" value="{{ q }}" placeholder="例如：expanded graphite cement supercapacitor">
+  <button class="primary-button">搜索 Crossref</button>
+</form>
+{% if error %}<div class="flash error">{{ error }}</div>{% endif %}
+{% if results %}
+<div class="paper-results">
+  {% for item in results %}
+  <article class="paper-result panel">
+    <div><span class="eyebrow">{{ item.year }}{% if item.source %} · {{ item.source }}{% endif %}</span><h2>{{ item.title }}</h2><p>{{ item.authors }}</p></div>
+    <div class="paper-meta"><span>被引元数据 {{ item.cited_by }}</span>{% if item.open_access %}<span>含许可信息</span>{% endif %}{% if item.doi %}<span>{{ item.doi }}</span>{% endif %}</div>
+    <a class="soft-button" href="{{ item.url }}" target="_blank" rel="noopener">打开来源</a>
+  </article>
+  {% endfor %}
+</div>
+{% elif q %}
+<div class="empty-state panel"><h2>没有找到结果</h2><p>换一个更短的英文关键词试试。</p></div>
+{% endif %}
+{% endblock %}

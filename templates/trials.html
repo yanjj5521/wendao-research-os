@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block title %}{{ nav_labels.trials }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div>
+    <span class="eyebrow">Evidence Challenges</span>
+    <h1>{{ nav_labels.trials }}</h1>
+    <p>同一份复盘文本可以训练不同能力：快速提取、机制解释、反证和综合迁移。题目仍只来自你主动保存的关键文本。</p>
+  </div>
+  <div class="ai-state"><strong>{{ ai_status.label }}</strong><small>{{ ai_status.detail }}</small></div>
+</div>
+
+{% if nav_artifact and nav_artifact.key == 'trial_token' %}
+<aside class="artifact-effect-banner"><span>反</span><div><strong>反证筹正在生效</strong><p>先问“什么情形会让它不成立”，再选择反证之境。{% if weak_point %}你目前最薄弱的一次反馈：{{ weak_point.feedback }}{% endif %}</p></div></aside>
+{% endif %}
+
+<section class="trial-realm-strip panel">
+  <div><small>当前境界</small><strong>{{ realm.name }}</strong><span>{{ xp }} 修为</span></div>
+  <div class="trial-realm-progress">
+    <span><i style="width:{{ realm.progress }}%"></i></span>
+    {% if realm.tribulation_required %}<strong>修为已满，等待突破雷劫</strong>{% else %}<strong>距 {{ realm.next_name }} 还差 {{ realm.remaining }} 修为</strong>{% endif %}
+  </div>
+  <div class="trial-variety"><strong>{{ completed_modes }} / 3</strong><small>不同秘境完成度</small></div>
+</section>
+
+<section class="trial-mode-grid">
+  <article class="panel trial-card mode-quick">
+    <span class="trial-mark">闪</span><small>约 3 分钟 · 3 题</small>
+    <h2>灵光问答</h2>
+    <p>快速提取核心事实与概念，适合开始学习前热身，不追求长篇回答。</p>
+    <div class="trial-meta"><span>最近 4 份材料</span><span>+10 修为</span></div>
+    <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="quick"><button class="soft-button" {% if source_count < 1 %}disabled{% endif %}>快速进入</button></form>
+  </article>
+
+  <article class="panel trial-card mode-mechanism">
+    <span class="trial-mark">因</span><small>约 8 分钟 · 4 题</small>
+    <h2>因果迷宫</h2>
+    <p>重建“前提—机制—现象—边界”，并把模糊解释改成能够测量的判断。</p>
+    <div class="trial-meta"><span>综合 12 份材料</span><span>+18 修为</span></div>
+    <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="mechanism"><button class="soft-button" {% if source_count < 1 %}disabled{% endif %}>进入迷宫</button></form>
+  </article>
+
+  <article class="panel trial-card mode-counterexample">
+    <span class="trial-mark">反</span><small>约 8 分钟 · 4 题</small>
+    <h2>反证之境</h2>
+    <p>构造可能推翻结论的情形、替代解释，以及能区分它们的最小证据。</p>
+    <div class="trial-meta"><span>强调边界</span><span>+18 修为</span></div>
+    <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="counterexample"><button class="soft-button" {% if source_count < 1 %}disabled{% endif %}>寻找反例</button></form>
+  </article>
+
+  <article class="panel trial-card trial-card-primary mode-beast">
+    <span class="trial-mark">境</span><small>约 12 分钟 · 5 题</small>
+    <h2>万象秘境</h2>
+    <p>混合回忆、解释、迁移与反证，检查多个知识点能否共同服务一个科研判断。</p>
+    <div class="trial-meta"><span>{{ source_count }} 份可用材料</span><span>+24 修为</span></div>
+    <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="beast"><button class="primary-button" {% if source_count < 1 %}disabled{% endif %}>进入会试</button></form>
+  </article>
+</section>
+
+{% if weak_point %}
+<section class="panel trial-weak-point">
+  <span class="eyebrow">Recent Weak Point</span>
+  <h2>最近最值得再练的一处</h2>
+  <p>{{ weak_point.feedback }}</p>
+  <small>来自“{{ weak_point.title }}” · 当时 {{ weak_point.score }} 分。它只是形成性线索，不是能力定论。</small>
+</section>
+{% endif %}
+
+<article class="panel trial-card tribulation-gate {% if not realm.tribulation_required %}locked{% endif %}">
+  <div class="tribulation-sky" aria-hidden="true"><i></i><i></i><i></i><b>雷</b></div>
+  <div class="tribulation-copy">
+    <small>只在大境界突破前开启</small>
+    <h2>五问雷劫</h2>
+    {% if realm.tribulation_required and pending_gate %}
+    <p>你已到达 {{ realm.tribulation_title }} 的突破关口。五问均分达到 70 分才会解锁下一大境界。</p>
+    <div class="tribulation-five"><span>一·事实</span><span>二·机制</span><span>三·边界</span><span>四·反证</span><span>五·迁移</span></div>
+    <div class="trial-meta"><span>渡劫丹 {{ tribulation_pills }}</span><span>五问均分 ≥ 70</span><span>通过 +40 修为</span></div>
+    {% else %}
+    <p>尚未到突破关口。金丹以上且修为达到下一大境界门槛后，它才会自动开启，不能提前刷题。</p>
+    {% endif %}
+  </div>
+  {% if realm.tribulation_required and pending_gate %}
+  <div class="tribulation-action">
+    <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="tribulation"><button class="primary-button large-button" {% if tribulation_pills < 1 or source_count < 1 %}disabled{% endif %}>启动突破雷劫</button></form>
+    {% if tribulation_pills < 1 %}<a class="trial-helper" href="{{ url_for('alchemy_page') }}">先炼制渡劫丹 →</a>{% endif %}
+  </div>
+  {% else %}
+  <div class="trial-lock-note"><span>锁</span><strong>等待真实积累到达关口</strong><small>雷劫不是每日刷题，而是大境界前的一次证据审查。</small></div>
+  {% endif %}
+</article>
+
+<section class="panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Trial History</span><h2>秘境与雷劫记录</h2></div></div>
+  <div class="review-history">
+    {% set marks = {'quick':'闪','mechanism':'因','counterexample':'反','beast':'境','tribulation':'雷'} %}
+    {% for item in history %}
+    <a href="{{ url_for('review_session', session_id=item.id) }}">
+      <span>{{ marks.get(item.mode,'境') }}</span>
+      <div><strong>{{ item.title }}</strong><small>{{ item.created_at|datecn }} · 已答 {{ item.answer_count }} 题 · 均分 {{ item.average_score }}{% if item.tribulation_status %} · {{ {'passed':'已突破','failed':'未通过','active':'进行中'}.get(item.tribulation_status,item.tribulation_status) }}{% endif %}</small></div>
+      <b>›</b>
+    </a>
+    {% else %}<div class="empty-state"><p>任选一种秘境完成后，这里会形成可追踪的训练记录。</p></div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,5 @@
+{% extends 'base.html' %}{% block title %}登录 · {{ site_name }}{% endblock %}{% block content %}
+<section class="auth-layout">
+  <div class="auth-story"><span class="seal">同行</span><h1>把科研伙伴连起来，<br>不把私人资料搬上云。</h1><p>账号、个人主页、灵石、法器、个性化和版本更新在这里同步；论文、实验数据、笔记图片仍保存在每个人自己的科研系统中。</p><ul><li>邀请制注册</li><li>每人独立账户</li><li>同步事件幂等处理</li><li>数据库自动备份</li></ul></div>
+  <form class="auth-card" method="post" action="{{ url_for('hub_login') }}"><input type="hidden" name="_csrf" value="{{ csrf }}"><h2>进入同行会</h2><label>用户名<input name="username" autocomplete="username" required></label><label>密码<input type="password" name="password" autocomplete="current-password" required></label><button class="primary">登录</button><a href="{{ url_for('hub_register') }}">持邀请码注册</a><small>社区约定：论坛沉淀问题 · 聊天保持短沟通 · 坊市只流转虚拟资产</small><small>管理员首次凭据保存在主机的 instance/HUB_ADMIN_CREDENTIALS.txt</small></form>
+</section>{% endblock %}

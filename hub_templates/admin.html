@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="page-title">
+  <div>
+    <small>中心主机 · 唯一管理员</small>
+    <h1>同行会管理</h1>
+    <p>只管理成员、邀请、备份和版本包。成员电脑中的论文、实验、数据集与附件不进入中心。</p>
+  </div>
+  <form method="post" action="{{ url_for('hub_backup') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <button class="primary">立即备份中心数据库</button>
+  </form>
+</div>
+
+<section class="panel">
+  <div class="section-head"><div><small>中心数据</small><h2>运营概览</h2></div><div><a class="primary" href="{{ url_for('hub_export_accounts') }}">导出账号留存 CSV</a></div></div>
+  <div class="admin-stats">
+    <div><b>{{ stats.members_total }}</b><span>成员总数</span></div>
+    <div><b>{{ stats.members_active }}</b><span>启用中</span></div>
+    <div><b>{{ stats.new_7d }}</b><span>近 7 天新增</span></div>
+    <div><b>{{ stats.new_30d }}</b><span>近 30 天新增</span></div>
+    <div><b>{{ stats.active_today }}</b><span>今日在线</span></div>
+    <div><b>{{ stats.forum_posts }}</b><span>论坛讨论</span></div>
+    <div><b>{{ stats.chat_messages }}</b><span>聊天消息</span></div>
+    <div><b>{{ stats.transfers }}</b><span>红包与交换</span></div>
+    <div><b>{{ stats.audit_total }}</b><span>审计记录</span></div>
+    <div><b>{{ stats.feedback_total }}</b><span>用户反馈</span></div>
+  </div>
+</section>
+
+<section class="panel admin-origin">
+  <div>
+    <small>管理员来源</small>
+    <h2>第一次启动中心时自动创建一次</h2>
+    <p>当数据库中没有管理员时，系统建立唯一的 <code>admin</code> 账户，生成随机密码与 API Token；普通注册只能得到 member 角色，不能自行提权。</p>
+  </div>
+  <div class="admin-origin-status {% if admin_credentials_exists %}warning{% else %}safe{% endif %}">
+    <span>{{ '待处理' if admin_credentials_exists else '已完成' }}</span>
+    <strong>{{ '一次性凭据文件仍在主机' if admin_credentials_exists else '一次性凭据文件已退役' }}</strong>
+    <small>{% if admin_credentials_exists %}请用它首次登录并立即修改密码；修改成功后文件会自动销毁。{% else %}以后从“我的联机主页”管理密码与 Token。{% endif %}</small>
+  </div>
+</section>
+
+<section class="grid three">
+  <form class="panel form-grid" method="post" action="{{ url_for('hub_invite_create') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <h2>生成邀请码</h2>
+    <label>可使用次数<input type="number" name="uses" value="1" min="1" max="10"></label>
+    <label>有效天数<input type="number" name="days" value="14" min="1" max="90"></label>
+    <button class="primary">生成</button>
+  </form>
+
+  <form class="panel form-grid" method="post" action="{{ url_for('hub_release_upload') }}" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <h2>发布新版本</h2>
+    <label>版本号<input name="version" placeholder="3.0.0" required></label>
+    <label>标题<input name="title" required></label>
+    <label>更新说明<textarea name="notes" rows="3"></textarea></label>
+    <label>同行会更新包 ZIP<input type="file" name="file" accept=".zip" required></label>
+    <small>只上传构建产物中的 <code>Team-Update.zip</code>；系统会校验单 EXE、portable.flag 和说明文件。</small>
+    <button class="primary">发布</button>
+  </form>
+
+  <div class="panel">
+    <h2>稳定运行边界</h2>
+    <ul>
+      <li>SQLite 只由中心主机进程访问，启用 WAL 与 10 秒忙等待。</li>
+      <li>启动时与每 24 小时使用 SQLite Backup API 备份，保留 14 份。</li>
+      <li>当前备份 {{ backup_count }} 份；最近：{{ last_backup }}</li>
+      <li>公网必须使用 HTTPS；中心 5050 端口不直接暴露。</li>
+      <li>版本更新安装到新目录，不原地覆盖。</li>
+    <li>账号留存：中心数据库 + 每日备份 + 账号 CSV 导出，三重可追溯。</li>
+    </ul>
+  </div>
+</section>
+
+<section class="grid two">
+  <form class="panel form-grid welfare-panel" method="post" action="{{ url_for('hub_welfare_grant') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf }}">
+    <div class="section-head"><div><small>受限赠予</small><h2>发放同行福利</h2></div></div>
+    <p>只可赠与其他活跃成员。单次：修为≤{{ welfare_limits.xp }}、灵石≤{{ welfare_limits.spirit_stone }}、每种材料≤{{ welfare_limits.spirit_wood }}；同一成员每天最多 3 次，累计修为≤120、灵石≤100、各材料≤12。</p>
+    <label>赠与成员<select name="recipient_id" required><option value="">请选择成员</option>{% for u in users if u.role=='member' and u.active %}<option value="{{ u.id }}">{{ u.display_name }} · @{{ u.username }}</option>{% endfor %}</select></label>
+    <div class="welfare-inputs"><label>修为<input type="number" name="xp" min="0" max="{{ welfare_limits.xp }}" value="0"></label><label>灵石<input type="number" name="spirit_stone" min="0" max="{{ welfare_limits.spirit_stone }}" value="0"></label><label>灵木<input type="number" name="spirit_wood" min="0" max="{{ welfare_limits.spirit_wood }}" value="0"></label><label>玄铁<input type="number" name="mystic_iron" min="0" max="{{ welfare_limits.mystic_iron }}" value="0"></label><label>星砂<input type="number" name="star_sand" min="0" max="{{ welfare_limits.star_sand }}" value="0"></label></div>
+    <label>赠予说明<input name="reason" maxlength="160" placeholder="例如：完成团队实验 SOP"></label>
+    <button class="primary">发放并记录</button>
+  </form>
+
+  <div class="panel">
+    <div class="section-head"><div><small>{{ users|length }} 人</small><h2>成员</h2></div></div>
+    <div class="table-wrap">
+      <table>
+        <tr><th>成员</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>最后登录</th><th>最近在线</th><th>灵石</th><th></th></tr>
+        {% for u in users %}
+        <tr>
+          <td><b>{{ u.display_name }}</b><small>@{{ u.username }}</small></td>
+          <td>{{ u.email or '-' }}</td>
+          <td>{{ '管理员' if u.role == 'admin' else '成员' }}</td>
+          <td>{{ (u.created_at or '-')[:10] }}</td>
+          <td>{{ (u.last_login_at or '从未')[:16].replace('T',' ') }}</td>
+          <td>{{ (u.last_seen_at or '-')[:16].replace('T',' ') }}</td>
+          <td>{{ u.spirit_stone }}</td>
+          <td>{% if u.id != user.id %}<form method="post" action="{{ url_for('hub_user_toggle', user_id=u.id) }}"><input type="hidden" name="_csrf" value="{{ csrf }}"><button>{{ '停用' if u.active else '启用' }}</button></form>
+          {% if u.role != 'admin' %}<form method="post" action="{{ url_for('hub_user_reset_avatar', user_id=u.id) }}"><input type="hidden" name="_csrf" value="{{ csrf }}"><button>重置头像</button></form>{% endif %}{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-head"><div><small>邀请</small><h2>邀请码</h2></div></div>
+    <div class="invite-list">
+      {% for i in invites %}
+      <div><code>{{ i.code }}</code><span>剩余 {{ i.uses_remaining }} · 到期 {{ (i.expires_at or '永久')[:10] }}</span></div>
+      {% else %}
+      <div class="empty">尚未生成邀请码。</div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-head"><div><small>不可篡改的管理员记录</small><h2>最近福利发放</h2></div></div>
+  <div class="table-wrap"><table><tr><th>时间</th><th>成员</th><th>内容</th><th>说明</th><th>状态</th></tr>{% for g in welfare %}<tr><td>{{ g.created_at[:16].replace('T',' ') }}</td><td>{{ g.recipient_name }}</td><td>{% if g.xp %}+{{ g.xp }} 修为 {% endif %}{% if g.spirit_stone %}◆{{ g.spirit_stone }} {% endif %}{% if g.spirit_wood %}木{{ g.spirit_wood }} {% endif %}{% if g.mystic_iron %}铁{{ g.mystic_iron }} {% endif %}{% if g.star_sand %}砂{{ g.star_sand }}{% endif %}</td><td>{{ g.reason }}</td><td>{{ '已领取' if g.claimed_at else '等待成员同步' }}</td></tr>{% else %}<tr><td colspan="5">还没有发放过福利。</td></tr>{% endfor %}</table></div>
+</section>
+
+<section class="panel">
+  <div class="section-head"><div><small>权限边界</small><h2>谁能做什么</h2></div></div>
+  <ul>
+    <li><b>成员</b>：论坛、聊天、坊市、资料卡、自己的主页与头像；名册仅公开成员可见。</li>
+    <li><b>管理员（你）</b>：以上全部 + 邀请码、账号启停、头像重置、福利发放、版本发布、数据库备份、账号 CSV 导出、审计日志。</li>
+    <li>全部管理动作写入审计日志（含来源 IP）；成员无法访问任何 /admin/* 与导出端点。</li>
+  </ul>
+</section>
+
+<section class="panel">
+  <div class="section-head"><div><small>用户声音 · 共 {{ stats.feedback_total }} 条</small><h2>成员反馈</h2></div><a class="primary" href="{{ url_for('hub_export_feedback') }}">导出反馈 CSV</a></div>
+  <div class="timeline">
+    {% for f in feedback %}
+    <div><span>{{ f.created_at[:16].replace('T',' ') }}</span><b>{{ f.display_name or '匿名' }} · {{ {'bug':'问题','idea':'建议'}.get(f.kind, f.kind) }}</b><p>{{ f.content }}</p>{% if f.contact %}<small>联系方式：{{ f.contact }}</small>{% endif %}</div>
+    {% else %}
+    <div class="empty">还没有成员提交反馈。</div>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="section-head"><div><small>审计</small><h2>最近管理与同步记录</h2></div></div>
+  <div class="timeline">
+    {% for a in audits %}
+    <div><span>{{ a.created_at[:16].replace('T',' ') }}</span><b>{{ a.display_name or '系统' }}</b><p>{{ a.action }} · {{ a.detail }}</p></div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

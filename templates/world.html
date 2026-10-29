@@ -1,0 +1,132 @@
+{% extends "base.html" %}
+{% block title %}我的洞府 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head world-head">
+  <div>
+    <span class="eyebrow">Research Habitat</span>
+    <h1>我的洞府</h1>
+    <p>这里不是与科研分离的小游戏：建筑映射长期资产，法器改变使用方式，灵草来自真实的特殊任务。</p>
+    <p class="form-help">洞府不生产进度——它只把你的学习变成看得见的资产。数值全部来自真实交付，封顶有度，随时可在设置里关闭。</p>
+  </div>
+  <div class="world-head-actions">
+    <a class="soft-button" href="{{ url_for('achievements_page') }}">成就 {{ egg_count }}/{{ eggs|length }} 彩蛋</a>
+    <a class="soft-button" href="{{ url_for('profile_page') }}">个人主页</a>
+  </div>
+</div>
+
+<section class="wallet-strip world-wallet">
+  <div><span>◆</span><strong>{{ wallet.spirit_stone }}</strong><small>灵石</small></div>
+  <div><span>⌁</span><strong>{{ wallet.spirit_wood }}</strong><small>灵木</small></div>
+  <div><span>⬢</span><strong>{{ wallet.mystic_iron }}</strong><small>玄铁</small></div>
+  <div><span>✦</span><strong>{{ wallet.star_sand }}</strong><small>星砂</small></div>
+</section>
+
+<section class="realm-scene panel">
+  <div class="cave-sky" aria-hidden="true">
+    <i class="cave-sun"></i>
+    <i class="cave-orbit orbit-one"></i>
+    <i class="cave-orbit orbit-two"></i>
+    <i class="cave-bird bird-one"></i>
+    <i class="cave-bird bird-two"></i>
+    <i class="cave-mountain mountain-back"></i>
+    <i class="cave-mountain mountain-front"></i>
+    <i class="cave-river"></i>
+  </div>
+  <blockquote class="cave-poem">{{ ui_home_poem }}</blockquote>
+  <div class="building-row">
+    {% for building in buildings %}
+    <article class="world-building level-{{ building.level }}">
+      <span class="building-glyph">{{ building.icon }}</span>
+      <div><strong>{{ building.name }}</strong><small>Lv.{{ building.level }} · {{ building.desc }}</small></div>
+      <form method="post" action="{{ url_for('world_building_upgrade', building_key=building.key) }}">
+        <button class="tiny-world-button">升级 · {{ building.cost }}{{ assets[building.asset].icon }}</button>
+      </form>
+    </article>
+    {% endfor %}
+    <form class="moon-well" method="post" action="{{ url_for('world_moon_well') }}" title="井面似乎有一圈不同寻常的光">
+      <button aria-label="查看月影井"><span></span><small>月影井</small></button>
+    </form>
+  </div>
+</section>
+
+{% if active_artifact %}
+<section class="panel equipped-artifact-panel">
+  <div class="equipped-artifact-glyph">{{ active_artifact.icon }}</div>
+  <div>
+    <span class="eyebrow">Equipped{% if active_artifact.max_level > 1 %} · Lv.{{ active_artifact.level }}{% endif %}</span>
+    <h2>{{ active_artifact.name }}正在生效</h2>
+    <p>{{ active_artifact.effect }}</p>
+  </div>
+  <span class="artifact-category">{{ active_artifact.category }}</span>
+</section>
+{% endif %}
+
+<section class="panel garden-panel">
+  <div class="panel-head simple">
+    <div><span class="eyebrow">Evidence Garden</span><h2>分级灵草</h2></div>
+    <a href="{{ url_for('alchemy_page') }}">接特殊任务</a>
+  </div>
+  <div class="herb-garden">
+    {% for herb in herbs %}
+    <a class="herb-pot" href="{{ url_for('alchemy_page') }}">
+      <span class="herb-icon growth-{{ herb.grade * 20 }}">{{ herb.icon }}</span>
+      <strong>{{ herb.label }} · {{ herb.name }}</strong>
+      <small>{{ herb.grade }}级任务产出 · 库存 {{ herb.quantity }}</small>
+      <span class="mini-progress"><i style="width:{{ [herb.quantity * 20,100]|min }}%"></i></span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel artifact-vault">
+  <div class="panel-head simple">
+    <div><span class="eyebrow">Useful & Playful</span><h2>法器谱</h2><p>每件法器都写明实际作用；同一时刻只佩戴一件，随时切换。</p></div>
+  </div>
+  <div class="artifact-grid rich-artifact-grid">
+    {% for item in artifacts %}
+    <article class="artifact-card {% if item.equipped %}equipped{% endif %} {% if item.owned %}owned{% endif %}">
+      <div class="artifact-card-top">
+        <span class="artifact-glyph">{{ item.icon }}</span>
+        <div><small class="artifact-category">{{ item.category }}</small><h3>{{ item.name }}{% if item.owned and item.max_level > 1 %} · Lv.{{ item.level }}{% endif %}</h3><p>{{ item.desc }}</p></div>
+      </div>
+      <div class="artifact-effect"><strong>佩戴作用</strong><p>{{ item.effect }}</p></div>
+      {% if item.owned %}
+      <div class="artifact-actions">
+        {% if item.equipped %}
+        <b>当前佩戴</b>
+        {% else %}
+        <form method="post" action="{{ url_for('world_artifact_equip', artifact_key=item.key) }}"><button class="soft-button">佩戴并启用</button></form>
+        {% endif %}
+        {% if item.level < item.max_level %}
+        <form method="post" action="{{ url_for('world_artifact_upgrade', artifact_key=item.key) }}"><button class="soft-button">淬炼 · {{ item.upgrade_cost }} 灵石</button></form>
+        {% elif item.max_level == 1 %}
+        <small class="artifact-complete">作用已完整</small>
+        {% endif %}
+      </div>
+      {% else %}
+      <form method="post" action="{{ url_for('world_artifact_buy', artifact_key=item.key) }}" class="artifact-buy-form">
+        <button class="soft-button {% if item.can_afford %}ready{% endif %}" {% if not item.can_afford %}disabled title="还差 {{ item.shortfall }} 灵石"{% endif %}>
+          {% if item.can_afford %}购入 · {{ item.price }} 灵石{% else %}还差 {{ item.shortfall }} 灵石{% endif %}
+        </button>
+      </form>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel egg-codex">
+  <div class="panel-head simple">
+    <div><span class="eyebrow">Secret Cabinet</span><h2>最近的彩蛋线索</h2></div>
+    <a href="{{ url_for('achievements_page') }}">打开完整图鉴</a>
+  </div>
+  <div class="egg-preview-grid">
+    {% for egg in eggs[:6] %}
+    <div class="egg-row {% if egg.unlocked %}unlocked{% endif %}">
+      <span>{{ '✦' if egg.unlocked else '?' }}</span>
+      <div><strong>{{ egg.title if egg.unlocked else '尚未发现' }}</strong><small>{{ egg.description if egg.unlocked else '它可能藏在一次真实交付、一项设置，或一个看似无用的角落。' }}</small></div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

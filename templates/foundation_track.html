@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ track.name }} · 科研底座{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">{{ track.icon }} 学科路线</span><h1>{{ track.name }}</h1><p>{{ track.objective or '写下一句长期目标即可。' }}</p></div>
+  <a class="soft-button" href="{{ url_for('foundation_page') }}">返回底座</a>
+</div>
+
+<div class="track-page-grid">
+  <section class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">路线设置</span><h2>现在做到哪里</h2></div><span class="round-progress">{{ progress }}%</span></div>
+    <form method="post" action="{{ url_for('foundation_track_save', track_id=track.id) }}" class="clean-form">
+      <div class="form-grid compact-form-grid">
+        <label><span>图标</span><input name="icon" value="{{ track.icon }}"></label>
+        <label><span>学科名</span><input name="name" value="{{ track.name }}" required></label>
+        <label class="full"><span>长期目标</span><textarea name="objective" rows="2">{{ track.objective }}</textarea></label>
+        <label><span>当前阶段</span><input name="current_stage" value="{{ track.current_stage }}"></label>
+        <label><span>下一步</span><input name="next_focus" value="{{ track.next_focus }}"></label>
+        <label class="full"><span>备注</span><textarea name="notes" rows="2">{{ track.notes }}</textarea></label>
+      </div>
+      <button class="primary-button">保存修改</button>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">轻量清单</span><h2>长期事项</h2></div></div>
+    <div class="simple-task-list">
+      {% for task in tasks %}
+      <div class="simple-task {% if task.status=='done' %}done{% endif %}">
+        <form method="post" action="{{ url_for('foundation_task_toggle', task_id=task.id) }}"><button>{{ '✓' if task.status=='done' else '○' }}</button></form>
+        <div><strong>{{ task.title }}</strong>{% if task.deliverable %}<small>{{ task.deliverable }}</small>{% endif %}</div>
+        <details><summary>修改</summary>
+          <form method="post" action="{{ url_for('foundation_task_save', task_id=task.id) }}" class="task-inline-edit">
+            <input name="title" value="{{ task.title }}" required>
+            <input name="deliverable" value="{{ task.deliverable }}" placeholder="交付">
+            <input type="hidden" name="description" value="{{ task.description }}">
+            <input type="hidden" name="status" value="{{ task.status }}">
+            <input type="hidden" name="priority" value="{{ task.priority }}">
+            <input type="hidden" name="due_date" value="{{ task.due_date or '' }}">
+            <button class="soft-button">保存</button>
+          </form>
+        </details>
+      </div>
+      {% endfor %}
+    </div>
+    <details class="add-simple-task"><summary>＋ 添加一条</summary>
+      <form method="post" action="{{ url_for('foundation_task_new', track_id=track.id) }}">
+        <input name="title" required placeholder="例如：建立CV判读模板">
+        <input name="deliverable" placeholder="最小交付">
+        <input type="hidden" name="description" value="">
+        <input type="hidden" name="priority" value="normal">
+        <input type="hidden" name="due_date" value="">
+        <button class="soft-button">添加</button>
+      </form>
+    </details>
+  </section>
+</div>
+
+<section class="panel compact-panel">
+  <div class="panel-head simple"><div><span class="eyebrow">交付文件</span><h2>相关文件夹</h2></div><a href="{{ url_for('foundation_folder_upload_page') }}?track_id={{ track.id }}">上传</a></div>
+  {% if folders %}<div class="folder-simple-grid compact-folders">{% for folder in folders %}<a class="folder-simple-card" href="{{ url_for('foundation_folder_view', folder_id=folder.id) }}"><span class="folder-glyph">▰</span><div><strong>{{ folder.name }}</strong><small>{{ folder.file_count }} 个文件</small></div><span>›</span></a>{% endfor %}</div>{% else %}<div class="empty-compact">还没有文件夹。</div>{% endif %}
+</section>
+{% endblock %}

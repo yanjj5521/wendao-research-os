@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}科研底座 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Research Roots</span><h1>科研底座</h1><p>只保留八条长期主线。每日行动交给任务，成长景观在洞府查看。</p></div>
+  <div class="page-actions"><a class="soft-button" href="{{ url_for('plans_page') }}">导入计划</a><a class="primary-button" href="{{ url_for('world_page') }}">看仙草</a></div>
+</div>
+<section class="foundation-simple-list ultra-simple-foundation">
+  {% for track in tracks %}
+  <a class="foundation-line panel" href="{{ url_for('foundation_track_page', track_id=track.id) }}">
+    <span class="track-icon-simple">{{ track.icon }}</span>
+    <div class="foundation-line-copy"><strong>{{ track.name }}</strong><small>{{ track.current_stage or '未设置阶段' }}</small></div>
+    <div class="foundation-next"><small>下一步</small><strong>{{ track.next_focus or '点开填写' }}</strong></div>
+    <span class="round-progress small">{{ track.progress }}%</span><span class="arrow">›</span>
+  </a>
+  {% endfor %}
+</section>
+<details class="panel simple-details"><summary>批量同步路线文案</summary><form method="post" action="{{ url_for('foundation_sync') }}" class="simple-sync-form"><textarea name="master_text" rows="10" placeholder="# 电化学
+当前阶段：CV与电势窗口
+下一步：形成曲线判读清单">{{ master_text }}</textarea><button class="soft-button">同步</button></form></details>
+{% endblock %}

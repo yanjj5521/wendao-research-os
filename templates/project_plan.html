@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}三日推进计划 · {{ project.title }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Project → Short Sprint</span><h1>三日推进计划</h1><p>从当前证据闸门生成，不替你承诺长期固定主线。</p></div>
+  <a class="soft-button" href="{{ url_for('project_page', project_id=project.id) }}">返回项目</a>
+</div>
+<div class="project-plan-grid">
+  <section class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">当前闸门</span><h2>{{ state.current.title if state.current else '核对成功标准' }}</h2></div></div>
+    <p>{{ state.current.criterion if state.current else project.success_criteria }}</p>
+    <div class="quiet-callout">计划只是下一轮假设。导入后可以在“近期计划”里逐项修改；旧计划会归档但不会删除。</div>
+  </section>
+  <section class="panel import-box">
+    <form method="post" action="{{ url_for('plan_import') }}" id="planImportForm">
+      <textarea name="plan_text" id="planImportText" rows="22" required>{{ plan_text }}</textarea>
+      <button class="primary-button full-button" id="planImportButton" type="submit">导入并立即进入 Day 1</button>
+    </form>
+  </section>
+</div>
+{% endblock %}

@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wendao-research-v3"
+version = "1.2.0"
+description = "问道科研 1.2.0：以学习闭环为主轴的科研工作流系统"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115,<1",
+  "uvicorn>=0.30,<1",
+  "jinja2>=3.1,<4",
+  "python-multipart>=0.0.12,<1",
+  "httpx>=0.28,<1",
+  "itsdangerous>=2.2,<3",
+  "bleach>=6.2,<7",
+  "pypdf>=5,<7",
+  "python-docx>=1.1,<2",
+  "python-pptx>=1.0,<2",
+  "openpyxl>=3.1,<4",
+  "Pillow>=11,<13",
+  "PyMuPDF>=1.24,<2",
+]
+
+[tool.setuptools]
+py-modules = [
+  "content_library", "desktop_pet", "desktop_shell", "extractors",
+  "hub_db", "research_tools", "run_hub", "run_local", "runtime_paths",
+  "version", "workspace_profiles",
+]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["core*", "features*", "hub*", "launchers*", "services*", "web*"]
+
+[tool.setuptools.data-files]
+"share/wendao-research" = ["VERSION"]
+"share/wendao-research/templates" = ["templates/*.html"]
+"share/wendao-research/static" = [
+  "static/*.css", "static/*.js", "static/*.png", "static/*.svg",
+]
+"share/wendao-research/static/pet" = ["static/pet/*"]
+"share/wendao-research/static/wallpapers" = ["static/wallpapers/*"]
+"share/wendao-research/hub_templates" = ["hub_templates/*.html"]
+"share/wendao-research/hub_static" = ["hub_static/*"]
+"share/wendao-research/assets" = ["assets/*"]
+"share/wendao-research/packaging/windows" = ["packaging/windows/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

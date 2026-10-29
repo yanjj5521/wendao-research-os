@@ -1,0 +1,20 @@
+{% extends 'base.html' %}{% block content %}
+<section class="narrow">
+  <div class="panel">
+    <div class="section-head"><div><small>邀请制 · 每码限用次数与有效期</small><h1>加入同行会</h1></div></div>
+    <p class="form-help">同行会是邀请制的小圈子：资料卡与论坛对成员公开；科研原文件永远留在各自电脑，中心只沉淀名片、讨论与虚拟资产。</p>
+    <form class="form-grid" method="post" action="{{ url_for('hub_register_submit') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <label>邀请码<input name="invite" value="{{ invite }}" required></label>
+      <label>用户名<small>（英文、数字、下划线，登录用）</small><input name="username" autocomplete="username" placeholder="英文、数字、下划线" required></label>
+      <label>显示名称<small>（朋友看到的名字）</small><input name="display_name" autocomplete="nickname" placeholder="朋友看到的名字" required></label>
+      <label>邮箱<small>（可选，方便管理员联系你）</small><input name="email" type="email" autocomplete="email" placeholder="you@example.com"></label>
+      <label>密码<input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
+      <label>确认密码<input type="password" name="password_confirm" autocomplete="new-password" minlength="8" required></label>
+      <button class="primary">创建账户</button>
+      <a class="button" href="{{ url_for('hub_home') }}">返回登录</a>
+    </form>
+    <p class="form-help">社区约定：论坛沉淀问题、聊天保持短沟通、坊市只流转虚拟资产。注册即表示接受这三条。</p>
+  </div>
+</section>
+{% endblock %}

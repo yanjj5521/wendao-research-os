@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}AI 协作 · {{ site_name }}{% endblock %}
+{% block content %}
+{% if nav_artifact and nav_artifact.key in ['paper_crane','star_compass'] %}
+<aside class="artifact-effect-banner"><span>{{ nav_artifact.icon }}</span><div><strong>{{ nav_artifact.name }}已展开</strong><p>本轮协作结束时，请把“结论—证据—唯一下一行动”粘贴到下方回存区，避免对话成为一次性消耗。</p></div></aside>
+{% endif %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Context → Dialogue → Evidence</span><h1>AI 协作台</h1><p>先限定领域、项目和用途，再把结果收回知识库或项目推进。AI 负责分析，系统负责继承。</p></div>
+</div>
+
+<form class="panel assistant-scope" method="get">
+  <div class="assistant-scope-copy"><span class="eyebrow">协作范围</span><strong>只带上这次真正相关的上下文</strong></div>
+  <label><span>用途</span><select name="mode">{% for key,item in prompt_modes.items() %}<option value="{{ key }}" {% if mode==key %}selected{% endif %}>{{ item[0] }}</option>{% endfor %}</select></label>
+  <label><span>领域</span><select name="workspace"><option value="">全部领域</option>{% for item in workspaces %}<option value="{{ item.id }}" {% if selected_workspace_id==item.id %}selected{% endif %}>{{ item.icon }} {{ item.name }}</option>{% endfor %}</select></label>
+  <label><span>项目</span><select name="project"><option value="">全部推进中项目</option>{% for item in projects %}<option value="{{ item.id }}" {% if selected_project_id==item.id %}selected{% endif %}>{{ item.title }}</option>{% endfor %}</select></label>
+  <button class="soft-button">更新上下文</button>
+</form>
+
+<nav class="assistant-mode-grid" aria-label="AI 协作用途">
+  {% for key,item in prompt_modes.items() %}
+  <a class="{% if mode==key %}active{% endif %}" href="{{ url_for('assistant_page') }}?mode={{ key }}{% if selected_workspace_id %}&workspace={{ selected_workspace_id }}{% endif %}{% if selected_project_id %}&project={{ selected_project_id }}{% endif %}">
+    <span>{{ loop.index }}</span><strong>{{ item[0] }}</strong><small>{{ item[1] }}</small>
+  </a>
+  {% endfor %}
+</nav>
+
+<section class="assistant-context-strip">
+  <div><strong>{{ state_counts.tasks }}</strong><small>相关未完成任务</small></div>
+  <div><strong>{{ state_counts.deliveries }}</strong><small>最近真实交付</small></div>
+  <div><strong>{{ state_counts.milestones }}</strong><small>待验收里程碑</small></div>
+  <div><strong>{{ state_counts.projects }}</strong><small>进入上下文项目</small></div>
+  <span>{% if selected_workspace %}{{ selected_workspace.icon }} {{ selected_workspace.name }}{% else %}全部领域{% endif %}{% if selected_project %}<b> · {{ selected_project.title }}</b>{% endif %}</span>
+</section>
+
+<section class="panel prompt-panel assistant-prompt">
+  <div class="panel-head simple"><div><span class="eyebrow">{{ prompt_modes[mode][0] }}</span><h2>复制后直接开始</h2></div><button class="soft-button" type="button" id="copyPromptButton">复制提示词</button></div>
+  <textarea id="promptText" rows="22" readonly>{{ prompt }}</textarea>
+  <div id="copyFeedback" class="copy-feedback" aria-live="polite"></div>
+</section>
+
+<details class="panel assistant-return" open>
+  <summary><span><small>Return to system</small><strong>把 AI 结果重新收进科研系统</strong></span><b>⌄</b></summary>
+  <p>只保存你核对后的结论。原始对话可以留在 ChatGPT；这里保存以后真的要继承的判断、证据和下一步。</p>
+  <form method="post" action="{{ url_for('assistant_result_save') }}" class="clean-form">
+    <input type="hidden" name="mode" value="{{ mode }}">
+    <div class="form-grid two">
+      <label><span>标题</span><input name="title" value="{{ prompt_modes[mode][0] }} · 协作结论"></label>
+      <label><span>保存到</span><select name="destination"><option value="knowledge">知识库</option>{% if projects %}<option value="project">项目推进</option><option value="both">知识库 + 项目推进</option>{% endif %}</select></label>
+      <label><span>领域</span><select name="workspace_id"><option value="">不指定</option>{% for item in workspaces %}<option value="{{ item.id }}" {% if selected_workspace_id==item.id %}selected{% endif %}>{{ item.icon }} {{ item.name }}</option>{% endfor %}</select></label>
+      <label><span>项目</span><select name="project_id"><option value="">不指定</option>{% for item in projects %}<option value="{{ item.id }}" {% if selected_project_id==item.id %}selected{% endif %}>{{ item.title }}</option>{% endfor %}</select></label>
+      <label class="full"><span>核对后的结论</span><textarea name="summary" rows="4" required placeholder="删掉模型套话，只保留你确认成立或需要验证的判断。"></textarea></label>
+      <label><span>证据与依据</span><textarea name="evidence" rows="4" placeholder="数据、图、论文、日志、对照或明确的不确定性。"></textarea></label>
+      <label><span>唯一下一行动</span><textarea name="next_action" rows="4" placeholder="下一次打开系统后可以直接执行的一步。"></textarea></label>
+    </div>
+    <button class="primary-button">保存协作结果</button>
+  </form>
+</details>
+
+<div class="assistant-next-grid">
+  <a class="quick-card" href="{{ url_for('daily_page') }}"><span>✓</span><div><strong>回到每日任务</strong><small>执行眼前一步</small></div></a>
+  <a class="quick-card" href="{{ url_for('plans_page') }}"><span>日</span><div><strong>导入近期计划</strong><small>带项目与领域关联</small></div></a>
+  <a class="quick-card" href="{{ url_for('projects_page') }}"><span>题</span><div><strong>更新证据闸门</strong><small>判断 Go / Revise / Stop</small></div></a>
+</div>
+{% endblock %}

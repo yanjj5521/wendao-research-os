@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}成就图鉴 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div>
+    <span class="eyebrow">Growth Atlas</span>
+    <h1>成就图鉴</h1>
+    <p>不奖励空转，只记录真实积累、交付、复盘、证据与长期坚持。</p>
+  </div>
+  <div class="achievement-total"><strong>{{ unlocked_count }} / {{ achievements|length }}</strong><small>已经点亮</small></div>
+</div>
+
+<section class="panel achievement-overview">
+  <div>
+    <span class="eyebrow">Overall Progress</span>
+    <h2>你的成长星图</h2>
+    <p>每一枚图章都能追溯到本地数据；尚未点亮的成就会显示距离，而不是制造焦虑。</p>
+  </div>
+  <span class="game-progress"><i style="width:{{ overall_progress }}%"></i></span>
+  <strong>{{ overall_progress }}%</strong>
+</section>
+
+{% for category, items in achievement_groups.items() %}
+<section class="achievement-section">
+  <div class="panel-head simple"><div><span class="eyebrow">{{ category }}</span><h2>{{ category }}图章</h2></div></div>
+  <div class="achievement-atlas">
+    {% for item in items %}
+    <article class="achievement-card {% if item.unlocked %}unlocked{% else %}locked{% endif %}">
+      <div class="achievement-glyph">{{ item.icon }}</div>
+      <div class="achievement-copy">
+        <div class="achievement-title"><h3>{{ item.name }}</h3><span>{{ item.tier }}</span></div>
+        <p>{{ item.desc }}</p>
+        <div class="achievement-progress">
+          <span><i style="width:{{ item.progress }}%"></i></span>
+          <small>{{ item.current }} / {{ item.target }}</small>
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+
+<section class="panel egg-cabinet">
+  <div class="panel-head simple">
+    <div><span class="eyebrow">Hidden Stories</span><h2>彩蛋柜</h2></div>
+    <strong>{{ eggs_unlocked }} / {{ easter_eggs|length }}</strong>
+  </div>
+  <div class="egg-cabinet-progress"><span><i style="width:{{ (eggs_unlocked / (easter_eggs|length) * 100)|round }}%"></i></span><small>彩蛋不会要求空转；它们藏在交付、复盘、个性化、备份、协作和耐心使用里。</small></div>
+  <div class="egg-grid">
+    {% for egg in easter_eggs %}
+    <article class="egg-card {% if egg.unlocked %}found{% else %}hidden{% endif %}">
+      <span>{{ '✦' if egg.unlocked else '?' }}</span>
+      <div>
+        <h3>{{ egg.title if egg.unlocked else '尚未发现' }}</h3>
+        <p>{{ egg.description if egg.unlocked else '线索：它藏在一次真实使用、一个边角动作，或一段耐心之中。' }}</p>
+        {% if egg.unlocked and egg.discovered_at %}<small>发现于 {{ egg.discovered_at|datecn }}</small>{% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

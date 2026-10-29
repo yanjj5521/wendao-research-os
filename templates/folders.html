@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}交付文件夹 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">完整保存目录结构</span><h1>交付文件夹</h1><p>概念图、代码、日志、数据和README可以整包放在一起。</p></div>
+  <a class="primary-button" href="{{ url_for('daily_page') }}">从每日任务交付</a>
+</div>
+{% if folders %}
+<div class="folder-simple-grid">
+  {% for folder in folders %}
+  <a class="folder-simple-card panel" href="{{ url_for('foundation_folder_view', folder_id=folder.id) }}">
+    <span class="folder-glyph">▰</span>
+    <div><strong>{{ folder.name }}</strong><small>{{ folder.track_name or '未分类' }} · {{ folder.file_count }} 个文件 · {{ folder.total_size|filesize }}</small></div>
+    <span>›</span>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty-state panel"><h2>还没有旧版归档文件夹</h2><p>新版请在每日任务或特殊任务中上传文件夹，它会直接进入对应交付，不再依赖长期主线。</p><a class="primary-button" href="{{ url_for('daily_page') }}">去交付</a></div>
+{% endif %}
+{% endblock %}

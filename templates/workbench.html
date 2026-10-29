@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}实用工作台 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head">
+  <div><span class="eyebrow">Practical Tools</span><h1>实用工作台</h1><p>只保留能直接交付的三件事：把文字写清、把图处理好、把文献图讲明白。处理结果会自动归档，之后随时修改。</p></div>
+  <div class="page-actions"><a class="soft-button" href="{{ url_for('literature_report_page') }}">文献图 → 汇报 PPT</a><a class="soft-button" href="{{ url_for('experiments_page') }}">实验台账</a></div>
+</div>
+
+<section class="workbench-principles panel">
+  <div><b>1</b><span><strong>不代写证据</strong><small>润色不改变数据、单位、图号和结论强度。</small></span></div>
+  <div><b>2</b><span><strong>不美化数据</strong><small>图片工具只裁留白、缩放和格式转换，不改曲线或色标。</small></span></div>
+  <div><b>3</b><span><strong>处理后可追溯</strong><small>每次输出都进知识库，仍可补说明或修正判断。</small></span></div>
+</section>
+
+<section class="panel english-reading-studio" id="english-reading">
+  <div class="panel-head simple"><div><span class="eyebrow">English Reading Gym</span><h2>先自己读懂英文，再借工具校正</h2></div><small>15 分钟一段</small></div>
+  <p>不要先全文翻译。英文顶刊阅读的基本动作是：拆句法 → 找比较/因果 → 对照图和图注 → 用英文复述。这里的结果不是答案，而是下一次可继续修改的训练卡。</p>
+  <form method="post" action="{{ url_for('workbench_reading') }}">
+    <label><span>粘贴 Abstract、Results 或 Figure caption 的一小段原文</span><textarea name="reading_text" rows="7" placeholder="建议每次 120–350 个英文词；先读一遍，再把你卡住的原文放进来。">{{ reading_text|default('') }}</textarea></label>
+    <button class="primary-button">生成精读训练</button>
+  </form>
+  {% if reading_result %}
+  <div class="english-reading-result">
+    <article><b>句法与逻辑</b><p>{{ reading_result.structure }}</p></article><article><b>可迁移搭配</b><p>{{ reading_result.phrases }}</p></article><article><b>回原文回答</b><p>{{ reading_result.questions }}</p></article><article><b>英文复述</b><p>{{ reading_result.summary_task }}</p></article>
+  </div>
+  <form method="post" action="{{ url_for('workbench_reading_save') }}" class="workbench-save-reading"><input type="hidden" name="reading_text" value="{{ reading_text }}"><input type="hidden" name="structure" value="{{ reading_result.structure }}"><input type="hidden" name="phrases" value="{{ reading_result.phrases }}"><input type="hidden" name="questions" value="{{ reading_result.questions }}"><input type="hidden" name="summary_task" value="{{ reading_result.summary_task }}"><input name="title" value="英文精读 · 待完成复述"><button class="soft-button">保存为英文训练卡</button></form>
+  {% endif %}
+</section>
+
+<div class="workbench-main-grid">
+  <section class="panel workbench-text" id="writing">
+    <div class="panel-head simple"><div><span class="eyebrow">Text Studio</span><h2>润色文献、图注或讲稿</h2></div><small>{{ provider.label }}</small></div>
+    <p class="form-help">{{ provider.detail }} 离线时会生成严谨的处理提示词，而不会伪造一段“已经润色”的科研文本。</p>
+    <form method="post" action="{{ url_for('workbench_polish') }}">
+      <label><span>处理方式</span><select name="text_mode">{% for key, item in text_modes.items() %}<option value="{{ key }}" {% if text_mode==key %}selected{% endif %}>{{ item[0] }} · {{ item[1] }}</option>{% endfor %}</select></label>
+      <label><span>原文</span><textarea name="source_text" rows="13" placeholder="粘贴一段引言、结果、图注或汇报草稿。请保留原始数字、单位和图号。">{{ source_text }}</textarea></label>
+      <button class="primary-button">开始处理</button>
+    </form>
+    {% if result %}
+    <section class="workbench-result">
+      <div class="panel-head simple"><div><span class="eyebrow">{{ result.provider }}</span><h3>可编辑结果</h3></div>{% if result.prompt %}<button class="soft-button" type="button" data-copy-workbench-prompt>复制处理提示词</button>{% endif %}</div>
+      <form method="post" action="{{ url_for('workbench_polish_save') }}">
+        <input type="hidden" name="text_mode" value="{{ text_mode }}"><input type="hidden" name="source_text" value="{{ source_text }}"><input type="hidden" name="changes" value="{{ result.changes }}"><input type="hidden" name="checks" value="{{ result.checks }}">
+        <label><span>标题</span><input name="title" value="{{ text_modes[text_mode][0] }} · 待核对"></label>
+        <label><span>润色稿</span><textarea name="polished_text" rows="13" data-workbench-polished>{{ result.polished }}</textarea></label>
+        <div class="workbench-review-notes"><p><b>修改说明</b>{{ result.changes or '—' }}</p><p><b>仍需核对</b>{{ result.checks or '—' }}</p></div>
+        <button class="soft-button">归档为可修改知识卡</button>
+      </form>
+      {% if result.prompt %}<textarea class="workbench-hidden-prompt" data-workbench-prompt readonly>{{ result.prompt }}</textarea>{% endif %}
+    </section>
+    {% endif %}
+  </section>
+
+  <aside class="panel workbench-figure" id="figures">
+    <div class="panel-head simple"><div><span class="eyebrow">Figure Utility</span><h2>处理图表与图片</h2></div></div>
+    <p>适合论文图、SEM、实验照片和 PPT 图片。不会调色、补图或改数据。</p>
+    <form method="post" action="{{ url_for('workbench_image') }}" enctype="multipart/form-data">
+      <label class="compact-drop"><span>选择图片</span><input type="file" name="image_file" accept="image/png,image/jpeg,image/tiff,image/webp,image/bmp" required><small>PNG / JPG / TIFF / WebP / BMP，最大 30 MB</small></label>
+      <label><span>处理方式</span><select name="operation"><option value="trim">裁去统一外留白</option><option value="export">仅统一导出</option></select></label>
+      <div class="mini-form-grid"><label><span>目标宽度（px，可留空）</span><input type="number" name="target_width" min="0" max="6000" placeholder="例如 1800"></label><label><span>裁图后留白（px）</span><input type="number" name="padding" min="0" max="240" value="20"></label></div>
+      <label><span>导出格式</span><select name="output_format"><option value="PNG">PNG · 汇报/网页</option><option value="TIFF">TIFF · 高保真存档</option><option value="JPEG">JPG · 体积更小</option></select></label>
+      <button class="primary-button full-button">处理并自动归档</button>
+    </form>
+    <div class="workbench-figure-check"><strong>提交前 30 秒核对</strong><ol><li>坐标轴、单位、比例尺是否仍清楚？</li><li>图例、统计标记和颜色映射是否完整？</li><li>裁剪是否删掉了必要的对照或边界？</li></ol></div>
+    <details class="workbench-board" open><summary>把多张图排成论文多面板图</summary><p>自动加 A/B/C 标签、保持原始纵横比、统一间距；不在图片内添加图题或图注。</p><form method="post" action="{{ url_for('workbench_figure_board') }}" enctype="multipart/form-data"><label class="compact-drop"><span>选择 2–8 张图片</span><input type="file" name="board_files" accept="image/png,image/jpeg,image/tiff,image/webp,image/bmp" multiple required><small>按选择顺序放入 A、B、C…</small></label><div class="mini-form-grid"><label><span>每面板宽度</span><input type="number" name="panel_width" min="400" max="2400" value="1200"></label><label><span>列数</span><select name="columns"><option value="2">2 列</option><option value="3">3 列</option><option value="1">1 列</option><option value="4">4 列</option></select></label><label><span>间距（px）</span><input type="number" name="gap" min="8" max="160" value="36"></label></div><button class="soft-button full-button">生成多面板图并归档</button></form></details>
+  </aside>
+</div>
+
+
+<section class="panel cloud-ai-panel" id="cloud-ai-panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Cloud LLM</span><h2>云端大模型助手</h2></div><small>免密钥 · 已发布站点可用</small></div>
+  <p class="form-help">直接调用 WorkBuddy 云端大模型，无需配置任何 API 密钥。粘贴的内容会发送到云端服务，请勿放入未公开数据、隐私信息或受限材料；输出仅供参考，采用前请自行核对事实与边界。</p>
+  <div class="form-grid">
+    <label><span>任务</span><select data-cloud-task>
+      <option value="polish">学术润色</option>
+      <option value="english">学术英语改写</option>
+      <option value="summarize">要点提炼</option>
+      <option value="review">逻辑与证据审查</option>
+    </select></label>
+    <label><span>模型</span><select data-cloud-model><option>读取中…</option></select></label>
+  </div>
+  <label><span>粘贴内容</span><textarea data-cloud-input rows="5" placeholder="粘贴要润色、改写、提炼或审查的段落。"></textarea></label>
+  <div class="button-row">
+    <button class="primary-button" data-cloud-run>生成</button>
+    <button class="soft-button" data-cloud-stop disabled>停止</button>
+    <button class="soft-button" data-cloud-copy disabled>复制结果</button>
+  </div>
+  <label><span>结果</span><textarea data-cloud-output rows="8" readonly placeholder="结果会在这里逐字出现……"></textarea></label>
+  <p class="form-help" data-cloud-status></p>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@tencent-ai/workbuddy-cloud-sdk@0.1.4-dev.ca27990.202610161713/lib/index.global.js"
+        integrity="sha384-6yxnkOdsYedUWX/Z+ulluqqMcfvl4EimVdKA7jFGD8P8a6yUWNPqK+du0PSKiGWJ"
+        crossorigin="anonymous"
+        referrerpolicy="no-referrer"></script>
+<script src="{{ url_for('static', path='cloud-config.js') }}"></script>
+<script src="{{ url_for('static', path='cloud-assistant.js') }}"></script>
+
+<section class="workbench-continue-grid">
+  <a href="{{ url_for('literature_report_page') }}"><span>阅</span><div><strong>从 PDF 抓关键图</strong><small>选 1–3 张图，直接生成汇报 PPT。</small></div><b>→</b></a>
+  <a href="{{ url_for('projects_page') }}"><span>题</span><div><strong>把结论推进到项目</strong><small>记录证据、风险与唯一下一步。</small></div><b>→</b></a>
+  <a href="{{ url_for('library') }}"><span>藏</span><div><strong>查看已归档输出</strong><small>所有润色与图片都可以继续修改。</small></div><b>→</b></a>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelector('[data-copy-workbench-prompt]')?.addEventListener('click', async () => {
+  const prompt = document.querySelector('[data-workbench-prompt]')?.value || '';
+  if (!prompt) return;
+  await navigator.clipboard.writeText(prompt);
+  document.querySelector('[data-copy-workbench-prompt]').textContent = '已复制';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}每日任务 · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head daily-head">
+  <div>
+    <span class="eyebrow">Day {{ current_day }} / {{ plan.total_days }}</span>
+    <h1>{{ day_title }}</h1>
+    <p>任务只是一种可选激励，不是学习的准入证。今天剩余约 {{ total_minutes }} 分钟。</p>
+  </div>
+  <div class="wallet-strip compact-wallet">
+    <span>◆ {{ wallet.spirit_stone }}</span><span>⌁ {{ wallet.spirit_wood }}</span><span>⬢ {{ wallet.mystic_iron }}</span><span>✦ {{ wallet.star_sand }}</span>
+  </div>
+</div>
+
+<details class="panel quick-progress-card">
+  <summary><span>不想排计划？直接留下一步</span><small>不生成待办、不要求打卡；自动变成可编辑知识卡</small></summary>
+  <form method="post" action="{{ url_for('daily_quick_note') }}" class="quick-progress-form">
+    <input name="title" placeholder="可选标题，例如：Fig. 3 的真实含义">
+    <textarea name="note" required rows="3" placeholder="写下一个事实、一个判断或下一步。以后可以在知识库继续改。"></textarea>
+    <input name="source" value="随手推进">
+    <button class="primary-button">归档这一小步</button>
+  </form>
+</details>
+
+<section class="daily-status panel lean-status">
+  <div><small>计划</small><strong>{{ plan.name }}</strong></div>
+  <div><small>必做进度</small><strong>{{ progress }}%</strong></div>
+  <span class="game-progress"><i style="width:{{ progress }}%"></i></span>
+</section>
+
+<details class="thought-egg panel">
+  <summary><span>🥚 今日彩蛋</span><small>点开拓展思维</small></summary>
+  <div class="egg-question">{{ thought_egg }}</div>
+</details>
+
+<section class="mission-stack official-missions">
+  {% for mission in missions %}
+  <article class="mission-card delivery-mission {% if mission.optional %}optional{% endif %} {% if mission.completed %}done{% endif %}">
+    <div class="mission-state">{{ '✓' if mission.completed else loop.index }}</div>
+    <div class="mission-copy">
+      <div class="mission-meta">
+        <span>{{ mission.category }}</span>
+        {% if mission.workspace_name %}<span class="context-chip">{{ mission.workspace_icon }} {{ mission.workspace_name }}</span>{% endif %}
+        {% if mission.project_title %}<span class="context-chip project-context">项目 · {{ mission.project_title }}</span>{% endif %}
+        {% if mission.track_name %}<span>{{ mission.track_icon }} 滋养{{ mission.track_name }}</span>{% endif %}
+        {% if mission.cultivation_title %}<span>推进修炼 · {{ mission.cultivation_title }}</span>{% endif %}
+        <span>{{ mission.duration_minutes }} 分钟</span>
+        <span>统一奖励 +{{ mission.xp }} 修为</span>
+      </div>
+      <h2>{{ mission.title }}</h2>
+      {% if mission.description %}<p>{{ mission.description }}</p>{% endif %}
+      <small>交付标准 · {{ mission.deliverable or '留下一个能够证明完成情况的成果' }}。文字会同时生成可编辑知识卡。</small>
+
+      {% if mission.completed %}
+      <div class="delivery-success">
+        <span>已交付 {{ mission.delivery_count }} 次</span>
+        {% for delivery in mission.deliveries[:2] %}
+        <a href="{{ url_for('daily_delivery_download', delivery_id=delivery.id) }}">下载成果包 {{ loop.index }}</a>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="mission-actions">
+        <details class="delivery-box">
+          <summary class="primary-button">交付并打卡</summary>
+          <form class="delivery-form" method="post" enctype="multipart/form-data" action="{{ url_for('daily_delivery_submit', mission_id=mission.id) }}">
+            <input type="hidden" name="view_day" value="{{ current_day }}">
+            <input type="hidden" name="folder_paths" value="[]" class="folder-paths">
+            <label><span>文字交付（可选）</span><textarea name="note" rows="3" placeholder="一句结论、一个问题或简短复盘，也会保存为TXT。"></textarea></label>
+            <label class="review-key-field"><span>复盘关键文本（建议填写）</span><textarea name="review_text" rows="5" placeholder="写3–8条你今天真正学到的事实、因果关系、判断边界或未解决问题。系统明天只从这段文本出题；答案会先隐藏。"></textarea><small>它会作为“复盘关键文本.txt”放入本次交付文件夹。不填写则本次交付不会进入自动复盘。</small></label>
+            <div class="delivery-pickers">
+              <label class="upload-choice"><strong>选择文件</strong><small>文档、图片、PDF、PPT、表格等</small><input type="file" name="files" multiple></label>
+              <label class="upload-choice"><strong>选择文件夹</strong><small>保留原目录结构</small><input type="file" name="folder_files" webkitdirectory directory multiple class="folder-input"></label>
+            </div>
+            <div class="picked-files" aria-live="polite">尚未选择文件</div>
+            <button class="primary-button full-button">确认交付并结算</button>
+          </form>
+        </details>
+        <form method="post" action="{{ url_for('daily_mission_postpone', mission_id=mission.id) }}" onsubmit="return confirm('推迟到下一天将消耗 {{ postpone_cost }} 灵石，继续吗？')">
+          <input type="hidden" name="view_day" value="{{ current_day }}">
+          <button class="soft-button postpone-button">推迟 · {{ postpone_cost }}灵石</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</section>
+
+<div class="daily-actions-row">
+  <form method="post" action="{{ url_for('daily_advance') }}">
+    <input type="hidden" name="plan_id" value="{{ plan.id }}">
+    <input type="hidden" name="current_day" value="{{ current_day }}">
+    <button class="primary-button large-button" {% if progress < 100 %}disabled{% endif %}>{{ '开启下一关' if current_day < plan.total_days else '完成整套计划' }}</button>
+  </form>
+  <a class="soft-button" href="{{ url_for('plans_page') }}?plan_id={{ plan.id }}">微调计划</a>
+</div>
+
+<section class="panel one-line-log">
+  <div class="panel-head simple"><div><span class="eyebrow">收功</span><h2>今天留下哪一句？</h2></div></div>
+  <form method="post" action="{{ url_for('daily_log_save') }}" class="one-line-form">
+    <input type="hidden" name="plan_id" value="{{ plan.id }}"><input type="hidden" name="day_index" value="{{ current_day }}">
+    <select name="mood"><option value="light" {% if day_log and day_log.mood=='light' %}selected{% endif %}>轻松</option><option value="steady" {% if not day_log or day_log.mood=='steady' %}selected{% endif %}>稳定</option><option value="stuck" {% if day_log and day_log.mood=='stuck' %}selected{% endif %}>卡住</option></select>
+    <input name="note" value="{{ day_log.note if day_log else '' }}" placeholder="一句话即可。">
+    <button class="soft-button">保存</button>
+  </form>
+</section>
+
+<nav class="day-map" aria-label="计划天数">{% for item in day_map %}<a href="{{ url_for('daily_page') }}?day={{ item.day_index }}" class="day-dot {% if item.day_index == current_day %}active{% endif %} {% if item.required_count and item.done_count == item.required_count %}cleared{% endif %}">{{ item.day_index }}</a>{% endfor %}</nav>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.delivery-form').forEach(form => {
+  const normal = form.querySelector('input[name="files"]');
+  const folder = form.querySelector('.folder-input');
+  const paths = form.querySelector('.folder-paths');
+  const status = form.querySelector('.picked-files');
+  function refresh(){
+    const count = (normal.files?.length || 0) + (folder.files?.length || 0);
+    paths.value = JSON.stringify(Array.from(folder.files || []).map(file => file.webkitRelativePath || file.name));
+    status.textContent = count ? `已选择 ${count} 个文件` : '尚未选择文件';
+  }
+  normal.addEventListener('change', refresh);
+  folder.addEventListener('change', refresh);
+});
+</script>
+{% endblock %}

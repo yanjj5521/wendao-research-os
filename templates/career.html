@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ nav_labels.career }} · {{ site_name }}{% endblock %}
+{% block content %}
+<div class="page-head minimal-head career-head">
+  <div>
+    <span class="eyebrow">Long-Term Growth Compass</span>
+    <h1>{{ nav_labels.career }}</h1>
+    <p>这里关心的是你能不能一直学下去：一条从博士入学延伸到毕业之后的路，方向可以改，走过的每一步都算数。</p>
+  </div>
+  <a class="soft-button" href="{{ url_for('profile_page') }}">个人主页</a>
+</div>
+
+<section class="career-hero panel">
+  <div class="career-phase-seal"><span>{{ career.phase.icon }}</span><small>当前阶段</small></div>
+  <div>
+    <span class="eyebrow">{{ career.phase.label }}</span>
+    <h2>{{ career.focus or '先写下这个阶段最值得形成的能力或成果。' }}</h2>
+    <p>{{ career.story }}</p>
+  </div>
+  <a class="career-next-link" href="{{ career.next_step.url }}">
+    <small>{{ career.next_step.kind }}</small>
+    <strong>{{ career.next_step.title }}</strong>
+    <span>{{ career.next_step.action }} →</span>
+  </a>
+</section>
+
+<section class="career-metrics">
+  <div><small>连续学习</small><strong>{{ career.counts.streak }}</strong><span>天 · 中间断了也算继续</span></div>
+  <div><small>在学领域</small><strong>{{ career.counts.domains }}</strong><span>个 · 可增删，不必同时推进</span></div>
+  <div><small>真实交付</small><strong>{{ career.counts.deliveries }}</strong><span>学过什么有迹可循</span></div>
+  <div><small>成长节点</small><strong>{{ career.counts.moments }}</strong><span>决策、失败与成果</span></div>
+</section>
+
+<div class="career-main-grid">
+  <form class="panel clean-form career-compass-form" method="post" action="{{ url_for('career_focus_save') }}">
+    <div class="panel-head simple">
+      <div><span class="eyebrow">阶段罗盘</span><h2>只定义当前阶段</h2></div>
+      <span class="career-rule">可随时修正</span>
+    </div>
+    <label><span>当前学习阶段</span>
+      <select name="phase">
+        {% for phase in career_phases %}<option value="{{ phase.key }}" {% if phase.key == career.phase.key %}selected{% endif %}>{{ phase.label }} · {{ phase.question }}</option>{% endfor %}
+      </select>
+    </label>
+    <label><span>本阶段真正想形成什么</span><textarea name="focus" rows="3" placeholder="能力、方法、证据链或成果，而不是空泛愿望">{{ career.focus }}</textarea></label>
+    <label><span>现在明确不做什么</span><textarea name="boundary" rows="3" placeholder="防止新想法不断挤占当前验证">{{ career.boundary }}</textarea></label>
+    <label><span>什么证据说明可以进入下一阶段</span><textarea name="success_signal" rows="3" placeholder="可观察、可复核的判断信号">{{ career.success_signal }}</textarea></label>
+    <label><span>主动复看日期（可留空）</span><input type="date" name="review_date" value="{{ career.review_date }}"></label>
+    <button class="primary-button">保存阶段罗盘</button>
+  </form>
+
+  <section class="panel career-next-panel">
+    <div class="panel-head simple"><div><span class="eyebrow">Next Best Step</span><h2>现在最值得推进的一步</h2></div><span class="career-next-mark">一步</span></div>
+    <small>{{ career.next_step.kind }}</small>
+    <h3>{{ career.next_step.title }}</h3>
+    <p>{{ career.next_step.detail }}</p>
+    <a class="primary-button" href="{{ career.next_step.url }}">{{ career.next_step.action }}</a>
+    <div class="career-boundary-note"><b>当前边界</b><span>{{ career.boundary or '尚未设置。' }}</span></div>
+    <div class="career-success-note"><b>阶段完成信号</b><span>{{ career.success_signal or '尚未设置。' }}</span></div>
+  </section>
+</div>
+
+<section class="panel career-lifecycle-panel">
+  <div class="panel-head simple">
+    <div><span class="eyebrow">Evidence Across the Long Run</span><h2>长期成长不是文件堆积，而是一条可以回看的证据链</h2></div>
+    <small>数量只说明留下了记录，不自动等于质量</small>
+  </div>
+  <div class="career-lifecycle">
+    {% for item in career.lifecycle %}
+    <article>
+      <span>{{ item.icon }}</span>
+      <div><strong>{{ item.label }}</strong><small>{{ item.detail }}</small></div>
+      <b>{{ item.count }}</b>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="career-bottom-grid">
+  <section class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">Career Memory</span><h2>值得带到下一阶段的节点</h2></div></div>
+    <div class="career-timeline">
+      {% for moment in career.recent_moments %}
+      <article>
+        <span class="career-moment-icon">{{ moment.type_icon }}</span>
+        <div>
+          <small>{{ moment.occurred_on }} · {{ moment.type_label }}{% if moment.project_title %} · {{ moment.project_title }}{% endif %}</small>
+          <strong>{{ moment.title }}</strong>
+          {% if moment.summary %}<p>{{ moment.summary }}</p>{% endif %}
+          {% if moment.evidence %}<em>证据：{{ moment.evidence }}</em>{% endif %}
+        </div>
+      </article>
+      {% else %}
+      <div class="empty-state compact"><span>录</span><h3>先记录第一个关键决定</h3><p>比如“为什么暂时不做某条路线”，它会在未来避免你重复走弯路。</p></div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <form class="panel clean-form career-moment-form" method="post" action="{{ url_for('career_moment_new') }}">
+    <div class="panel-head simple"><div><span class="eyebrow">Keep the Why</span><h2>记录一个生涯节点</h2></div></div>
+    <label><span>节点类型</span><select name="moment_type">{% for key,item in moment_types.items() %}<option value="{{ key }}">{{ item.label }}</option>{% endfor %}</select></label>
+    <label><span>标题</span><input name="title" maxlength="180" placeholder="例如：放弃只追求导电率的路线" required></label>
+    <label><span>当时发生了什么、为什么重要</span><textarea name="summary" rows="4"></textarea></label>
+    <label><span>支撑这个判断的证据</span><textarea name="evidence" rows="3" placeholder="文件、数据、导师反馈、失败记录或论文依据"></textarea></label>
+    <label><span>关联项目（可选）</span><select name="project_id"><option value="0">不关联</option>{% for project in projects %}<option value="{{ project.id }}">{{ project.title }}</option>{% endfor %}</select></label>
+    <label><span>发生日期</span><input type="date" name="occurred_on" value="{{ today }}"></label>
+    <button class="primary-button">存入生涯档案</button>
+  </form>
+</div>
+{% endblock %}

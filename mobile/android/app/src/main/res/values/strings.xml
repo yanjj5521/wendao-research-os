@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">问道科研</string>
+    <string name="mobile_title">问道科研 · 手机版</string>
+    <string name="hub_hint">例如 192.168.1.20:5050</string>
+</resources>

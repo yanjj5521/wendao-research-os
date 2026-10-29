@@ -1,0 +1,16 @@
+services:
+  hub:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.hub
+    restart: unless-stopped
+    environment:
+      HUB_HTTPS_ONLY: "1"
+      HUB_TRUST_PROXY: "1"
+      HUB_ALLOWED_HOSTS: "${HUB_DOMAIN},localhost,127.0.0.1"
+    volumes:
+      - ../instance:/app/instance
+      - ../storage/hub_backups:/app/storage/hub_backups
+      - ../storage/hub_releases:/app/storage/hub_releases
+    ports:
+      - "127.0.0.1:5050:5050"
