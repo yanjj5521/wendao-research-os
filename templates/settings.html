@@ -131,7 +131,7 @@
     <div class="backup-card"><span>▦</span><div><h3>学习领域</h3><p>修改 EG、LAMMPS、数据集、ML、MD、COMSOL 的目标、流程、组件与首页固定，或建立自己的学习方向。</p><a class="ghost-button" href="{{ url_for('workspaces_page') }}">个性化搭配</a></div></div>
     <div class="backup-card"><span>🧾</span><div><h3>元数据导出</h3><p>将条目、活动和任务导出为 JSON，便于以后写脚本、做统计或迁移。</p><a class="ghost-button" href="{{ url_for('export_json') }}">导出 JSON</a></div></div>
     <div class="backup-card"><span>📦</span><div><h3>整套便携迁移包</h3><p>版本 {{portable_version}} 会打包程序、数据库和全部资料，但自动排除不可迁移的虚拟环境。到新电脑解压后双击启动即可。</p><a class="primary-button" href="{{url_for('portable_export')}}">生成便携 ZIP</a></div></div>
-    <div class="local-note"><strong>本地化边界</strong><p>程序默认仅监听 127.0.0.1，局域网和互联网无法直接访问。请仍然定期备份，因为“本地”不等于“不会硬盘损坏”。</p></div>
+    <div class="local-note"><strong>稳定的数据目录</strong><p><code>{{ data_root }}</code> 独立于程序 EXE。以后从同行会更新时只替换程序文件，数据库、论文、笔记、附件和个人配置不会被覆盖。程序默认仅监听 127.0.0.1；仍请定期做完整备份，因为“本地”不等于“不会硬盘损坏”。</p></div>
   </section>
 </div>
 

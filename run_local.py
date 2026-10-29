@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import os
 import socket
 import subprocess
@@ -42,10 +44,24 @@ def preconfigure_runtime() -> argparse.Namespace:
     return args
 
 
-def is_research_os(port: int) -> bool:
+def data_root_identity() -> str:
+    from core.runtime_paths import DATA_ROOT
+
+    return hashlib.sha256(str(DATA_ROOT).casefold().encode("utf-8")).hexdigest()
+
+
+def is_research_os(port: int, expected_data_identity: str, expected_version: str) -> bool:
     try:
-        with urllib.request.urlopen(f"http://{HOST}:{port}/api/stats", timeout=1.0) as response:
-            return response.status == 200
+        with urllib.request.urlopen(
+            f"http://{HOST}:{port}/api/app-identity", timeout=1.0
+        ) as response:
+            payload = json.load(response)
+        return (
+            response.status == 200
+            and payload.get("application") == "wendao-research"
+            and payload.get("data_root_hash") == expected_data_identity
+            and payload.get("app_version") == expected_version
+        )
     except Exception:
         return False
 
@@ -59,9 +75,9 @@ def port_available(port: int) -> bool:
             return False
 
 
-def choose_port() -> tuple[int, bool]:
+def choose_port(expected_data_identity: str, expected_version: str) -> tuple[int, bool]:
     for port in range(START_PORT, START_PORT + 20):
-        if is_research_os(port):
+        if is_research_os(port, expected_data_identity, expected_version):
             return port, True
         if port_available(port):
             return port, False
@@ -79,9 +95,6 @@ def safe_print(message: str) -> None:
         escaped = message.encode(encoding, errors="backslashreplace").decode(encoding)
         print(escaped, file=stream)
 
-
-if __name__ == "__main__":
-    args = preconfigure_runtime()
 
 if __name__ == "__main__":
     args = preconfigure_runtime()
@@ -148,14 +161,19 @@ if __name__ == "__main__":
         raise SystemExit(0)
 
     from core.packaged_self_check import run_packaged_self_check
+    from core.version import APP_VERSION
     from web.app import app as web_app
 
     if args.self_check:
         run_packaged_self_check(web_app)
         raise SystemExit(0)
 
+    expected_data_identity = data_root_identity()
+    expected_version = APP_VERSION
     port, already_running = (
-        (args.port, False) if args.port and port_available(args.port) else choose_port()
+        (args.port, False)
+        if args.port and port_available(args.port)
+        else choose_port(expected_data_identity, expected_version)
     )
     url = f"http://{HOST}:{port}"
     if args.no_browser:
@@ -176,8 +194,8 @@ if __name__ == "__main__":
 
     from desktop_shell import open_desktop_window, start_local_service, wait_until_ready
 
+    pet_process = None
     if not already_running:
-        pet_process = None
         if not args.no_pet:
             pet_command = [sys.executable]
             if not getattr(sys, "frozen", False):
@@ -200,7 +218,9 @@ if __name__ == "__main__":
         safe_print(f"问道科研 desktop window: {url}")
     else:
         server, _thread = start_local_service(web_app, host=HOST, port=port, data_root=DATA_ROOT)
-        if not wait_until_ready(lambda: is_research_os(port)):
+        if not wait_until_ready(
+            lambda: is_research_os(port, expected_data_identity, expected_version)
+        ):
             server.should_exit = True
             raise SystemExit("问道科研本地服务启动失败，请查看数据目录中的 logs。")
     try:

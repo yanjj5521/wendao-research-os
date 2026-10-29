@@ -38,7 +38,7 @@ if not exist ".venv\Scripts\python.exe" (
 )
 
 set "LOCAL_PY=.venv\Scripts\python.exe"
-%LOCAL_PY% -c "import fastapi,uvicorn,jinja2,pypdf,docx,pptx,openpyxl,PIL,bleach" >nul 2>nul
+%LOCAL_PY% -c "import fastapi,uvicorn,jinja2,pypdf,docx,pptx,openpyxl,PIL,bleach,webview" >nul 2>nul
 if errorlevel 1 (
   echo [2/3] Installing required packages for the first launch...
   %LOCAL_PY% -m pip install --disable-pip-version-check --upgrade pip
@@ -48,7 +48,7 @@ if errorlevel 1 (
   echo [2/3] Local packages are ready.
 )
 
-echo [3/3] Starting the local website...
+echo [3/3] Starting the desktop application...
 %LOCAL_PY% run_local.py
 goto :end
 

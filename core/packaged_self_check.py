@@ -34,7 +34,7 @@ def run_packaged_self_check(web_app) -> None:
         if gate_code:
             # 启用了访问门禁时，自检需要先持有门禁 Cookie。
             client.post("/gate", data={"code": gate_code, "next": "/"})
-        from core.database import connect
+        from core.database import connect, get_setting
         from core.version import APP_VERSION
 
         with TestClient(web_app) as client:
@@ -58,6 +58,18 @@ def run_packaged_self_check(web_app) -> None:
                     raise SystemExit(
                         f"Packaged self-check failed: {path} returned HTTP {response.status_code}."
                     )
+            team = client.get("/team/", follow_redirects=False)
+            team_location = team.headers.get("location", "")
+            if team.status_code not in {200, 303} or (
+                team.status_code == 303 and not team_location.startswith("/team")
+            ):
+                raise SystemExit(
+                    "Packaged self-check failed: the embedded team module is not mounted under /team."
+                )
+            if client.get("/team/").status_code != 200:
+                raise SystemExit(
+                    "Packaged self-check failed: the embedded team login page could not render."
+                )
             homepage = client.get("/").text
             if "gate-dual-search" not in homepage or "data-living-scene" not in homepage:
                 raise SystemExit("Packaged self-check failed: the homepage template is incomplete.")
@@ -90,6 +102,10 @@ def run_packaged_self_check(web_app) -> None:
             if starter_artifact != 1 or unavailable_artifact or int(stone_balance) != 0:
                 raise SystemExit(
                     "Packaged self-check failed: artifact purchase safeguards are incomplete."
+                )
+            if get_setting("portable_version", "") != APP_VERSION:
+                raise SystemExit(
+                    "Packaged self-check failed: runtime version metadata is stale."
                 )
             career_focus = client.post(
                 "/career/focus",

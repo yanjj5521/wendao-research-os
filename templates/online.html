@@ -71,8 +71,8 @@
 
 <section class="content-grid equal online-control-grid">
   <article class="panel admin-explainer">
-    <div class="panel-head simple"><div><span class="eyebrow">管理员托管</span><h2>无需再双击 CMD</h2></div><span class="control-seal">主</span></div>
-    <p>点击一次后，同行会中心作为当前 EXE 的后台能力运行。关闭问道科研，中心也会安全停止；重新打开后再按需启动。</p>
+    <div class="panel-head simple"><div><span class="eyebrow">管理员托管</span><h2>同行会直接运行在科研系统里</h2></div><span class="control-seal">主</span></div>
+    <p>同行会不是另开的网页或第二个程序。管理员点击一次后，中心作为当前 EXE 的后台能力运行；关闭问道科研时中心安全停止，重新打开后再按需启动。</p>
     {% if hub_host.running %}
       <div class="privacy-note"><b>本机中心正在运行</b><p>成员地址：<code>{{ hub_host.lan_url }}</code></p></div>
       <div class="button-row"><a class="primary-button" href="/team/">进入同行会</a><form method="post" action="{{ url_for('online_hub_host_stop') }}"><button class="soft-button">停止本机中心</button></form></div>
@@ -82,8 +82,8 @@
     <small class="form-help">管理员与普通成员的差别只来自登录身份，不来自另一套程序。中心不会读取成员本地论文、附件或笔记。</small>
   </article>
   <article class="panel">
-    <div class="panel-head simple"><div><span class="eyebrow">内嵌同行会</span><h2>按身份显示对应界面</h2></div></div>
-    <p>管理员登录后自动出现成员、邀请、福利、版本和审计控制台；成员只看到个人联机主页、资料驿站、更新与领取福利。</p>
+    <div class="panel-head simple"><div><span class="eyebrow">内嵌同行会</span><h2>同一个窗口，按身份显示界面</h2></div></div>
+    <p>管理员登录后自动出现成员、邀请、福利、版本和审计控制台；成员只看到个人联机主页、资料驿站、更新与领取福利。所有页面始终留在问道科研桌面窗口内。</p>
     <a class="primary-button" href="/team/">打开同行会</a>
   </article>
 </section>
@@ -121,8 +121,20 @@
 </section>
 
 <section class="panel legacy-sync-panel">
-  <div class="panel-head simple"><div><span class="eyebrow">Version center</span><h2>更新与同步</h2><p>版本检查、更新和轻量状态同步都在同一程序中完成。</p></div><a class="primary-button" href="/team/">进入同行会</a></div>
-  <div class="button-row"><form method="post" action="{{ url_for('online_update_check') }}"><button class="soft-button">检查新版本</button></form>{% if latest_release and latest_release.version != local_version %}<form method="post" action="{{ url_for('online_update_latest') }}"><button class="primary-button">更新到 v{{ latest_release.version }}</button><small>自动校验更新包、备份个人数据库并重启；不会覆盖 user_data。</small></form>{% endif %}</div>
+  <div class="panel-head simple"><div><span class="eyebrow">Version center</span><h2>更新与同步</h2><p>版本检查、原地更新和轻量状态同步都在同一程序中完成。</p></div><a class="primary-button" href="/team/">进入同行会</a></div>
+  <div class="privacy-note"><b>当前数据目录</b><p><code>{{ data_root }}</code>。更新只会替换程序 EXE；数据库、论文、笔记、附件和个人配置不会被更新包覆盖。</p></div>
+  <div class="button-row">
+    <form method="post" action="{{ url_for('online_update_check') }}"><button class="soft-button">检查新版本</button></form>
+    {% if update_available %}
+      {% if can_self_update %}
+      <form method="post" action="{{ url_for('online_update_latest') }}"><button class="primary-button">更新到 v{{ latest_release.version }}</button><small>自动校验 SHA-256、备份本地数据库、保留旧 EXE 以便启动失败时回滚。</small></form>
+      {% else %}
+      <small>发现 v{{ latest_release.version }}。自动原地更新只在已打包的 Windows EXE 中启用；源码模式请使用发布包。</small>
+      {% endif %}
+    {% elif latest_release %}
+      <small>当前版本 {{ local_version }} 已是同行会记录的最新版本。</small>
+    {% endif %}
+  </div>
     <p>ResearchHub 服务十人以内的小团队；本地操作先完成，联机成功与否不会决定资料是否保存。</p>
   <div class="button-row">
     <form method="post" action="{{ url_for('online_connect') }}"><button class="primary-button">连接并合并状态</button></form>

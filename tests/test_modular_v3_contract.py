@@ -360,11 +360,15 @@ else:
         self.assertIn("preview.replaceChildren", javascript)
 
     def test_release_shell_is_single_program_and_clean_identity(self) -> None:
-        self.assertEqual((ROOT / "VERSION").read_text().strip(), "1.2.0")
+        version = (ROOT / "VERSION").read_text().strip()
         spec = (ROOT / "packaging" / "WendaoResearchV3.spec").read_text(
             encoding="utf-8"
         )
         build = (ROOT / "tools" / "build.py").read_text(encoding="utf-8")
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        installer = (ROOT / "packaging" / "windows" / "install_windows.ps1").read_text(
+            encoding="utf-8"
+        )
         workflow = (
             ROOT / ".github" / "workflows" / "build-v3-modular.yml"
         ).read_text(encoding="utf-8")
@@ -376,6 +380,9 @@ else:
         self.assertIn('"portable.flag", "使用说明.txt"', build)
         self.assertNotIn('"启动团队中心.cmd", portable_root', build)
         self.assertIn("Team-Update.zip", build)
+        self.assertIn('"pywebview>=5.4,<6"', pyproject)
+        self.assertIn('Join-Path $env:LOCALAPPDATA "Programs\\WendaoResearchV3"', installer)
+        self.assertIn('Join-Path ([Environment]::GetFolderPath("Desktop")) "问道科研.lnk"', installer)
         self.assertIn('applicationId "cn.wendao.research.v3.mobile"', android)
         self.assertIn("python tools/build.py --assemble --output out", workflow)
         self.assertIn('$PSNativeCommandUseErrorActionPreference = $true', workflow)
@@ -384,6 +391,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
+        self.assertEqual(version, "1.3.0")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",

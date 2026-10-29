@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from core.runtime_paths import DATA_ROOT
 from web.runtime import (
     APP_VERSION,
     Any,
@@ -91,6 +92,7 @@ def settings_get(request: Request):
                 "ui_home_motto", "让科研更好玩一点"
             ),
             portable_version=get_setting("portable_version", APP_VERSION),
+            data_root=str(DATA_ROOT),
         ),
     )
 

@@ -1,6 +1,6 @@
-# 问道科研 1.2.0
+# 问道科研 1.3.0
 
-个人科研工作流与轻量联机中心，使用 FastAPI、Jinja2 和 SQLite。源码模式支持 Windows、Linux、Android 客户端构建与团队中心部署。
+个人科研工作流与内置同行会，使用 FastAPI、Jinja2 和 SQLite。Windows 发布版是单文件桌面 EXE，同行会作为同一个程序内的模块运行，不另开浏览器或第二个程序。
 
 ## 快速开始
 
@@ -21,12 +21,25 @@ python run_local.py
 python run_hub.py
 ```
 
+## Windows 桌面版
+
+```powershell
+python tools/build.py --assemble --output out
+Install_Windows.cmd
+```
+
+构建会生成单文件 `WendaoResearchV3.exe`、便携 ZIP 和同行会更新 ZIP。`Install_Windows.cmd` 把程序安装到 `%LOCALAPPDATA%\Programs\WendaoResearchV3`，并创建桌面和开始菜单图标；程序本身仍可直接双击运行。
+
+管理员在同行会“版本中心”上传 `Team-Update.zip` 后，成员可在应用内检查并原地更新。更新前会校验 SHA-256、创建数据库快照并保留旧 EXE；启动失败会自动回滚。更新只替换程序文件，不会覆盖数据目录。
+
+首次启动会识别早期的 `wendao-v3-clean.db`，以 SQLite 一致性备份迁移到当前数据库文件名，并保留原文件。若 5000 已被旧版进程或其他服务占用，程序会通过本机实例身份校验自动选择 5001 起的空闲端口，不会连接到错误的旧数据。
+
 ## 功能边界
 
 - 今日学习、近期计划、温故知新、文献精读、知识库、领域管理与项目证据链构成默认科研闭环。
 - 交付必须有可检查证据；复盘只读取本人交付的关键文本。
 - 联机中心只保存账号、公开主页、公开交流与虚拟资产，不同步论文原文件、实验数据或私人附件。
-- 趣味层默认关闭；秘境试炼与复习调度保留。
+- 趣味层默认开启、可在设置中关闭；秘境试炼与复习调度保留。
 - 迁移执行器在升级数据库前创建快照，失败时整体回滚。
 
 ## 数据位置
@@ -35,6 +48,8 @@ python run_hub.py
 - Windows EXE：`%LOCALAPPDATA%\WendaoResearchV3`。
 - 便携模式：程序旁边的 `user_data/`。
 - 联机中心：独立的数据目录，不与个人端混用。
+
+数据目录与程序目录分离，是自动更新不丢数据的核心约束。安装、便携运行和原地更新都必须保持这条边界。
 
 不要把真实数据库、论文附件、管理员凭据、API Token 或 `.env` 提交到 Git。
 
@@ -45,7 +60,7 @@ python run_hub.py
 ```powershell
 $env:RESEARCH_OS_ACCESS_CODE = "设置一个高强度随机口令"
 $env:PORT = "8080"
-python run_local.py --no-browser
+python run_local.py --serve
 ```
 
 可选环境变量：
@@ -60,7 +75,7 @@ python run_local.py --no-browser
 - [开发入口](DEVELOPER.md)
 - [1.0 收敛决策](docs/CONVERGENCE_1.0.md)
 - [数据层约束](docs/DATA_LAYER.md)
-- [1.2.0 发布说明](docs/releases/v1.2.0.md)
+- [1.3.0 发布说明](docs/releases/v1.3.0.md)
 - [规模化同步接口](docs/SCALE_READY_SYNC_INTERFACE.md)
 
 仓库只保留当前源码、运行资源、测试和最新文档；旧发行包、历史版本说明、生成缓存及本地虚拟环境不在版本库内。

@@ -11,7 +11,7 @@ from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 
 from core.database import connect, get_setting, now_iso, set_setting
 from core.navigation import normalize_nav_labels, normalize_nav_layout
-from core.runtime_paths import STORAGE_ROOT
+from core.runtime_paths import DATA_ROOT, STORAGE_ROOT
 from services.online_sync import (
     best_effort_sync,
     cached_value,
@@ -31,8 +31,13 @@ from services.sync_backend import (
     validate_hub_url,
 )
 from services.workspace_profiles import normalize_toolset, normalize_workflow
-from core.version import APP_VERSION
-from services.team_update import exit_for_update, prepare_team_update, schedule_windows_replace
+from core.version import APP_VERSION, is_newer_version
+from services.team_update import (
+    can_self_update,
+    exit_for_update,
+    prepare_team_update,
+    schedule_windows_replace,
+)
 from services import hub_host
 
 EXPORT_DIR = STORAGE_ROOT / "sync_exports"
@@ -136,6 +141,11 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
         with connect() as conn:
             recent = [dict(row) for row in conn.execute("SELECT * FROM online_sync_queue ORDER BY id DESC LIMIT 12")]
         url_ok, url_policy = validate_hub_url(hub_url) if hub_url else (True, "尚未配置中心地址")
+        latest_release = cached_value("latest_release", None)
+        update_available = bool(
+            isinstance(latest_release, dict)
+            and is_newer_version(str(latest_release.get("version", "")), APP_VERSION)
+        )
         return templates.TemplateResponse(
             request=request,
             name="online.html",
@@ -158,8 +168,11 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 last_sync=cached_value("last_sync", {}),
                 last_error=cached_value("last_sync_error", {}),
                 hub_state=cached_value("hub_state", {}),
-                latest_release=cached_value("latest_release", None),
-                local_version=get_setting("portable_version", APP_VERSION),
+                latest_release=latest_release,
+                local_version=APP_VERSION,
+                update_available=update_available,
+                can_self_update=can_self_update(),
+                data_root=str(DATA_ROOT),
                 hub_host=hub_host.status(),
             ),
         )
@@ -193,7 +206,7 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
         )
         return {
             "application": "科研系统",
-            "local_version": get_setting("portable_version", APP_VERSION),
+            "local_version": APP_VERSION,
             "active_backend": backend.capabilities.as_dict(),
             "available_backends": all_backend_capabilities(),
             "data_policy": {
@@ -211,6 +224,9 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
         release = cached_value("latest_release", None)
         if not isinstance(release, dict):
             flash(request, "尚未发现可用的同行会更新包，请先点击“立即同步”。", "error")
+            return RedirectResponse("/online", status_code=303)
+        if not is_newer_version(str(release.get("version", "")), APP_VERSION):
+            flash(request, "当前版本不低于同行会记录的最新版本，无需更新。")
             return RedirectResponse("/online", status_code=303)
         try:
             package = prepare_team_update(
@@ -234,7 +250,7 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
             flash(request, f"检查更新失败：{result.get('message', '请检查同行会连接。')}", "error")
         else:
             release = cached_value("latest_release", None)
-            if isinstance(release, dict) and str(release.get("version", "")) and str(release.get("version")) != APP_VERSION:
+            if isinstance(release, dict) and is_newer_version(str(release.get("version", "")), APP_VERSION):
                 flash(request, f"发现 v{release['version']}，已验证为同行会更新包，可直接更新。")
             else:
                 flash(request, "当前已是同行会记录的最新版本。")

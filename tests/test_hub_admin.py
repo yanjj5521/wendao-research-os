@@ -66,6 +66,26 @@ member_csv = member.get("/admin/export/accounts.csv")
 assert member_csv.status_code == 403, member_csv.status_code
 assert member.get("/admin").status_code == 403
 
+# 2.5) 管理员停用/启用成员：派生列 active 不能被直接写入
+toggle_off = admin.post(
+    f"/admin/users/{member_id}/toggle",
+    data={"_csrf": csrf(admin, "/admin")},
+    follow_redirects=False,
+)
+assert toggle_off.status_code == 303
+with connect_hub() as conn:
+    row = conn.execute("SELECT status,active FROM accounts WHERE id=?", (member_id,)).fetchone()
+assert row["status"] == "disabled" and row["active"] == 0, dict(row)
+toggle_on = admin.post(
+    f"/admin/users/{member_id}/toggle",
+    data={"_csrf": csrf(admin, "/admin")},
+    follow_redirects=False,
+)
+assert toggle_on.status_code == 303
+with connect_hub() as conn:
+    row = conn.execute("SELECT status,active FROM accounts WHERE id=?", (member_id,)).fetchone()
+assert row["status"] == "active" and row["active"] == 1, dict(row)
+
 # 3) 成员头像：上传 → 我的联机主页可见 → 管理员重置 → 文件消失
 png = (b"\\x89PNG\\r\\n\\x1a\\n" + b"0" * 128)
 upload = member.post(

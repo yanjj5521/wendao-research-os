@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import html
 import io
 import json
@@ -202,6 +203,20 @@ DEFAULT_POEMS = [
 ] + EXTRA_POEMS
 
 app = FastAPI(title="科研系统", docs_url=None, redoc_url=None)
+
+
+@app.get("/api/app-identity", include_in_schema=False)
+def app_identity():
+    """Identify this local service without exposing the raw data path."""
+    data_identity = hashlib.sha256(
+        str(DATA_ROOT).casefold().encode("utf-8")
+    ).hexdigest()
+    return {
+        "application": "wendao-research",
+        "app_version": APP_VERSION,
+        "data_root_hash": data_identity,
+        "pid": os.getpid(),
+    }
 class SameOriginWriteGuard:
     """同源写保护：浏览器发起的跨站写请求一律 403。
 

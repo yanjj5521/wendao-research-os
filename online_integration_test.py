@@ -209,7 +209,7 @@ with closing(connect_hub()) as conn:
     assert balances(conn, int(user["id"]))["spirit_stone"] == 0
     theme = json.loads(
         conn.execute(
-            "SELECT theme_json FROM account_profiles WHERE user_id=?",
+            "SELECT theme_json FROM account_profiles WHERE account_id=?",
             (user["id"],),
         ).fetchone()["theme_json"]
     )

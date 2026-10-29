@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 from collections.abc import Iterable
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from core import migrations as migration_engine
@@ -18,9 +20,11 @@ from core.schema import (
     SCHEMA_VERSION,
 )
 from core.runtime_paths import INSTANCE_DIR
+from core.version import APP_VERSION
 
 
 DB_PATH = INSTANCE_DIR / DATABASE_FILENAME
+LEGACY_DATABASE_FILENAME = "wendao-v3-clean.db"
 
 # Bumping this marker re-applies the learning-first wording once.  Only values
 # that still equal the previous shipped default are touched, so a researcher who
@@ -50,6 +54,18 @@ LEGACY_CAREER_COPY = {
     "career_focus_new": "把每天的学习变成能带走的能力，而不是一次性看完的内容。",
     "career_boundary_new": "不要求把每个方向都学完；只保证当前这一层能复述、能用、能迁移。",
     "career_success_signal_new": "能不看资料讲清一个概念，并在新问题上用出来。",
+}
+
+# Early clean-v3 builds used the same personal database without a migration
+# ledger.  These signatures gate the one-time adoption path so a genuinely
+# foreign SQLite file still fails closed instead of being altered.
+LEGACY_PERSONAL_COLUMNS = {
+    "settings": {"key", "value"},
+    "player_profile": {"id", "display_name"},
+    "daily_missions": {"id", "title"},
+    "entries": {"id", "title"},
+    "activities": {"id", "action"},
+    "online_sync_queue": {"event_uuid", "event_type"},
 }
 
 
@@ -126,6 +142,99 @@ def refresh_positioning_copy(connection: sqlite3.Connection) -> None:
     _write_setting(connection, "ui_copy_version", POSITIONING_COPY_VERSION)
 
 
+def refresh_runtime_metadata(connection: sqlite3.Connection) -> None:
+    """Keep system-owned runtime metadata aligned with the running executable.
+
+    ``portable_version`` was historically seeded only once.  After an in-place
+    EXE update that left the database untouched, the UI and update checker kept
+    reporting the old version.  This field is system metadata, not a user
+    preference, so it is safe to refresh on every successful startup.
+    """
+    _write_setting(connection, "portable_version", APP_VERSION)
+
+
+def _adopt_legacy_wendao_database(connection: sqlite3.Connection, version: int) -> bool:
+    """Add a migration ledger only when the schema is recognizably Wendao.
+
+    The August 2026 clean-v3 build predated ``schema_migrations`` but already
+    contained the research tables.  Refusing it would strand a valid user data
+    directory on first launch after an update.  We require a narrow set of known
+    tables and columns, keep the existing user_version so registered migrations
+    still run, and leave all research rows untouched.
+    """
+    if version < 1 or version >= SCHEMA_VERSION:
+        return False
+    for table, required_columns in LEGACY_PERSONAL_COLUMNS.items():
+        columns = {
+            str(row["name"])
+            for row in connection.execute(f"PRAGMA table_info({table})").fetchall()
+        }
+        if not required_columns.issubset(columns):
+            return False
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version INTEGER PRIMARY KEY,
+            applied_at TEXT NOT NULL,
+            note TEXT NOT NULL DEFAULT ''
+        )
+        """
+    )
+    connection.execute(
+        "INSERT OR IGNORE INTO schema_migrations(version,applied_at,note) VALUES (?,?,?)",
+        (version, now_iso(), "adopted legacy Wendao schema"),
+    )
+    # Release the short adoption transaction before the migration runner takes
+    # its own consistent snapshot.
+    connection.commit()
+    return True
+
+
+def adopt_legacy_database_file() -> Path | None:
+    """Copy a recognized old clean-v3 database to the current filename.
+
+    Earlier clean-v3 builds used ``wendao-v3-clean.db``.  Simply changing the
+    filename in a later build must not strand the old database or silently
+    create a fresh one beside it.  The old file is left untouched as a fallback;
+    only a consistent SQLite backup is written to the current filename.
+    """
+    legacy_path = INSTANCE_DIR / LEGACY_DATABASE_FILENAME
+    if (DB_PATH.exists() and DB_PATH.stat().st_size > 0) or not legacy_path.exists():
+        return None
+    columns_ok = True
+    source = sqlite3.connect(legacy_path, timeout=10)
+    source.row_factory = sqlite3.Row
+    try:
+        for table, required_columns in LEGACY_PERSONAL_COLUMNS.items():
+            columns = {
+                str(row["name"])
+                for row in source.execute(f"PRAGMA table_info({table})").fetchall()
+            }
+            if not required_columns.issubset(columns):
+                columns_ok = False
+                break
+        if not columns_ok:
+            raise RuntimeError(
+                f"发现旧数据库 {legacy_path}，但其结构不是可识别的问道科研数据库。"
+                "为避免覆盖资料，程序不会创建新库；请先备份并联系维护者。"
+            )
+        DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temporary = DB_PATH.with_suffix(".adopting")
+        temporary.unlink(missing_ok=True)
+        destination = sqlite3.connect(temporary)
+        try:
+            source.backup(destination)
+            check = destination.execute("PRAGMA quick_check").fetchone()[0]
+            if check != "ok":
+                raise RuntimeError(f"旧数据库完整性检查失败：{check}")
+        finally:
+            destination.close()
+        os.replace(temporary, DB_PATH)
+        return legacy_path
+    finally:
+        source.close()
+
+
 def now_iso() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
@@ -155,6 +264,7 @@ def transaction() -> Iterable[sqlite3.Connection]:
 
 
 def init_db() -> None:
+    adopt_legacy_database_file()
     with transaction() as connection:
         table_count = int(
             connection.execute(
@@ -172,10 +282,12 @@ def init_db() -> None:
                 ).fetchone()
             )
             if not has_ledger:
-                raise RuntimeError(
-                    "instance 下存在不是本程序创建的数据库（缺少 schema_migrations）。"
-                    "请把它移走或改名，让程序重新建库；不要把别的库混进来。"
-                )
+                has_ledger = _adopt_legacy_wendao_database(connection, version)
+                if not has_ledger:
+                    raise RuntimeError(
+                        "instance 下存在不是本程序创建的数据库（缺少 schema_migrations）。"
+                        "请把它移走或改名，让程序重新建库；不要把别的库混进来。"
+                    )
             if version > SCHEMA_VERSION:
                 raise RuntimeError(
                     f"数据库结构版本 v{version} 比当前程序（v{SCHEMA_VERSION}）更新，"
@@ -199,6 +311,7 @@ def init_db() -> None:
                         f"解决前请勿继续使用本程序。原因：{exc}"
                     ) from exc
             refresh_positioning_copy(connection)
+            refresh_runtime_metadata(connection)
             migration_engine.ensure_base_record(connection, SCHEMA_VERSION)
             return
 
@@ -208,6 +321,7 @@ def init_db() -> None:
         except sqlite3.OperationalError:
             pass
         seed_clean_database(connection, now_iso)
+        refresh_runtime_metadata(connection)
         connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
         migration_engine.ensure_base_record(connection, SCHEMA_VERSION)
 

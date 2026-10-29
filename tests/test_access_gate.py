@@ -108,7 +108,7 @@ class AccessGateTests(unittest.TestCase):
 
     def test_stray_port_env_does_not_break_desktop_launch(self) -> None:
         # 机器上无关的 PORT 环境变量不能劫持本地桌面启动（2026-10-28 用户报障）。
-        result = _run_entrypoint({"PORT": "43210"})
+        result = _run_entrypoint({"PORT": "43210"}, "--self-check")
         self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
 
 

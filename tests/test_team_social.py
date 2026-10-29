@@ -46,6 +46,57 @@ with connect_hub() as conn:
 
 member = TestClient(app)
 member.post("/login", data={"username": "member", "password": "member-password-123", "_csrf": csrf(member, "/")})
+profile = member.post(
+    "/me/profile",
+    data={
+        "display_name": "成员甲",
+        "title": "验证者",
+        "bio": "让证据说话",
+        "skills": "测试",
+        "capabilities": "复现",
+        "goals": "完成实验",
+        "avatar_symbol": "证",
+        "public": "1",
+        "_csrf": csrf(member, "/me"),
+    },
+)
+assert profile.status_code == 200, profile.text
+theme = member.post(
+    "/me/theme",
+    data={"accent": "sage", "density": "compact", "scene": "paper", "_csrf": csrf(member, "/me")},
+)
+assert theme.status_code == 200, theme.text
+api_theme = member.post(
+    "/api/v1/personalization",
+    headers={"Authorization": f"Bearer {member_token}"},
+    json={"accent": "ink", "density": "focus", "scene": "night"},
+)
+assert api_theme.status_code == 200, api_theme.text
+api_profile = member.post(
+    "/api/v1/events",
+    headers={"Authorization": f"Bearer {member_token}"},
+    json={
+        "events": [
+            {
+                "event_uuid": "profile-update-1",
+                "event_type": "profile_updated",
+                "payload": {"display_name": "成员甲", "title": "同步验证者", "bio": "已同步"},
+            },
+            {
+                "event_uuid": "theme-update-1",
+                "event_type": "personalization_updated",
+                "payload": {"accent": "amber", "density": "comfortable", "scene": "warm"},
+            },
+        ]
+    },
+)
+assert api_profile.status_code == 200, api_profile.text
+with connect_hub() as conn:
+    stored_profile = conn.execute(
+        "SELECT title,theme_json FROM account_profiles WHERE account_id=?", (member_id,)
+    ).fetchone()
+assert stored_profile["title"] == "同步验证者"
+assert '"accent": "amber"' in stored_profile["theme_json"]
 unknown = member.post(
     "/api/v1/events",
     headers={"Authorization": f"Bearer {member_token}"},

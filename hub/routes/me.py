@@ -54,7 +54,7 @@ def profile_save(
     with hub_transaction() as conn:
         conn.execute("UPDATE accounts SET display_name=?,updated_at=? WHERE id=?", (display_name.strip()[:40] or user["username"], now_iso(), user["id"]))
         conn.execute(
-            """UPDATE account_profiles SET title=?,bio=?,skills=?,capabilities=?,goals=?,avatar_symbol=?,public=?,revision=revision+1,updated_at=? WHERE user_id=?""",
+            """UPDATE account_profiles SET title=?,bio=?,skills=?,capabilities=?,goals=?,avatar_symbol=?,public=?,revision=revision+1,updated_at=? WHERE account_id=?""",
             (title[:100],bio[:1000],skills[:2000],capabilities[:3000],goals[:1500],avatar_symbol[:2] or "道",int(public=="1"),now_iso(),user["id"]),
         )
         audit(conn, int(user["id"]), "profile_update", "网页更新个人主页", request)
@@ -74,7 +74,7 @@ def theme_save(request: Request, accent: str = Form("terracotta"), density: str 
             existing = {}
         existing.update({"accent":accent,"density":density,"scene":scene,"home_motto":home_motto,"home_poem":home_poem})
         theme = parse_theme(existing)
-        conn.execute("UPDATE account_profiles SET theme_json=?,revision=revision+1,updated_at=? WHERE user_id=?", (json.dumps(theme,ensure_ascii=False),now_iso(),user["id"]))
+        conn.execute("UPDATE account_profiles SET theme_json=?,revision=revision+1,updated_at=? WHERE account_id=?", (json.dumps(theme,ensure_ascii=False),now_iso(),user["id"]))
         audit(conn, int(user["id"]), "theme_update", json.dumps(theme,ensure_ascii=False), request)
     flash(request, "个性化配置已保存。")
     return RedirectResponse("/me", status_code=303)

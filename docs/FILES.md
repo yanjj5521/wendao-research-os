@@ -13,6 +13,8 @@
 | `hub_self_test.py` | 同行会中心自检脚本 |
 | `online_integration_test.py` | 联机链路集成测试脚本 |
 | `desktop_shell.py` / `desktop_pet.py` | 桌面窗口与桌宠（仅本地桌面形态使用） |
+| `Install_Windows.cmd` | 当前用户安装入口：复制 EXE，创建桌面与开始菜单图标，不移动数据 |
+| `packaging/windows/install_windows.ps1` | Windows 安装/图标创建实现 |
 
 ## core/（内核：数据、迁移、账号、配置）
 
@@ -80,7 +82,7 @@
 | `extractors.py` | PDF / Word / PPT 文本提取 |
 | `file_storage.py` / `profile_media.py` | 文件与头像/壁纸存储 |
 | `backups.py` | 自动备份任务 |
-| `sync_backend.py` / `team_update.py` | 同步事件、中心版本发布 |
+| `sync_backend.py` / `team_update.py` | 同步事件、版本下载、哈希校验、备份和可回滚原地更新 |
 | `hub_host.py` | 把同行会中心作为后台服务启动 |
 
 ## hub/（同行会中心：独立数据库、可独立部署）

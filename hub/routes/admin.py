@@ -127,7 +127,20 @@ def user_toggle(request:Request,user_id:int,csrf_value:str=Form(..., alias="_csr
         flash(request, "不能停用当前管理员。", "error")
         return RedirectResponse("/admin", status_code=303)
     with hub_transaction() as conn:
-        conn.execute("UPDATE accounts SET active=CASE active WHEN 1 THEN 0 ELSE 1 END,updated_at=? WHERE id=?",(now_iso(),user_id))
+        target = conn.execute(
+            "SELECT status,role FROM accounts WHERE id=?", (user_id,)
+        ).fetchone()
+        if not target:
+            flash(request, "成员不存在。", "error")
+            return RedirectResponse("/admin", status_code=303)
+        if target["role"] == "admin":
+            flash(request, "管理员账号不能通过此按钮停用。", "error")
+            return RedirectResponse("/admin", status_code=303)
+        next_status = "disabled" if target["status"] == "active" else "active"
+        conn.execute(
+            "UPDATE accounts SET status=?,updated_at=? WHERE id=?",
+            (next_status, now_iso(), user_id),
+        )
         audit(conn,int(admin["id"]),"user_toggle",str(user_id),request)
     return RedirectResponse("/admin",status_code=303)
 
@@ -261,8 +274,6 @@ def export_accounts(request: Request):
             FROM accounts a ORDER BY a.id
             """
         ).fetchall()
-        import sys as _sys
-        print("EXPORT_DEBUG rows:", len(rows), file=_sys.stderr)
         for row in rows:
             writer.writerow([row[key] for key in (
                 "username", "display_name", "email", "role", "status", "created_at",

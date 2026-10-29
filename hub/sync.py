@@ -125,7 +125,7 @@ def apply_event(conn, user_id: int, event: dict[str, Any]) -> dict[str, Any]:
         if display_name:
             conn.execute("UPDATE accounts SET display_name=?,updated_at=? WHERE id=?", (display_name, now_iso(), user_id))
         conn.execute(
-            """UPDATE account_profiles SET title=?,bio=?,skills=?,capabilities=?,goals=?,avatar_symbol=?,revision=revision+1,updated_at=? WHERE user_id=?""",
+            """UPDATE account_profiles SET title=?,bio=?,skills=?,capabilities=?,goals=?,avatar_symbol=?,revision=revision+1,updated_at=? WHERE account_id=?""",
             (
                 str(payload.get("title", ""))[:100], str(payload.get("bio", ""))[:1000],
                 str(payload.get("skills", ""))[:2000], str(payload.get("capabilities", ""))[:3000],
@@ -136,7 +136,7 @@ def apply_event(conn, user_id: int, event: dict[str, Any]) -> dict[str, Any]:
         result = {"message": "个人信息已同步", "rewards": {}}
     elif event_type == "personalization_updated":
         theme = parse_theme(payload)
-        conn.execute("UPDATE account_profiles SET theme_json=?,revision=revision+1,updated_at=? WHERE user_id=?", (json.dumps(theme, ensure_ascii=False), now_iso(), user_id))
+        conn.execute("UPDATE account_profiles SET theme_json=?,revision=revision+1,updated_at=? WHERE account_id=?", (json.dumps(theme, ensure_ascii=False), now_iso(), user_id))
         result = {"message": "个性化配置已同步", "rewards": {}}
     elif event_type == "welfare_claimed":
         try:

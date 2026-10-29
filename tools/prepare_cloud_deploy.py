@@ -51,7 +51,7 @@ NOTE = """# 云端部署目录
 
 启动命令（WorkBuddy Sites 会注入 PORT 环境变量）：
 
-    RESEARCH_OS_ACCESS_CODE=<口令> PORT=<端口> python run_local.py --no-browser
+    RESEARCH_OS_ACCESS_CODE=<口令> PORT=<端口> python run_local.py --serve
 
 - `RESEARCH_OS_ACCESS_CODE` 未设置时云端 `PORT` 模式会拒绝启动，避免 fail-open。
 - 生产环境同时设置 `RESEARCH_OS_HTTPS_ONLY=1`，让门禁 Cookie 强制使用 Secure。

@@ -103,7 +103,7 @@ async def api_personalization(request:Request):
     body = await _json_body(request)
     theme = parse_theme(body if isinstance(body, dict) else {})
     with hub_transaction() as conn:
-        conn.execute("UPDATE account_profiles SET theme_json=?,revision=revision+1,updated_at=? WHERE user_id=?",(json.dumps(theme,ensure_ascii=False),now_iso(),user["id"]))
+        conn.execute("UPDATE account_profiles SET theme_json=?,revision=revision+1,updated_at=? WHERE account_id=?",(json.dumps(theme,ensure_ascii=False),now_iso(),user["id"]))
     return {"ok":True,"theme":theme}
 
 
