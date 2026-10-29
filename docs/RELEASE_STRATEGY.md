@@ -117,6 +117,9 @@ WendaoResearch-vX.Y.Z-Admin/
 
 ### 开发者
 
+> CI 在每次推送时只做校验与构建（`compileall`、`ruff`、`pytest`、自检、冻结 EXE 冒烟），
+> **不创建 Release**；候选预发布只在手动触发 `workflow_dispatch` 时生成，避免污染发布页。
+
 ```powershell
 # 1. 确认干净、测试通过
 git status --short

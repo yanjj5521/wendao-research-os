@@ -216,6 +216,7 @@ jobs:
             throw "Team update package is not the required safe portable file set."
           }
       - name: Publish verified Windows candidate release
+        if: github.event_name == 'workflow_dispatch'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -269,6 +270,7 @@ jobs:
           unzip -t "$target_apk"
           test "$(find out -maxdepth 1 -type f | wc -l)" -eq 1
       - name: Publish verified Android candidate release
+        if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
