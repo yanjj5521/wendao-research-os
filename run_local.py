@@ -229,6 +229,9 @@ if __name__ == "__main__":
         ):
             server.should_exit = True
             raise SystemExit("问道科研本地服务启动失败，请查看数据目录中的 logs。")
+    from services.github_update import start_background_check
+
+    start_background_check()
     try:
         open_desktop_window(url)
     finally:

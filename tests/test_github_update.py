@@ -135,6 +135,63 @@ class GithubUpdateTests(unittest.TestCase):
                         with self.assertRaises(github_update.GithubUpdateError):
                             github_update.prepare_github_update(release)
 
+    def test_should_auto_check_when_never_checked(self) -> None:
+        with patch.object(github_update, "get_setting", return_value=""):
+            self.assertTrue(github_update.should_auto_check())
+
+    def test_should_auto_check_throttles_recent_checks(self) -> None:
+        from datetime import datetime, timedelta
+
+        recent = (datetime.now().astimezone() - timedelta(hours=1)).isoformat()
+        with patch.object(github_update, "get_setting", return_value=recent):
+            self.assertFalse(github_update.should_auto_check())
+
+    def test_should_auto_check_allows_after_interval(self) -> None:
+        from datetime import datetime, timedelta
+
+        old = (datetime.now().astimezone() - timedelta(hours=13)).isoformat()
+        with patch.object(github_update, "get_setting", return_value=old):
+            self.assertTrue(github_update.should_auto_check())
+
+    def test_refresh_badge_stores_newer_release(self) -> None:
+        stored: dict[str, str] = {}
+        release = {"version": "9.9.9", "newer": True}
+        with patch.object(github_update, "latest_release", return_value=release):
+            with patch.object(github_update, "set_setting", side_effect=lambda k, v: stored.__setitem__(k, v)):
+                github_update.refresh_badge()
+        self.assertIn("9.9.9", stored[github_update.BADGE_SETTING])
+        self.assertIn(github_update.AUTO_CHECK_STAMP, stored)
+
+    def test_refresh_badge_keeps_previous_badge_on_failure(self) -> None:
+        stored: dict[str, str] = {}
+        with patch.object(
+            github_update, "latest_release", side_effect=github_update.GithubUpdateError("offline")
+        ):
+            with patch.object(github_update, "set_setting", side_effect=lambda k, v: stored.__setitem__(k, v)):
+                github_update.refresh_badge()
+        self.assertNotIn(github_update.BADGE_SETTING, stored)
+        self.assertIn(github_update.AUTO_CHECK_STAMP, stored)
+
+    def test_background_check_respects_opt_out(self) -> None:
+        with patch.object(github_update, "auto_check_enabled", return_value=False):
+            self.assertFalse(github_update.start_background_check(delay=0))
+
+    def test_background_check_schedules_daemon_thread(self) -> None:
+        started: list[bool] = []
+
+        class _Thread:
+            def __init__(self, **kwargs: object) -> None:
+                self.daemon = kwargs.get("daemon")
+
+            def start(self) -> None:
+                started.append(bool(self.daemon))
+
+        with patch.object(github_update, "auto_check_enabled", return_value=True):
+            with patch.object(github_update, "should_auto_check", return_value=True):
+                with patch.object(github_update.threading, "Thread", _Thread):
+                    self.assertTrue(github_update.start_background_check(delay=0))
+        self.assertEqual(started, [True])
+
 
 if __name__ == "__main__":
     unittest.main()

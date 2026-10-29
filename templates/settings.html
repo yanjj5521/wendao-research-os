@@ -25,6 +25,10 @@
     <label class="check-label"><input type="checkbox" name="gamification" value="1" {% if gamification %}checked{% endif %}>显示炼丹炉、洞府、成就图鉴与挂机静修</label>
     <small class="form-help">关闭时只隐藏这些入口与灵石，修为和境界照常累计；秘境试炼属于练习，始终保留在“温故知新”里。</small>
     <div class="settings-divider"></div>
+    <div><span class="eyebrow">Updates</span><h2>版本更新</h2></div>
+    <label class="check-label"><input type="checkbox" name="github_auto_check" value="1" {% if github_auto_check %}checked{% endif %}>启动时静默检查新版本（只查版本号，不下载）</label>
+    <small class="form-help">只访问公开的 GitHub 发布页，不上传任何本地资料；发现新版本时在侧栏“同行会”旁显示红点，安装仍需你手动确认。</small>
+    <div class="settings-divider"></div>
     <div id="visual-personalization"><span class="eyebrow">Local Appearance</span><h2>本地外观与动态</h2></div>
     <p class="form-help">所有选择只保存在本机；可以丰富，也可以一键保持安静。系统会尊重操作系统的“减少动态效果”设置。</p>
     <div class="form-grid two">

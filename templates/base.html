@@ -47,6 +47,7 @@
             <b>{{ item.icon }}</b><span>{{ item.label }}</span>
             {% if item.key == 'trials' and nav_realm.tribulation_required %}<i class="tribulation-dot" title="已到突破关口">雷</i>{% endif %}
             {% if item.key == 'online' and hub_configured %}<i class="online-dot" title="已配置轻量同行会"></i>{% endif %}
+            {% if item.key == 'online' and nav_update_version %}<i class="update-dot" title="发现新版本 v{{ nav_update_version }}，可在更新与同步中安装"></i>{% endif %}
           </a>
           {% endif %}
         {% endfor %}

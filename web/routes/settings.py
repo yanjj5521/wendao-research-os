@@ -79,7 +79,8 @@ def settings_get(request: Request):
             nav_layout_editor=navigation_editor_layout(),
             nav_layout_json=json.dumps(navigation_layout(), ensure_ascii=False),
             review_popup=get_setting("review_popup", "1") == "1",
-            gamification=get_setting("gamification", "off") == "on",
+            gamification=get_setting("gamification", "on") == "on",
+            github_auto_check=get_setting("github_auto_check", "1") == "1",
             poem_pool_text="\n".join(configured_poem_pool()),
             current_ui_accent=get_setting("ui_accent", "terracotta"),
             current_ui_density=get_setting("ui_density", "comfortable"),
@@ -111,6 +112,7 @@ def settings_post(
     nav_layout: str = Form(""),
     review_popup: str = Form(""),
     gamification: str = Form(""),
+    github_auto_check: str = Form(""),
     poem_pool: str = Form(""),
     home_poem: str = Form(""),
     ui_accent: str = Form("terracotta"),
@@ -163,6 +165,7 @@ def settings_post(
     set_setting("review_popup", "1" if review_popup == "1" else "0")
     gamification_on = gamification == "1"
     set_setting("gamification", "on" if gamification_on else "off")
+    set_setting("github_auto_check", "1" if github_auto_check == "1" else "0")
     if gamification_on:
         # Turning the switch on must actually reveal something; the decorative
         # items stay off by default in a fresh 1.0 install.

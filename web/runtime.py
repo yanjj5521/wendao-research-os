@@ -60,7 +60,7 @@ from core.runtime_paths import (
     STORAGE_ROOT,
     USER_CONFIG_DIR,
 )
-from core.version import APP_VERSION
+from core.version import APP_VERSION, is_newer_version
 
 BASE_DIR = APP_ROOT
 UPLOAD_DIR = STORAGE_ROOT / "uploads"
@@ -343,6 +343,23 @@ def domains() -> list[str]:
         return json.loads(get_setting("domains", "[]"))
     except json.JSONDecodeError:
         return ["未分类"]
+
+
+def update_badge_version() -> str:
+    """Cached newer version for the sidebar dot; empty when nothing applies."""
+    raw = get_setting("github_update", "")
+    if not raw:
+        return ""
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return ""
+    if not isinstance(payload, dict):
+        return ""
+    version = str(payload.get("version", "")).strip()
+    if not version:
+        return ""
+    return version if is_newer_version(version, APP_VERSION) else ""
 
 
 def navigation_labels() -> dict[str, str]:
@@ -717,6 +734,7 @@ def context(request: Request, active_page: str, **extra: Any) -> dict[str, Any]:
         "day_phase": current_day_phase(),
         "nav_labels": _nav_labels,
         "nav_sections": navigation_sections(_nav_labels, _workspaces),
+        "nav_update_version": update_badge_version(),
         "nav_workspaces": _workspaces,
         "nav_avatar_symbol": (_profile["avatar_symbol"] if _profile else "道") or "道",
         "avatar_file": current_avatar_filename(),

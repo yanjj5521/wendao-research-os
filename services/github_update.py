@@ -14,11 +14,15 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
+import time
 import urllib.error
 import urllib.request
 import zipfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path, PurePosixPath
 
+from core.database import get_setting, now_iso, set_setting
 from core.runtime_paths import STORAGE_ROOT
 from core.version import APP_VERSION, is_newer_version
 from services.backups import backup_local_db
@@ -30,6 +34,11 @@ DOWNLOAD_PREFIX = f"https://github.com/{GITHUB_REPO}/releases/download/"
 USER_AGENT = "WendaoResearch-updater"
 API_TIMEOUT = 10
 DOWNLOAD_TIMEOUT = 300
+
+AUTO_CHECK_SETTING = "github_auto_check"
+AUTO_CHECK_STAMP = "github_auto_check_at"
+AUTO_CHECK_INTERVAL = timedelta(hours=12)
+BADGE_SETTING = "github_update"
 
 
 class GithubUpdateError(RuntimeError):
@@ -159,3 +168,66 @@ def prepare_github_update(release: dict[str, object]) -> Path:
     if backup is None:
         raise GithubUpdateError("更新前数据库快照未能创建，已停止更新。")
     return target
+
+
+def auto_check_enabled() -> bool:
+    """Silent startup checks are opt-out through 设置 → 更新与同步."""
+    return get_setting(AUTO_CHECK_SETTING, "1") == "1"
+
+
+def _last_check_at() -> datetime | None:
+    raw = get_setting(AUTO_CHECK_STAMP, "").strip()
+    if not raw:
+        return None
+    try:
+        value = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value
+
+
+def should_auto_check(now: datetime | None = None) -> bool:
+    last = _last_check_at()
+    if last is None:
+        return True
+    current = now or datetime.now().astimezone()
+    if current.tzinfo is None:
+        current = current.astimezone()
+    return current - last >= AUTO_CHECK_INTERVAL
+
+
+def refresh_badge() -> None:
+    """Query the release feed and update the sidebar badge.
+
+    A transient network failure keeps the previous badge instead of clearing it,
+    so an offline start does not hide an update the user already saw.
+    """
+    try:
+        release = latest_release()
+    except GithubUpdateError:
+        set_setting(AUTO_CHECK_STAMP, now_iso())
+        return
+    if release and release.get("newer"):
+        set_setting(BADGE_SETTING, json.dumps(release, ensure_ascii=False))
+    else:
+        set_setting(BADGE_SETTING, "")
+    set_setting(AUTO_CHECK_STAMP, now_iso())
+
+
+def start_background_check(delay: float = 8.0) -> bool:
+    """Start one throttled, non-blocking check. Returns whether it was scheduled."""
+    if not auto_check_enabled() or not should_auto_check():
+        return False
+
+    def worker() -> None:
+        time.sleep(delay)
+        try:
+            refresh_badge()
+        except Exception:
+            # Startup must never fail or nag because of an update check.
+            pass
+
+    threading.Thread(target=worker, name="github-update-check", daemon=True).start()
+    return True
