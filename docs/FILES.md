@@ -103,6 +103,8 @@
 | `bench_accounts.py` | 账号检索基准（10 万账号压测） |
 | `gen_copy_guide.py` | 重新生成界面文案速查 |
 | `prepare_cloud_deploy.py` | 构建云端部署目录 |
+| `build.py` | 构建单文件 EXE 与 Portable / Team-Update 包 |
+| `package_release.py` | 生成用户包与管理开发包（源码快照来自 `git archive`） |
 
 ## 其他目录
 
