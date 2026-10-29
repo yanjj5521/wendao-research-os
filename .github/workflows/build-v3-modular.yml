@@ -59,8 +59,8 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           $PSNativeCommandUseErrorActionPreference = $true
-          python -m compileall -q core features hub launchers services web tools tests run_local.py run_hub.py hub_db.py desktop_pet.py workspace_profiles.py
-          python -m ruff check core features hub launchers services web tools tests run_local.py run_hub.py hub_db.py desktop_pet.py workspace_profiles.py
+          python -m compileall -q core features hub launchers services web tools tests run_local.py run_hub.py desktop_pet.py desktop_shell.py self_test.py hub_self_test.py online_integration_test.py
+          python -m ruff check core features hub launchers services web tools tests run_local.py run_hub.py desktop_pet.py desktop_shell.py self_test.py hub_self_test.py online_integration_test.py
           python -m pytest -q tests
           python self_test.py
           python hub_self_test.py

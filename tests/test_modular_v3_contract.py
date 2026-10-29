@@ -456,6 +456,21 @@ else:
         ):
             self.assertFalse((ROOT / obsolete).exists())
 
+    def test_ci_checks_only_existing_entry_files(self) -> None:
+        workflow = (
+            ROOT / ".github" / "workflows" / "build-v3-modular.yml"
+        ).read_text(encoding="utf-8")
+        command = next(
+            line for line in workflow.splitlines() if "python -m ruff check" in line
+        )
+        targets = command.split("ruff check", 1)[1].split()
+        self.assertTrue(targets)
+        for target in targets:
+            self.assertTrue(
+                (ROOT / target).exists(),
+                f"CI references a path that no longer exists: {target}",
+            )
+
     def test_single_executable_entry_replaces_every_cmd(self) -> None:
         from launchers.cli import COMMANDS
 
