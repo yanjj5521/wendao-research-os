@@ -38,6 +38,7 @@ from services.team_update import (
     prepare_team_update,
     schedule_windows_replace,
 )
+from services import github_update
 from services import hub_host
 
 EXPORT_DIR = STORAGE_ROOT / "sync_exports"
@@ -172,6 +173,8 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 local_version=APP_VERSION,
                 update_available=update_available,
                 can_self_update=can_self_update(),
+                github_update=_json_setting("github_update", {}),
+                github_update_checked_at=get_setting("github_update_checked_at", ""),
                 data_root=str(DATA_ROOT),
                 hub_host=hub_host.status(),
             ),
@@ -254,6 +257,54 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 flash(request, f"发现 v{release['version']}，已验证为同行会更新包，可直接更新。")
             else:
                 flash(request, "当前已是同行会记录的最新版本。")
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/update/github-check", name="online_update_github_check")
+    def online_update_github_check(request: Request):
+        try:
+            release = github_update.latest_release()
+        except github_update.GithubUpdateError as exc:
+            set_setting("github_update", "")
+            flash(request, f"GitHub 检查失败：{exc}", "error")
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
+        set_setting("github_update_checked_at", now_iso())
+        if not release:
+            set_setting("github_update", "")
+            flash(request, "GitHub 上没有可用的正式发布版本。")
+        elif release.get("newer"):
+            set_setting("github_update", json.dumps(release, ensure_ascii=False))
+            flash(
+                request,
+                f"GitHub 发现 v{release['version']}（当前 {APP_VERSION}）。"
+                "更新只替换程序 EXE，不会改动你的资料。",
+            )
+        else:
+            set_setting("github_update", "")
+            flash(request, f"GitHub 上的 {release['version']} 不高于当前 {APP_VERSION}，无需更新。")
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/update/github-apply", name="online_update_github_apply")
+    def online_update_github_apply(request: Request):
+        if not can_self_update():
+            flash(
+                request,
+                "自动替换只在已打包的 Windows EXE 中启用；源码模式请下载发布包手动替换。",
+                "error",
+            )
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
+        try:
+            release = github_update.latest_release()
+            if not release or not release.get("newer"):
+                flash(request, "GitHub 上没有比当前更新的正式版本。")
+                return RedirectResponse(request.url_for("online_page"), status_code=303)
+            package = github_update.prepare_github_update(release)
+            schedule_windows_replace(package)
+        except (github_update.GithubUpdateError, OSError, ValueError, RuntimeError) as exc:
+            flash(request, f"GitHub 更新未启动：{exc}", "error")
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
+        set_setting("github_update", "")
+        flash(request, "已从 GitHub 校验更新包并备份数据库；程序将在数秒后重启到新版。")
+        exit_for_update()
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/settings", name="online_settings_save")

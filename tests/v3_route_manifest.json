@@ -436,6 +436,16 @@
   },
   {
     "method": "POST",
+    "path": "/online/update/github-apply",
+    "name": "online_update_github_apply"
+  },
+  {
+    "method": "POST",
+    "path": "/online/update/github-check",
+    "name": "online_update_github_check"
+  },
+  {
+    "method": "POST",
     "path": "/online/update/latest",
     "name": "online_update_latest"
   },

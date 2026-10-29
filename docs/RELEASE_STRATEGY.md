@@ -101,7 +101,11 @@ WendaoResearch-vX.Y.Z-Admin/
 
 ### 通道 B：GitHub Release（单机用户 / 无中心）
 
-- 应用内向 GitHub 查询 `releases/latest` 的能力尚未接入；当前由用户手动下载 User 包。
+- 应用内“更新与同步”提供 **检查 GitHub 新版本**：读取公开仓库的 `releases/latest`，
+  只接受同时带 `-User.zip` 与 `SHA256SUMS.txt` 的正式发布（预发布与旧格式会被忽略）。
+- 下载后先比对 `SHA256SUMS.txt` 中的摘要，再校验 ZIP 结构，随后复用与同行会完全相同的
+  “备份数据库 → 替换 EXE → 启动探活 → 失败回滚”流程。
+- 全程由用户点击触发，没有后台轮询；查询失败的提示不会影响本地使用。
 - 手动更新等价于“替换 EXE”：解压新包，覆盖旧 EXE，数据不动。
 - 校验方式：对比 Release 页 `SHA256SUMS.txt`。
 

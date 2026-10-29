@@ -135,6 +135,18 @@
       <small>当前版本 {{ local_version }} 已是同行会记录的最新版本。</small>
     {% endif %}
   </div>
+  <div class="privacy-note"><b>没有同行会？可直接查 GitHub</b><p>只读取公开仓库的正式发布，不上传任何本地资料；下载后仍校验 SHA-256、备份数据库并走同一套替换与回滚流程。</p></div>
+  <div class="button-row">
+    <form method="post" action="{{ url_for('online_update_github_check') }}"><button class="soft-button">检查 GitHub 新版本</button></form>
+    {% if github_update and github_update.version %}
+      {% if can_self_update %}
+      <form method="post" action="{{ url_for('online_update_github_apply') }}"><button class="primary-button">更新到 v{{ github_update.version }}（GitHub）</button></form>
+      {% else %}
+      <small>发现 v{{ github_update.version }}。自动替换只在已打包的 Windows EXE 中启用；源码模式请下载发布包手动替换。</small>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% if github_update_checked_at %}<small class="form-help">上次 GitHub 检查：{{ github_update_checked_at }}（当前 v{{ local_version }}）</small>{% endif %}
     <p>ResearchHub 服务十人以内的小团队；本地操作先完成，联机成功与否不会决定资料是否保存。</p>
   <div class="button-row">
     <form method="post" action="{{ url_for('online_connect') }}"><button class="primary-button">连接并合并状态</button></form>
