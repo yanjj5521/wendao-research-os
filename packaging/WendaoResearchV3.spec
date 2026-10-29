@@ -8,7 +8,7 @@ root = Path(SPECPATH).resolve().parent
 icon = root / "packaging" / "generated" / "research-system.ico"
 
 hiddenimports = []
-for package in ("core", "web", "features", "services", "launchers"):
+for package in ("core", "web", "features", "services", "launchers", "hub"):
     hiddenimports.extend(collect_submodules(package))
 hiddenimports.extend(collect_submodules("webview"))
 
@@ -22,6 +22,7 @@ a = Analysis(
         (str(root / "hub_templates"), "hub_templates"),
         (str(root / "hub_static"), "hub_static"),
         (str(root / "VERSION"), "."),
+        (str(root / "packaging" / "windows" / "install_windows.ps1"), "packaging/windows"),
     ],
     hiddenimports=hiddenimports,
     hookspath=[],

@@ -83,7 +83,7 @@
     <label><span>导航名称与分组标题（只修改等号右边）</span><textarea name="nav_labels" rows="24">{{ nav_labels_text }}</textarea></label>
     <section class="nav-layout-editor" id="navigation-layout" data-nav-layout-editor>
       <div class="nav-layout-head">
-        <div><span class="eyebrow">Navigation Layout</span><h3>导航顺序与显示</h3><p>拖动分组或条目调整顺序；眼睛开关决定侧栏中是否显示。手机上可使用上下箭头。</p></div>
+        <div><span class="eyebrow">Navigation Layout</span><h3>导航顺序与显示</h3><p>全部已实现功能默认显示。拖动分组或条目调整顺序；眼睛开关可随时收起低频功能，手机上可使用上下箭头。</p></div>
         <button class="ghost-button" type="button" data-nav-reset>恢复默认</button>
       </div>
       <input type="hidden" name="nav_layout" id="navLayoutInput" value="{{ nav_layout_json|e }}">
@@ -119,7 +119,7 @@
         </section>
         {% endfor %}
       </div>
-      <small class="nav-layout-status" id="navLayoutStatus">当前布局会随“保存设置”一起生效。即使隐藏“设置与备份”，侧栏底部仍保留“调整导航”安全入口。</small>
+      <small class="nav-layout-status" id="navLayoutStatus">当前布局会随“保存设置”一起生效。完整功能目录始终可在这里找回；即使隐藏“设置与备份”，侧栏底部仍保留“调整导航”安全入口。</small>
     </section>
     <small class="form-help">稳定键和网页路由不会随显示名称改变。外观动效、诗句、39阶境界、全部导航标签与布局，以及领域目标、流程、组件与首页固定都会进入 v8 个性化包；旧版个性化包仍可导入。</small>
     <button class="primary-button">保存设置</button>

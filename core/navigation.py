@@ -10,6 +10,9 @@ DEFAULT_NAV_LABELS = {
     "review": "温故知新",
     "plans": "近期计划",
     "projects": "项目",
+    "experiments": "实验台账",
+    "simulations": "模拟案例",
+    "datasets": "数据集",
     "career": "成长罗盘",
     "retreat": "闭关计时",
     "idle": "挂机静修",
@@ -41,10 +44,74 @@ DEFAULT_NAV_LABELS = {
     "backup": "完整备份",
 }
 
-# The sidebar is ordered by how often a PhD student actually needs it: what to
-# learn today, what has accumulated, where the learning domains are, how growth
-# is going, and only then the (optional) research project track.
+# Every implemented personal-workflow surface is present here. Visibility is a
+# user preference, not a permanent product decision: the full set is shown for
+# new installs and can be collapsed again from 设置 → 调整导航.
 NAV_GROUP_DEFAULT_ITEMS = {
+    "cultivation": (
+        "dashboard", "daily", "plans", "review", "workbench", "cultivation", "retreat", "idle",
+    ),
+    "research": ("literature_report", "projects", "experiments", "datasets", "simulations"),
+    "knowledge": (
+        "library", "search", "note_new", "upload", "folders", "discover",
+    ),
+    "workspaces": ("workspace_shortcuts", "workspaces"),
+    "growth": (
+        "career", "profile", "trials", "achievements", "alchemy", "world",
+    ),
+    "system": ("assistant", "online", "settings"),
+}
+
+NAV_ITEM_DEFAULT_VISIBLE = {
+    key: True
+    for key in (
+        "dashboard",
+        "daily",
+        "plans",
+        "review",
+        "workbench",
+        "cultivation",
+        "retreat",
+        "idle",
+        "literature_report",
+        "projects",
+        "experiments",
+        "datasets",
+        "simulations",
+        "library",
+        "search",
+        "note_new",
+        "upload",
+        "folders",
+        "discover",
+        "workspace_shortcuts",
+        "workspaces",
+        "career",
+        "profile",
+        "trials",
+        "achievements",
+        "alchemy",
+        "world",
+        "assistant",
+        "online",
+        "settings",
+    )
+}
+
+DEFAULT_NAV_LAYOUT = [
+    {
+        "key": group_key,
+        "items": [
+            {"key": item_key, "visible": NAV_ITEM_DEFAULT_VISIBLE.get(item_key, False)}
+            for item_key in item_keys
+        ],
+    }
+    for group_key, item_keys in NAV_GROUP_DEFAULT_ITEMS.items()
+]
+
+# The 1.0-1.3 focused layout. It is kept only to distinguish an untouched
+# factory layout from an intentional user customization during upgrades.
+_PREVIOUS_NAV_GROUP_ITEMS = {
     "cultivation": (
         "dashboard", "daily", "plans", "review", "workbench", "cultivation", "retreat", "idle",
     ),
@@ -58,28 +125,26 @@ NAV_GROUP_DEFAULT_ITEMS = {
     ),
     "system": ("assistant", "online", "settings"),
 }
-
-# Learning comes first: today's study, the weekly plan, review and the reading
-# tools are visible by default.  Research projects stay reachable but deliberately
-# opt-in, so they read as a side record instead of the main axis of the product.
-NAV_ITEM_DEFAULT_VISIBLE = {
-    "dashboard": True,
-    "daily": True,
-    "plans": True,
-    "review": True,
-    "literature_report": True,
-    "projects": True,
-    "library": True,
-    "workspaces": True,
-    "settings": True,
+_PREVIOUS_NAV_VISIBLE = {
+    "dashboard",
+    "daily",
+    "plans",
+    "review",
+    "literature_report",
+    "projects",
+    "library",
+    "workspaces",
+    "settings",
 }
-
-DEFAULT_NAV_LAYOUT = [
+PREVIOUS_DEFAULT_NAV_LAYOUT = [
     {
         "key": group_key,
-        "items": [{"key": item_key, "visible": NAV_ITEM_DEFAULT_VISIBLE.get(item_key, False)} for item_key in item_keys],
+        "items": [
+            {"key": item_key, "visible": item_key in _PREVIOUS_NAV_VISIBLE}
+            for item_key in item_keys
+        ],
     }
-    for group_key, item_keys in NAV_GROUP_DEFAULT_ITEMS.items()
+    for group_key, item_keys in _PREVIOUS_NAV_GROUP_ITEMS.items()
 ]
 
 
@@ -99,6 +164,38 @@ def _nav_visible(value: Any) -> bool:
     if value is None:
         return False
     return bool(value)
+
+
+def _nav_layout_signature(value: Any) -> tuple[tuple[str, tuple[tuple[str, bool], ...]], ...] | None:
+    if not isinstance(value, list):
+        return None
+    signature: list[tuple[str, tuple[tuple[str, bool], ...]]] = []
+    for raw_group in value:
+        if not isinstance(raw_group, dict):
+            return None
+        group_key = str(raw_group.get("key", "")).strip()
+        raw_items = raw_group.get("items", [])
+        if not group_key or not isinstance(raw_items, list):
+            return None
+        items: list[tuple[str, bool]] = []
+        for raw_item in raw_items:
+            if isinstance(raw_item, str):
+                item_key = raw_item.strip()
+                visible = True
+            elif isinstance(raw_item, dict):
+                item_key = str(raw_item.get("key", "")).strip()
+                visible = _nav_visible(raw_item.get("visible", True))
+            else:
+                return None
+            if item_key:
+                items.append((item_key, visible))
+        signature.append((group_key, tuple(items)))
+    return tuple(signature)
+
+
+def is_previous_default_nav_layout(value: Any) -> bool:
+    """Return True only for the untouched focused factory layout."""
+    return _nav_layout_signature(value) == _nav_layout_signature(PREVIOUS_DEFAULT_NAV_LAYOUT)
 
 
 def normalize_nav_layout(value: Any) -> list[dict[str, Any]]:
@@ -142,7 +239,8 @@ def normalize_nav_layout(value: Any) -> list[dict[str, Any]]:
                 {
                     "key": group_key,
                     "items": [
-                        {"key": item_key, "visible": NAV_ITEM_DEFAULT_VISIBLE.get(item_key, False)} for item_key in item_keys
+                        {"key": item_key, "visible": NAV_ITEM_DEFAULT_VISIBLE.get(item_key, False)}
+                        for item_key in item_keys
                     ],
                 }
             )

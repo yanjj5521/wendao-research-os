@@ -97,6 +97,12 @@ def safe_print(message: str) -> None:
 
 
 if __name__ == "__main__":
+    from launchers.cli import dispatch_if_command
+
+    command_exit = dispatch_if_command(sys.argv[1:])
+    if command_exit is not None:
+        raise SystemExit(command_exit)
+
     args = preconfigure_runtime()
     from core.runtime_paths import DATA_ROOT, ensure_data_layout
 

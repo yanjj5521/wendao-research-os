@@ -4,31 +4,37 @@
 
 ## 快速开始
 
-需要 Python 3.11 以上版本。首次启动会自动创建 `.venv` 并安装依赖。
+Windows 只有一个入口：`WendaoResearchV3.exe`。安装、启动、自检都是它的子命令。
 
 ```text
-Start_Research_OS.cmd   个人端
-Start_Shared_Hub.cmd    轻量联机中心
-Developer_Run_Tests.cmd 开发自检
-start_linux.sh          Linux 个人端
+WendaoResearchV3.exe              个人端桌面窗口（默认）
+WendaoResearchV3.exe --mode team  同行会中心
+WendaoResearchV3.exe install      安装到 %LOCALAPPDATA% 并创建快捷方式
+WendaoResearchV3.exe shortcut     只重建桌面/开始菜单快捷方式
+WendaoResearchV3.exe diagnose     自检并输出诊断信息
+WendaoResearchV3.exe version      版本与当前数据目录
 ```
 
-也可以在安装依赖后直接运行：
+源码模式需要 Python 3.11 以上版本，首次启动会自动创建 `.venv` 并安装依赖；子命令与 EXE 一致。
 
 ```powershell
 python -m pip install -r requirements.txt
-python run_local.py
-python run_hub.py
+python run_local.py                 # 个人端
+python run_local.py --mode team     # 同行会中心
+python run_local.py diagnose        # 自检
+python run_local.py install         # 安装已构建的 EXE
 ```
+
+Linux 使用 `start_linux.sh`。
 
 ## Windows 桌面版
 
 ```powershell
 python tools/build.py --assemble --output out
-Install_Windows.cmd
+out\WendaoResearch-v1.3.0-Windows-x64.exe install
 ```
 
-构建会生成单文件 `WendaoResearchV3.exe`、便携 ZIP 和同行会更新 ZIP。`Install_Windows.cmd` 把程序安装到 `%LOCALAPPDATA%\Programs\WendaoResearchV3`，并创建桌面和开始菜单图标；程序本身仍可直接双击运行。
+构建会生成单文件 `WendaoResearchV3.exe`、便携 ZIP 和同行会更新 ZIP。`install` 把程序安装到 `%LOCALAPPDATA%\Programs\WendaoResearchV3`，并创建桌面和开始菜单图标；程序本身仍可直接双击运行。
 
 管理员在同行会“版本中心”上传 `Team-Update.zip` 后，成员可在应用内检查并原地更新。更新前会校验 SHA-256、创建数据库快照并保留旧 EXE；启动失败会自动回滚。更新只替换程序文件，不会覆盖数据目录。
 
@@ -83,7 +89,8 @@ python run_local.py --serve
 ## 校验
 
 ```powershell
-Developer_Run_Tests.cmd
+python run_local.py diagnose
+.\.venv\Scripts\python.exe -m pytest -q
 ruff check .
 ```
 

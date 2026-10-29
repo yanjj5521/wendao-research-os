@@ -12,7 +12,12 @@ from typing import Any
 from core import migrations as migration_engine
 from core.bootstrap import seed_clean_database
 from core.migrations import PERSONAL_MIGRATIONS
-from core.navigation import DEFAULT_NAV_LABELS, normalize_nav_layout
+from core.navigation import (
+    DEFAULT_NAV_LABELS,
+    DEFAULT_NAV_LAYOUT,
+    is_previous_default_nav_layout,
+    normalize_nav_layout,
+)
 from core.schema import (
     BASE_SCHEMA_SQL,
     DATABASE_FILENAME,
@@ -26,10 +31,10 @@ from core.version import APP_VERSION
 DB_PATH = INSTANCE_DIR / DATABASE_FILENAME
 LEGACY_DATABASE_FILENAME = "wendao-v3-clean.db"
 
-# Bumping this marker re-applies the learning-first wording once.  Only values
-# that still equal the previous shipped default are touched, so a researcher who
-# renamed the navigation or rewrote the compass keeps their own words.
-POSITIONING_COPY_VERSION = "learning-first-1"
+# Bumping this marker re-applies shipped wording and upgrades only an untouched
+# focused navigation layout. Custom visibility and ordering remain intact;
+# newly added feature entries are appended visibly.
+POSITIONING_COPY_VERSION = "all-features-1"
 
 LEGACY_NAV_LABELS = {
     "daily": "每日任务",
@@ -121,10 +126,15 @@ def refresh_positioning_copy(connection: sqlite3.Connection) -> None:
             parsed = json.loads(raw_layout)
         except json.JSONDecodeError:
             parsed = []
+        upgraded = (
+            DEFAULT_NAV_LAYOUT
+            if is_previous_default_nav_layout(parsed)
+            else normalize_nav_layout(parsed)
+        )
         _write_setting(
             connection,
             "nav_layout",
-            json.dumps(normalize_nav_layout(parsed), ensure_ascii=False),
+            json.dumps(upgraded, ensure_ascii=False),
         )
 
     motto = _read_setting(connection, "ui_home_motto")

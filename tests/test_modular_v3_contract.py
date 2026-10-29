@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import ast
+import copy
 import json
 import logging
 import os
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -76,7 +78,7 @@ class ModularV3ContractTests(unittest.TestCase):
         self.assertIn("我的壁纸", idle)
         self.assertNotIn("打开 ChatGPT", dashboard + workbench)
 
-    def test_default_surface_is_the_1_0_learning_loop(self) -> None:
+    def test_default_surface_exposes_every_implemented_feature(self) -> None:
         from core.navigation import (
             DEFAULT_NAV_LAYOUT,
             NAV_GROUP_DEFAULT_ITEMS,
@@ -90,18 +92,59 @@ class ModularV3ContractTests(unittest.TestCase):
             for item in group["items"]
             if item["visible"]
         }
-        # 1.0 converges to nine entries: the daily loop plus its containers.
-        self.assertEqual(len(visible), 9)
-        for key in ("dashboard", "daily", "plans", "review", "literature_report", "projects", "library", "workspaces", "settings"):
-            self.assertIn(key, visible, f"{key} must be on the default surface")
-        # Decorative surfaces never take part in the default workflow.
-        self.assertFalse(visible & GAMIFICATION_ITEMS)
-        for key in GAMIFICATION_ITEMS:
-            self.assertFalse(NAV_ITEM_DEFAULT_VISIBLE.get(key, False))
-        # Project and reading share one group: they are the loop's two pillars.
-        self.assertEqual(NAV_GROUP_DEFAULT_ITEMS["research"], ("literature_report", "projects"))
-        # Practice stays reachable because review links to it.
+        self.assertEqual(visible, set(NAV_ITEM_DEFAULT_VISIBLE))
+        self.assertTrue(all(NAV_ITEM_DEFAULT_VISIBLE.values()))
+        for key in (
+            "dashboard", "daily", "plans", "review", "literature_report",
+            "projects", "experiments", "datasets", "simulations", "library",
+            "workspaces", "settings", "workbench", "career", "retreat", "idle",
+            "trials", "achievements", "alchemy", "world", "assistant", "online",
+        ):
+            self.assertIn(key, visible, f"{key} must be on the full default surface")
+        self.assertTrue(GAMIFICATION_ITEMS.issubset(visible))
+        self.assertEqual(
+            NAV_GROUP_DEFAULT_ITEMS["research"],
+            ("literature_report", "projects", "experiments", "datasets", "simulations"),
+        )
         self.assertIn("trials", NAV_GROUP_DEFAULT_ITEMS["growth"])
+
+    def test_navigation_upgrade_exposes_all_but_preserves_custom_choices(self) -> None:
+        from core.database import refresh_positioning_copy
+        from core.navigation import DEFAULT_NAV_LAYOUT, PREVIOUS_DEFAULT_NAV_LAYOUT
+
+        def refresh(layout: list[dict]) -> list[dict]:
+            connection = sqlite3.connect(":memory:")
+            connection.row_factory = sqlite3.Row
+            try:
+                connection.execute(
+                    "CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+                )
+                connection.execute(
+                    "INSERT INTO settings(key,value) VALUES (?,?)",
+                    ("nav_layout", json.dumps(layout)),
+                )
+                refresh_positioning_copy(connection)
+                raw = connection.execute(
+                    "SELECT value FROM settings WHERE key='nav_layout'"
+                ).fetchone()[0]
+                return json.loads(raw)
+            finally:
+                connection.close()
+
+        self.assertEqual(refresh(copy.deepcopy(PREVIOUS_DEFAULT_NAV_LAYOUT)), DEFAULT_NAV_LAYOUT)
+
+        custom = copy.deepcopy(PREVIOUS_DEFAULT_NAV_LAYOUT)
+        custom[0]["items"][0]["visible"] = False
+        upgraded_custom = refresh(custom)
+        custom_items = {
+            item["key"]: item["visible"]
+            for group in upgraded_custom
+            for item in group["items"]
+        }
+        self.assertFalse(custom_items["dashboard"])
+        self.assertTrue(custom_items["experiments"])
+        self.assertTrue(custom_items["simulations"])
+        self.assertTrue(custom_items["datasets"])
 
     def test_learning_domain_modules_exist(self) -> None:
         from services.workspace_profiles import DEFAULT_WORKSPACES, WORKSPACE_MODULES, profile_for
@@ -403,8 +446,31 @@ else:
             "packaging/ResearchOS.spec",
             "packaging/ResearchHub.spec",
             "packaging/windows/迁移旧版数据.cmd",
+            "Start_Research_OS.cmd",
+            "Start_Shared_Hub.cmd",
+            "Install_Windows.cmd",
+            "Create_Desktop_Shortcut.cmd",
+            "Developer_Run_Tests.cmd",
+            "Reset_Local_Environment.cmd",
+            "packaging/windows/启动团队中心.cmd",
         ):
             self.assertFalse((ROOT / obsolete).exists())
+
+    def test_single_executable_entry_replaces_every_cmd(self) -> None:
+        from launchers.cli import COMMANDS
+
+        cli = (ROOT / "launchers" / "cli.py").read_text(encoding="utf-8")
+        entry = (ROOT / "run_local.py").read_text(encoding="utf-8")
+        spec = (ROOT / "packaging" / "WendaoResearchV3.spec").read_text(encoding="utf-8")
+        self.assertEqual(
+            set(COMMANDS),
+            {"install", "shortcut", "diagnose", "version", "reset-env", "help"},
+        )
+        for command in ("install", "shortcut", "diagnose", "version", "reset-env"):
+            self.assertIn(f'"{command}"', cli, f"{command} must be a subcommand")
+        self.assertIn("dispatch_if_command", entry)
+        self.assertIn("install_windows.ps1", spec)
+        self.assertIn('"packaging/windows"', spec)
 
 
 if __name__ == "__main__":

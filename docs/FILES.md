@@ -7,14 +7,14 @@
 
 | 文件 | 是什么 |
 | --- | --- |
-| `run_local.py` | **个人端主入口**：本地启动、打包自检、云端模式 |
-| `run_hub.py` | 同行会中心入口与自检 |
+| `run_local.py` | **唯一入口**：个人端启动、云端模式、安装/自检/版本等子命令分发 |
+| `run_hub.py` | 同行会中心的独立服务入口（开发调试用；正式版用 `--mode team`） |
 | `self_test.py` | 个人端自检脚本（基础 / `--integration` 全链路） |
 | `hub_self_test.py` | 同行会中心自检脚本 |
 | `online_integration_test.py` | 联机链路集成测试脚本 |
 | `desktop_shell.py` / `desktop_pet.py` | 桌面窗口与桌宠（仅本地桌面形态使用） |
-| `Install_Windows.cmd` | 当前用户安装入口：复制 EXE，创建桌面与开始菜单图标，不移动数据 |
-| `packaging/windows/install_windows.ps1` | Windows 安装/图标创建实现 |
+| `launchers/cli.py` | 统一子命令：`install` / `shortcut` / `diagnose` / `version` / `reset-env` |
+| `packaging/windows/install_windows.ps1` | 安装与快捷方式实现（由 `launchers/cli.py` 调用，并随 EXE 内置） |
 
 ## core/（内核：数据、迁移、账号、配置）
 

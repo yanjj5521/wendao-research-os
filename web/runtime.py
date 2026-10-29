@@ -117,14 +117,14 @@ NAV_GROUP_LABEL_KEYS = {
     "system": "group_system",
 }
 
-# Purely decorative surfaces.  1.0 keeps them behind an explicit switch so the
-# default product is a workflow, not a game board.  Practice (trials) is NOT in
-# this set: it drives spaced review and stays reachable from 温故知新.
+# Decorative surfaces can be hidden by the user, but they are part of the full
+# feature catalog by default. Practice (trials) is not in this set because it
+# drives spaced review and remains independent of the gamification switch.
 GAMIFICATION_ITEMS = {"achievements", "alchemy", "world", "idle"}
 
 
 def gamification_enabled() -> bool:
-    return get_setting("gamification", "off") == "on"
+    return get_setting("gamification", "on") == "on"
 
 
 NAV_ITEM_DEFINITIONS = {
@@ -134,6 +134,9 @@ NAV_ITEM_DEFINITIONS = {
     "review": {"endpoint": "review_page", "icon": "温"},
     "plans": {"endpoint": "plans_page", "icon": "近"},
     "projects": {"endpoint": "projects_page", "icon": "题"},
+    "experiments": {"endpoint": "experiments_page", "icon": "验"},
+    "simulations": {"endpoint": "simulations_page", "icon": "算"},
+    "datasets": {"endpoint": "datasets_page", "icon": "数"},
     "retreat": {"endpoint": "retreat_page", "icon": "静"},
     "idle": {"endpoint": "idle_page", "icon": "守"},
     "literature_report": {"endpoint": "literature_report_page", "icon": "阅"},
