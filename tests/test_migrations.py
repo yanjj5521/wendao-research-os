@@ -48,7 +48,7 @@ with connect() as connection:
 # 2) 注册一条 v3 迁移：加列 + 回填
 dbm.PERSONAL_MIGRATIONS.append(
     Migration(
-        version=5,
+        version=6,
         note="为 activities 增加 note 字段并回填",
         statements=(
             "ALTER TABLE activities ADD COLUMN note TEXT NOT NULL DEFAULT '';",
@@ -56,20 +56,20 @@ dbm.PERSONAL_MIGRATIONS.append(
         ),
     )
 )
-dbm.SCHEMA_VERSION = 5
+dbm.SCHEMA_VERSION = 6
 
 # 3) 升级
 init_db()
 with connect() as connection:
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
     columns = {row[1] for row in connection.execute("PRAGMA table_info(activities)")}
     assert "note" in columns
     row = connection.execute("SELECT * FROM activities WHERE action='mtest'").fetchone()
     assert row["note"] == "migrated", "已有数据必须被回填"
     versions = [r[0] for r in connection.execute("SELECT version FROM schema_migrations ORDER BY version")]
-    assert versions == [4, 5], versions
+    assert versions == [5, 6], versions
 
-snapshots = list((DB_PATH.parent / "migration_snapshots").glob("wendao_to_v5_*.db"))
+snapshots = list((DB_PATH.parent / "migration_snapshots").glob("wendao_to_v6_*.db"))
 assert len(snapshots) == 1, snapshots
 assert snapshots[0].stat().st_size > 0
 print("upgrade-ok")
@@ -89,7 +89,7 @@ with connect() as connection:
 
 dbm.PERSONAL_MIGRATIONS.append(
     Migration(
-        version=5,
+        version=6,
         note="第二条会失败",
         statements=(
             "ALTER TABLE activities ADD COLUMN note TEXT NOT NULL DEFAULT '';",
@@ -97,7 +97,7 @@ dbm.PERSONAL_MIGRATIONS.append(
         ),
     )
 )
-dbm.SCHEMA_VERSION = 5
+dbm.SCHEMA_VERSION = 6
 try:
     init_db()
 except RuntimeError:
@@ -106,14 +106,14 @@ else:
     raise SystemExit("坏迁移必须抛 RuntimeError")
 
 with connect() as connection:
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 4, "失败后版本号必须留在原位"
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5, "失败后版本号必须留在原位"
     columns = {row[1] for row in connection.execute("PRAGMA table_info(activities)")}
     assert "note" not in columns, "失败迁移的结构变更必须回滚"
     assert connection.execute("SELECT COUNT(*) n FROM activities").fetchone()["n"] == 1
     ledger = [r[0] for r in connection.execute("SELECT version FROM schema_migrations ORDER BY version")]
-    assert ledger == [4], ledger
+    assert ledger == [5], ledger
 
-snapshots = list((DB_PATH.parent / "migration_snapshots").glob("wendao_to_v5_*.db"))
+snapshots = list((DB_PATH.parent / "migration_snapshots").glob("wendao_to_v6_*.db"))
 assert len(snapshots) == 1, "失败也要留下迁移前快照"
 print("rollback-ok")
 """

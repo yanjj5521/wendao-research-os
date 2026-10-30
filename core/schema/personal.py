@@ -10,7 +10,7 @@ from __future__ import annotations
 - 新增 `schema_migrations`，为后续版本升级留出可追溯的入口。
 """
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 DATABASE_FILENAME = "wendao.db"
 
 BASE_SCHEMA_SQL = r"""
@@ -153,6 +153,8 @@ CREATE TABLE experiments (
                 experiment_date TEXT,
                 title TEXT NOT NULL DEFAULT '',
                 status TEXT NOT NULL DEFAULT 'planned',
+                conditions TEXT NOT NULL DEFAULT '',
+                measurements TEXT NOT NULL DEFAULT '',
                 eg_content REAL,
                 eg_unit TEXT NOT NULL DEFAULT 'wt%',
                 water_cement_ratio REAL,

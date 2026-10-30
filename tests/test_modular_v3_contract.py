@@ -232,7 +232,7 @@ class ModularV3ContractTests(unittest.TestCase):
         for marker in forbidden:
             self.assertNotIn(marker, combined)
         self.assertIn('DATABASE_FILENAME = "wendao.db"', combined)
-        self.assertIn("SCHEMA_VERSION = 4", combined)
+        self.assertIn("SCHEMA_VERSION = 5", combined)
         self.assertIn('PRODUCT_DIR_NAME = "WendaoResearchV3"', combined)
 
     def test_hub_entrypoint_self_check_uses_current_account_schema(self) -> None:
@@ -260,7 +260,7 @@ from core.database import DB_PATH, connect, init_db
 init_db()
 init_db()
 with connect() as connection:
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
     assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 1
     assert connection.execute("SELECT COUNT(*) FROM research_tracks").fetchone()[0] == 0
     assert connection.execute("SELECT COUNT(*) FROM workspaces").fetchone()[0] == 7
@@ -434,7 +434,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.3.3")
+        self.assertEqual(version, "1.3.4")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",
@@ -470,6 +470,34 @@ else:
                 (ROOT / target).exists(),
                 f"CI references a path that no longer exists: {target}",
             )
+
+    def test_navigation_keeps_scroll_position(self) -> None:
+        script = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
+        for marker in (
+            "scrollRestoration",
+            "NAV_SCROLL_KEY",
+            "SIDEBAR_SCROLL_KEY",
+            "window.scrollTo(0, Math.min",
+        ):
+            self.assertIn(marker, script)
+
+    def test_experiment_ledger_is_generic(self) -> None:
+        template = (ROOT / "templates" / "experiments.html").read_text(encoding="utf-8")
+        route = (ROOT / "web" / "routes" / "research_tools.py").read_text(encoding="utf-8")
+        profiles = (ROOT / "services" / "workspace_profiles.py").read_text(encoding="utf-8")
+        for marker in ('name="conditions"', 'name="measurements"', "实验条件", "观测指标"):
+            self.assertIn(marker, template)
+        for legacy in (
+            "eg_content",
+            "water_cement_ratio",
+            "compaction_pressure",
+            "specific_capacitance",
+            "conductivity",
+        ):
+            self.assertNotIn(legacy, template)
+            self.assertNotIn(legacy, route)
+        self.assertIn('"通用DIY实验"', profiles)
+        self.assertNotIn('"EG 实验"', profiles)
 
     def test_single_executable_entry_replaces_every_cmd(self) -> None:
         from launchers.cli import COMMANDS

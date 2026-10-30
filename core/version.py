@@ -11,7 +11,7 @@ def _read_version() -> str:
         value = version_file.read_text(encoding="utf-8").strip()
         if value:
             return value
-    return "1.3.3"
+    return "1.3.4"
 
 
 APP_VERSION = _read_version()

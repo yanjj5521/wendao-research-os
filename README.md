@@ -1,4 +1,4 @@
-# 问道科研 1.3.3
+# 问道科研 1.3.4
 
 个人科研工作流与内置同行会，使用 FastAPI、Jinja2 和 SQLite。Windows 发布版是单文件桌面 EXE，同行会作为同一个程序内的模块运行，不另开浏览器或第二个程序。
 
@@ -31,7 +31,7 @@ Linux 使用 `start_linux.sh`。
 
 ```powershell
 python tools/build.py --assemble --output out
-out\WendaoResearch-v1.3.3-Windows-x64.exe install
+out\WendaoResearch-v1.3.4-Windows-x64.exe install
 ```
 
 构建会生成单文件 `WendaoResearchV3.exe`、便携 ZIP 和同行会更新 ZIP。`install` 把程序安装到 `%LOCALAPPDATA%\Programs\WendaoResearchV3`，并创建桌面和开始菜单图标；程序本身仍可直接双击运行。
@@ -82,7 +82,7 @@ python run_local.py --serve
 - [1.0 收敛决策](docs/CONVERGENCE_1.0.md)
 - [数据层约束](docs/DATA_LAYER.md)
 - [发布策略与更新机制](docs/RELEASE_STRATEGY.md)
-- [1.3.3 发布说明](docs/releases/v1.3.3.md)
+- [1.3.4 发布说明](docs/releases/v1.3.4.md)
 - [规模化同步接口](docs/SCALE_READY_SYNC_INTERFACE.md)
 
 仓库只保留当前源码、运行资源、测试和最新文档；旧发行包、历史版本说明、生成缓存及本地虚拟环境不在版本库内。

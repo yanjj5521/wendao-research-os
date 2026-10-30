@@ -1,4 +1,48 @@
 (() => {
+  // Menu clicks used to land at the top of the next page, which loses the
+  // reader's place in long ledgers.  Remember the position on an internal
+  // navigation and restore it once, only for the page that was actually
+  // requested.  Links keep working exactly as before.
+  if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  const NAV_SCROLL_KEY = 'wendao:nav-scroll';
+  const SIDEBAR_SCROLL_KEY = 'wendao:side-nav-scroll';
+  const sideNav = document.querySelector('.side-nav');
+  const savedSidebar = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+  if (sideNav && savedSidebar !== null) {
+    sideNav.scrollTop = Number(savedSidebar) || 0;
+  }
+
+  document.addEventListener('click', event => {
+    const link = event.target.closest('a[href]');
+    if (!link) return;
+    if (event.defaultPrevented || event.button !== 0) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    if (link.target && link.target !== '_self') return;
+    if (link.hasAttribute('download')) return;
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin) return;
+    if (url.hash && url.pathname === location.pathname && url.search === location.search) return;
+    sessionStorage.setItem(
+      NAV_SCROLL_KEY,
+      JSON.stringify({ path: url.pathname + url.search, y: window.scrollY, at: Date.now() }),
+    );
+    if (sideNav) sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(sideNav.scrollTop));
+  });
+
+  try {
+    const saved = JSON.parse(sessionStorage.getItem(NAV_SCROLL_KEY) || 'null');
+    sessionStorage.removeItem(NAV_SCROLL_KEY);
+    if (saved && saved.path === location.pathname + location.search && Date.now() - saved.at < 15000) {
+      const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const previous = document.documentElement.style.scrollBehavior;
+      document.documentElement.style.scrollBehavior = 'auto';
+      window.scrollTo(0, Math.min(Number(saved.y) || 0, limit));
+      document.documentElement.style.scrollBehavior = previous;
+    }
+  } catch (error) {
+    // A blocked sessionStorage must never stop the rest of the UI.
+  }
+
   const menu = document.getElementById('menuButton');
   const scrim = document.getElementById('sidebarScrim');
   const closeMenu = () => document.body.classList.remove('sidebar-open');

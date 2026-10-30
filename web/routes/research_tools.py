@@ -95,9 +95,8 @@ def experiments_page(request: Request, edit: int = 0, status: str = "", workspac
 def experiment_save(
     request: Request,
     experiment_id: int = Form(0), sample_id: str = Form(...), experiment_date: str = Form(""), title: str = Form(""), status: str = Form("planned"),
-    eg_content: str = Form(""), water_cement_ratio: str = Form(""), compaction_pressure: str = Form(""), thickness_cm: str = Form(""), area_cm2: str = Form(""),
-    electrolyte: str = Form(""), voltage_min: str = Form(""), voltage_max: str = Form(""), scan_rate: str = Form(""), specific_capacitance: str = Form(""),
-    conductivity: str = Form(""), compressive_strength: str = Form(""), hypothesis: str = Form(""), observations: str = Form(""), conclusion: str = Form(""),
+    conditions: str = Form(""), measurements: str = Form(""),
+    hypothesis: str = Form(""), observations: str = Form(""), conclusion: str = Form(""),
     next_step: str = Form(""), tags: str = Form(""), attachment_entry_id: str = Form(""), workspace_id: str = Form(""),
 ):
     sample_id = sample_id.strip()
@@ -106,20 +105,21 @@ def experiment_save(
         return redirect("experiments_page", request)
     workspace_value = int(workspace_id) if workspace_id.isdigit() else None
     values = (
-        sample_id, experiment_date or None, title.strip(), status, _number(eg_content), _number(water_cement_ratio), _number(compaction_pressure), _number(thickness_cm), _number(area_cm2),
-        electrolyte.strip(), _number(voltage_min), _number(voltage_max), _number(scan_rate), _number(specific_capacitance), _number(conductivity), _number(compressive_strength),
-        hypothesis.strip(), observations.strip(), conclusion.strip(), next_step.strip(), tags.strip(), int(attachment_entry_id) if attachment_entry_id.isdigit() else None,
+        sample_id, experiment_date or None, title.strip(), status,
+        conditions.strip(), measurements.strip(),
+        hypothesis.strip(), observations.strip(), conclusion.strip(), next_step.strip(), tags.strip(),
+        int(attachment_entry_id) if attachment_entry_id.isdigit() else None,
         workspace_value, now_iso(),
     )
     with connect() as conn:
         try:
             if experiment_id:
-                conn.execute("""UPDATE experiments SET sample_id=?,experiment_date=?,title=?,status=?,eg_content=?,water_cement_ratio=?,compaction_pressure=?,thickness_cm=?,area_cm2=?,electrolyte=?,voltage_min=?,voltage_max=?,scan_rate=?,specific_capacitance=?,conductivity=?,compressive_strength=?,hypothesis=?,observations=?,conclusion=?,next_step=?,tags=?,attachment_entry_id=?,workspace_id=?,updated_at=? WHERE id=?""", values + (experiment_id,))
+                conn.execute("""UPDATE experiments SET sample_id=?,experiment_date=?,title=?,status=?,conditions=?,measurements=?,hypothesis=?,observations=?,conclusion=?,next_step=?,tags=?,attachment_entry_id=?,workspace_id=?,updated_at=? WHERE id=?""", values + (experiment_id,))
                 action, xp = "experiment_update", 4
             else:
-                conn.execute("""INSERT INTO experiments(sample_id,experiment_date,title,status,eg_content,water_cement_ratio,compaction_pressure,thickness_cm,area_cm2,electrolyte,voltage_min,voltage_max,scan_rate,specific_capacitance,conductivity,compressive_strength,hypothesis,observations,conclusion,next_step,tags,attachment_entry_id,workspace_id,updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", values + (now_iso(),))
+                conn.execute("""INSERT INTO experiments(sample_id,experiment_date,title,status,conditions,measurements,hypothesis,observations,conclusion,next_step,tags,attachment_entry_id,workspace_id,updated_at,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", values + (now_iso(),))
                 action, xp = "experiment_create", 28
-            conn.execute("INSERT INTO activities(action,xp,detail,created_at) VALUES (?,?,?,?)", (action, xp, f"EG实验：{sample_id}", now_iso()))
+            conn.execute("INSERT INTO activities(action,xp,detail,created_at) VALUES (?,?,?,?)", (action, xp, f"通用DIY实验：{sample_id}", now_iso()))
             conn.commit()
         except sqlite3.IntegrityError:
             conn.rollback()
@@ -141,22 +141,33 @@ def experiment_delete(request: Request, experiment_id: int):
     return RedirectResponse(f"{url}?workspace={row['workspace_id']}" if row and row["workspace_id"] else url, status_code=303)
 
 
+EXPERIMENT_EXPORT_FIELDS = (
+    "id", "sample_id", "experiment_date", "title", "status",
+    "conditions", "measurements", "hypothesis", "observations",
+    "conclusion", "next_step", "tags", "workspace_id", "created_at", "updated_at",
+)
+
+
 @app.get("/experiments/export.csv", name="experiments_export")
 def experiments_export(workspace: int = 0):
+    columns = ", ".join(EXPERIMENT_EXPORT_FIELDS)
     with connect() as conn:
         if workspace:
             query = conn.execute(
-                "SELECT * FROM experiments WHERE workspace_id=? ORDER BY experiment_date,id", (workspace,)
+                f"SELECT {columns} FROM experiments WHERE workspace_id=? ORDER BY experiment_date,id",
+                (workspace,),
             )
         else:
-            query = conn.execute("SELECT * FROM experiments ORDER BY experiment_date,id")
+            query = conn.execute(
+                f"SELECT {columns} FROM experiments ORDER BY experiment_date,id"
+            )
         rows = [dict(row) for row in query]
     output = io.StringIO()
     if rows:
-        writer = csv.DictWriter(output, fieldnames=list(rows[0].keys()))
+        writer = csv.DictWriter(output, fieldnames=list(EXPERIMENT_EXPORT_FIELDS))
         writer.writeheader()
         writer.writerows(rows)
-    path = BACKUP_DIR / f"eg_experiments_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    path = BACKUP_DIR / f"experiments_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
     path.write_text("\ufeff" + output.getvalue(), encoding="utf-8")
     return FileResponse(path, media_type="text/csv", filename=path.name)
 

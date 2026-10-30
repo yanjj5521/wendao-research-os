@@ -66,6 +66,98 @@ class Migration:
 
 # 已发布的迁移按版本号升序追加。基线版本由 BASE_SCHEMA_SQL 直接建出，
 # 因此列表从"比当前 SCHEMA_VERSION 更早的下一个版本"开始写。
+def _upgrade_experiment_ledger(conn: sqlite3.Connection) -> None:
+    """Add the generic columns only when absent, then migrate wording/data.
+
+    A legacy database may already carry a ``conditions`` column from an older
+    experiment table, so the migration must be idempotent instead of trusting a
+    bare ALTER statement.
+    """
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(experiments)")}
+    if "conditions" not in columns:
+        conn.execute(
+            "ALTER TABLE experiments ADD COLUMN conditions TEXT NOT NULL DEFAULT '';"
+        )
+    if "measurements" not in columns:
+        conn.execute(
+            "ALTER TABLE experiments ADD COLUMN measurements TEXT NOT NULL DEFAULT '';"
+        )
+    _genericize_experiment_ledger(conn)
+
+
+def _genericize_experiment_ledger(conn: sqlite3.Connection) -> None:
+    """Move factory EG wording and legacy values into the generic ledger.
+
+    Only the exact factory workspace name is renamed, so a researcher who chose
+    their own wording keeps it.  Legacy numeric columns stay untouched; their
+    values are copied once into the free-text condition/measurement fields so
+    old records remain readable after the UI stops showing domain fields.
+    """
+    conn.execute(
+        "UPDATE workspaces SET name='通用DIY实验', "
+        "description='任意方向的实验批次台账：条件、指标与结论自由填写' "
+        "WHERE name IN ('EG 实验', 'EG实验')"
+    )
+    rows = conn.execute(
+        "SELECT id, conditions, measurements, eg_content, water_cement_ratio, "
+        "compaction_pressure, thickness_cm, area_cm2, electrolyte, voltage_min, "
+        "voltage_max, scan_rate, specific_capacitance, conductivity, "
+        "compressive_strength FROM experiments"
+    ).fetchall()
+    for row in rows:
+        (
+            row_id,
+            conditions,
+            measurements,
+            eg_content,
+            water_cement_ratio,
+            compaction_pressure,
+            thickness_cm,
+            area_cm2,
+            electrolyte,
+            voltage_min,
+            voltage_max,
+            scan_rate,
+            specific_capacitance,
+            conductivity,
+            compressive_strength,
+        ) = tuple(row)
+        if conditions or measurements:
+            continue
+        condition_parts: list[str] = []
+        if eg_content is not None:
+            condition_parts.append(f"EG 含量 {eg_content} wt%")
+        if water_cement_ratio is not None:
+            condition_parts.append(f"水胶比 {water_cement_ratio}")
+        if compaction_pressure is not None:
+            condition_parts.append(f"压实 {compaction_pressure} MPa")
+        if thickness_cm is not None:
+            condition_parts.append(f"厚度 {thickness_cm} cm")
+        if area_cm2 is not None:
+            condition_parts.append(f"面积 {area_cm2} cm²")
+        if electrolyte:
+            condition_parts.append(f"电解液 {electrolyte}")
+        measurement_parts: list[str] = []
+        if voltage_min is not None or voltage_max is not None:
+            measurement_parts.append(f"电压窗 {voltage_min or 0}–{voltage_max or 0} V")
+        if scan_rate is not None:
+            measurement_parts.append(f"扫速 {scan_rate} mV/s")
+        if specific_capacitance is not None:
+            measurement_parts.append(f"比电容 {specific_capacitance} F/g")
+        if conductivity is not None:
+            measurement_parts.append(f"电导率 {conductivity} S/m")
+        if compressive_strength is not None:
+            measurement_parts.append(f"抗压强度 {compressive_strength} MPa")
+        conn.execute(
+            "UPDATE experiments SET conditions=?, measurements=? WHERE id=?",
+            (
+                ("旧版字段：" + "；".join(condition_parts)) if condition_parts else "",
+                ("旧版字段：" + "；".join(measurement_parts)) if measurement_parts else "",
+                row_id,
+            ),
+        )
+
+
 PERSONAL_MIGRATIONS: list[Migration] = [
     # 1.2.0：趣味层默认打开。仅把仍是出厂默认 "off" 的库改为 "on"；
     # 用户若曾显式选择过其他值（理论上只有 on/off），保持尊重。
@@ -90,6 +182,11 @@ PERSONAL_MIGRATIONS: list[Migration] = [
             );
             """,
         ),
+    ),
+    Migration(
+        version=5,
+        note="实验台账通用化：条件/指标字段与默认领域改名",
+        runner=_upgrade_experiment_ledger,
     ),
 ]
 HUB_MIGRATIONS: list[Migration] = []

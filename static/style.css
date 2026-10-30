@@ -139,6 +139,7 @@ body.density-ultra .page-wrap{padding-top:12px;max-width:1560px}body.density-ult
 body.density-focus .page-wrap{max-width:1080px}body.density-focus .panel{padding:32px}body.density-focus .side-nav .nav-group:not(:first-child){opacity:.78}body.density-focus .page-head h1{font-size:40px}
 .online-dot{width:7px;height:7px;border-radius:50%;background:var(--sage);margin-left:auto;box-shadow:0 0 0 3px var(--sage-soft)}
 .update-dot{width:8px;height:8px;border-radius:50%;background:#c2453d;margin-left:auto;flex:0 0 auto;box-shadow:0 0 0 3px rgba(194,69,61,.16)}
+.ledger-text{max-width:230px;white-space:pre-line;overflow-wrap:anywhere;font-size:11px;line-height:1.5;color:#6f5b4e}
 .sidebar-update{display:block;margin:10px 12px 0;padding:8px 10px;border-radius:10px;background:rgba(194,69,61,.10);border:1px solid rgba(194,69,61,.18);color:#a33a33;font-size:12px;line-height:1.4;text-decoration:none}
 .sidebar-update:hover{background:rgba(194,69,61,.16)}
 .online-title{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px}.online-title h1{margin:.2em 0}.online-title p{margin:.25em 0;color:var(--muted)}

@@ -50,7 +50,6 @@
   <div class="gate-copy">
     <span class="gate-date">{{ today_label }} · 今日一诗 · 每日更换</span>
     <blockquote>{{ ui_home_poem }}</blockquote>
-    <p class="gate-motto">科研系统的目标不是让我完成更多任务，而是让我不必每天重新决定如何学习，并在持续的探索中，逐渐具备独立提出问题、获取证据和解决问题的能力。</p>
     <p>{{ realm.name }}{% if streak %} · 连续学习 {{ streak }} 天{% endif %} · 今天学一点，也算数。</p>
     <div class="gate-actions">
       <a class="primary-button gate-primary" href="{{ url_for('daily_page') }}">开始今日学习 <span>→</span></a>

@@ -245,7 +245,7 @@ def _run_integration(client: TestClient, failures: list[str]) -> None:
     plan_text = """# 自检近期计划
 > 用真实交付驱动复盘
 ## 修炼任务
-- [进阶] 建立证据边界判断能力 | 验收：完成一张命题—反例—验证表 | 工作区：EG 实验
+- [进阶] 建立证据边界判断能力 | 验收：完成一张命题—反例—验证表 | 工作区：通用DIY实验
 ## Day 1 | 证据链
 - [重点] 检查一条科研判断 | 20min | 999XP | 交付：一张证据卡 | 关联修炼：建立证据边界判断能力
 ## Day 2 | 修正
@@ -751,7 +751,7 @@ def _run_integration(client: TestClient, failures: list[str]) -> None:
             client.post(
                 "/experiments/save",
                 data={
-                    "sample_id": "SELFTEST-EG-01",
+                    "sample_id": "SELFTEST-DIY-01",
                     "title": "工作区实验",
                     "workspace_id": str(experiment_workspace["id"]),
                 },
@@ -785,7 +785,7 @@ def _run_integration(client: TestClient, failures: list[str]) -> None:
         )
     with connect() as conn:
         if experiment_workspace and conn.execute(
-            "SELECT COUNT(*) n FROM experiments WHERE sample_id='SELFTEST-EG-01' AND workspace_id=?",
+            "SELECT COUNT(*) n FROM experiments WHERE sample_id='SELFTEST-DIY-01' AND workspace_id=?",
             (experiment_workspace["id"],),
         ).fetchone()["n"] != 1:
             failures.append("experiment record was not scoped to its personal workspace")
