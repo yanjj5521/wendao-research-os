@@ -7,18 +7,17 @@ the previous EXE is kept briefly so a failed launch can be rolled back.
 """
 from __future__ import annotations
 
-import hashlib
 import os
 import shutil
 import subprocess
 import sys
 import threading
-import urllib.request
 import zipfile
 from pathlib import Path
 
 from core.runtime_paths import STORAGE_ROOT
 from services.backups import backup_local_db
+from services.download import fetch_resumable
 
 MAX_UPDATE_BYTES = 500 * 1024 * 1024
 APP_EXE_NAME = "WendaoResearchV3.exe"
@@ -51,31 +50,18 @@ def prepare_team_update(*, hub_url: str, token: str, release_id: int, sha256: st
     update_dir = STORAGE_ROOT / "team_updates"
     update_dir.mkdir(parents=True, exist_ok=True)
     target = update_dir / f"team_update_{release_id}.zip"
-    partial = update_dir / f"team_update_{release_id}.zip.part"
-    partial.unlink(missing_ok=True)
-    request = urllib.request.Request(
+    fetch_resumable(
         f"{hub_url.rstrip('/')}/api/v1/releases/{release_id}/download",
+        target,
+        expected_sha256=sha256,
+        max_bytes=MAX_UPDATE_BYTES,
+        timeout=300,
         headers={"Authorization": f"Bearer {token}"},
     )
-    digest = hashlib.sha256()
-    total = 0
     try:
-        with urllib.request.urlopen(request, timeout=300) as response, partial.open("wb") as out:
-            content_length = str(response.headers.get("Content-Length", "")).strip()
-            if content_length.isdigit() and int(content_length) > MAX_UPDATE_BYTES:
-                raise ValueError("更新包超过 500 MB，已拒绝下载。")
-            while chunk := response.read(1024 * 1024):
-                total += len(chunk)
-                if total > MAX_UPDATE_BYTES:
-                    raise ValueError("更新包超过 500 MB，已停止下载。")
-                digest.update(chunk)
-                out.write(chunk)
-        if digest.hexdigest().lower() != sha256.lower():
-            raise ValueError("更新包 SHA-256 不匹配，已拒绝安装。")
-        _safe_package(partial)
-        os.replace(partial, target)
+        _safe_package(target)
     except Exception:
-        partial.unlink(missing_ok=True)
+        target.unlink(missing_ok=True)
         raise
     backup = backup_local_db(force=True)
     if backup is None:

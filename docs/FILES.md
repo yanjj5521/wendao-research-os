@@ -26,6 +26,7 @@
 | `accounts.py` | 同行会账号仓储（注册、登录、Token、分页、检索） |
 | `runtime_paths.py` | 数据目录与资源路径推算 |
 | `github_update.py` | 无同行会时从 GitHub Release 检查、校验并下载更新 |
+| `download.py` | 两条更新通道共用的断点续传下载器（Range + SHA-256 + 上限） |
 | `navigation.py` | 侧栏导航标签与布局 |
 | `bootstrap.py` | 新库种子数据 |
 | `packaged_self_check.py` | 打包自检的具体检查项 |

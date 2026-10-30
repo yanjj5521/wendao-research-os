@@ -25,18 +25,6 @@ class _Response:
         return False
 
 
-class _Stream(_Response):
-    def __init__(self, data: bytes) -> None:
-        super().__init__(data)
-        self._sent = False
-
-    def read(self, size: int = -1) -> bytes:
-        if self._sent:
-            return b""
-        self._sent = True
-        return self._data
-
-
 def _payload(**overrides: object) -> dict[str, object]:
     data: dict[str, object] = {
         "tag_name": "v9.9.9",
@@ -121,19 +109,26 @@ class GithubUpdateTests(unittest.TestCase):
             with self.assertRaises(github_update.GithubUpdateError):
                 github_update._validate_user_package(path)
 
-    def test_prepare_rejects_hash_mismatch(self) -> None:
+    def test_prepare_rejects_invalid_package_and_removes_it(self) -> None:
         release = {
             "version": "9.9.9",
             "package_url": github_update.DOWNLOAD_PREFIX + "v9.9.9/User.zip",
             "checksum_url": github_update.DOWNLOAD_PREFIX + "v9.9.9/SHA256SUMS.txt",
             "package_name": "User.zip",
         }
+
+        def fake_fetch(url: str, destination: Path, **kwargs: object) -> Path:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(b"not a zip")
+            return destination
+
         with tempfile.TemporaryDirectory() as tmp:
             with patch.object(github_update, "STORAGE_ROOT", Path(tmp)):
                 with patch.object(github_update, "_checksums", return_value={"User.zip": "b" * 64}):
-                    with patch.object(github_update, "_open", return_value=_Stream(b"payload")):
+                    with patch.object(github_update, "fetch_resumable", side_effect=fake_fetch):
                         with self.assertRaises(github_update.GithubUpdateError):
                             github_update.prepare_github_update(release)
+            self.assertFalse((Path(tmp) / "team_updates" / "github_update_9.9.9.zip").exists())
 
     def test_should_auto_check_when_never_checked(self) -> None:
         with patch.object(github_update, "get_setting", return_value=""):

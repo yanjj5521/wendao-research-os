@@ -55,6 +55,10 @@
       {% endfor %}
     </nav>
 
+    {% if nav_update_version %}
+    <a class="sidebar-update" href="{{ url_for('online_page') }}">发现新版本 v{{ nav_update_version }} · 去更新</a>
+    {% endif %}
+
     <div class="sidebar-footer">
       <a href="{{ url_for('knowledge_export') }}">{{ nav_labels.knowledge_export }}</a>
       <small><a href="{{ url_for('backup') }}">{{ nav_labels.backup }}</a> · <a href="{{ url_for('settings_page') }}#navigation-layout">调整导航</a></small>

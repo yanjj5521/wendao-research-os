@@ -11,9 +11,7 @@ Nothing here runs in the background: a user must press the button, so the
 
 from __future__ import annotations
 
-import hashlib
 import json
-import os
 import threading
 import time
 import urllib.error
@@ -26,6 +24,7 @@ from core.database import get_setting, now_iso, set_setting
 from core.runtime_paths import STORAGE_ROOT
 from core.version import APP_VERSION, is_newer_version
 from services.backups import backup_local_db
+from services.download import DownloadError, fetch_resumable
 from services.team_update import APP_EXE_NAME, MAX_UPDATE_BYTES
 
 GITHUB_REPO = "yanjj5521/wendao-research-os"
@@ -117,7 +116,11 @@ def _checksums(url: str) -> dict[str, str]:
 
 def _validate_user_package(path: Path) -> None:
     """Accept the user package shape; unlike Team-Update it has no portable.flag."""
-    with zipfile.ZipFile(path) as archive:
+    try:
+        archive_context = zipfile.ZipFile(path)
+    except zipfile.BadZipFile as exc:
+        raise GithubUpdateError("下载的包不是有效的 ZIP，已拒绝安装。") from exc
+    with archive_context as archive:
         infos = [info for info in archive.infolist() if not info.is_dir()]
         names = [PurePosixPath(info.filename) for info in infos]
         if not names or any(name.is_absolute() or ".." in name.parts for name in names):
@@ -143,26 +146,21 @@ def prepare_github_update(release: dict[str, object]) -> Path:
         raise GithubUpdateError("发布包缺少 SHA-256 记录，已拒绝安装。")
 
     update_dir = STORAGE_ROOT / "team_updates"
-    update_dir.mkdir(parents=True, exist_ok=True)
     target = update_dir / f"github_update_{version}.zip"
-    partial = update_dir / f"github_update_{version}.zip.part"
-    partial.unlink(missing_ok=True)
-    digest = hashlib.sha256()
-    total = 0
     try:
-        with _open(package_url, timeout=DOWNLOAD_TIMEOUT) as response, partial.open("wb") as out:
-            while chunk := response.read(1024 * 1024):
-                total += len(chunk)
-                if total > MAX_UPDATE_BYTES:
-                    raise GithubUpdateError("更新包超过 500 MB，已停止下载。")
-                digest.update(chunk)
-                out.write(chunk)
-        if digest.hexdigest().lower() != expected_hash:
-            raise GithubUpdateError("更新包 SHA-256 与发布记录不匹配，已拒绝安装。")
-        _validate_user_package(partial)
-        os.replace(partial, target)
+        fetch_resumable(
+            package_url,
+            target,
+            expected_sha256=expected_hash,
+            max_bytes=MAX_UPDATE_BYTES,
+            timeout=DOWNLOAD_TIMEOUT,
+        )
+    except DownloadError as exc:
+        raise GithubUpdateError(str(exc)) from exc
+    try:
+        _validate_user_package(target)
     except Exception:
-        partial.unlink(missing_ok=True)
+        target.unlink(missing_ok=True)
         raise
     backup = backup_local_db(force=True)
     if backup is None:
