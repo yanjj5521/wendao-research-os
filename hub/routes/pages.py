@@ -11,6 +11,7 @@ from hub.common import (
     BASE_DIR,
     current_user,
     hub_context,
+    initial_admin_hint,
     require_user,
     templates,
 )
@@ -26,7 +27,13 @@ router = APIRouter()
 def home(request: Request):
     user = current_user(request)
     if not user:
-        return templates.TemplateResponse(request=request, name="login.html", context=hub_context(request, "login"))
+        return templates.TemplateResponse(
+            request=request,
+            name="login.html",
+            context=hub_context(
+                request, "login", initial_admin=initial_admin_hint(request)
+            ),
+        )
     with connect_hub() as conn:
         profile = dict(conn.execute("SELECT * FROM account_profiles WHERE account_id=?", (user["id"],)).fetchone())
         members = []

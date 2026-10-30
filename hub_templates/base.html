@@ -5,10 +5,12 @@
   <meta name="theme-color" content="#f2e5d4"><title>{% block title %}{{ site_name }}{% endblock %}</title>
   <link rel="icon" href="{{ url_for('static', path='/app-icon.png') }}" type="image/png">
   <link rel="stylesheet" href="{{ url_for('static', path='/hub.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', path='/system-entry.css') }}">
 </head>
 <body class="hub-role-{{ user.role if user else 'guest' }}">
   <header class="hub-topbar">
     <a class="hub-brand" href="{{ url_for('hub_home') }}"><span>道</span><b>{{ site_name }}</b><small>问道科研内置模块 · 资料留在个人电脑</small></a>
+    {% if system_home %}<a class="system-back" href="{{ system_home }}" title="回到问道科研个人端">← 返回系统界面</a>{% endif %}
     {% if user %}
     <nav>
       <a class="{% if active=='home' %}active{% endif %}" href="{{ url_for('hub_home') }}">{{ '管理总览' if user.role=='admin' else '同行厅' }}</a>

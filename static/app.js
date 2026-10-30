@@ -29,10 +29,27 @@
     if (sideNav) sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(sideNav.scrollTop));
   });
 
+  // Saving a record, switching a filter or turning a page are form submits and
+  // redirects; the landing path is not known here, so the position is restored
+  // on whichever page answers the submit.  Forms can opt out with
+  // data-no-scroll-restore (e.g. a global search that should start at the top).
+  document.addEventListener('submit', event => {
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    if (form.dataset.noScrollRestore === '1') return;
+    if (form.target && form.target !== '_self') return;
+    sessionStorage.setItem(
+      NAV_SCROLL_KEY,
+      JSON.stringify({ path: null, y: window.scrollY, at: Date.now() }),
+    );
+    if (sideNav) sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(sideNav.scrollTop));
+  });
+
   try {
     const saved = JSON.parse(sessionStorage.getItem(NAV_SCROLL_KEY) || 'null');
     sessionStorage.removeItem(NAV_SCROLL_KEY);
-    if (saved && saved.path === location.pathname + location.search && Date.now() - saved.at < 15000) {
+    const matches = saved && (saved.path === null || saved.path === location.pathname + location.search);
+    if (matches && Date.now() - saved.at < 15000) {
       const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
       const previous = document.documentElement.style.scrollBehavior;
       document.documentElement.style.scrollBehavior = 'auto';

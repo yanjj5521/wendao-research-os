@@ -72,7 +72,7 @@
       {% if active_page == 'dashboard' %}
       <a class="landing-brand" href="{{ url_for('dashboard') }}"><strong>{{ site_name }}</strong><small>{{ ui_home_motto }}</small></a>
       {% else %}
-      <form class="global-search" action="{{ url_for('search') }}" method="get">
+      <form class="global-search" action="{{ url_for('search') }}" method="get" data-no-scroll-restore="1">
         <span>⌕</span>
         <input name="q" value="{{ request.query_params.get('q', '') }}" placeholder="搜论文、笔记、数据……">
       </form>

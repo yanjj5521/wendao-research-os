@@ -17,11 +17,13 @@ from fastapi.templating import Jinja2Templates
 
 from services.hub_storage import avatar_path
 from hub.db import (
+    HUB_ADMIN_PATH,
     balances,
     connect_hub,
     get_user_by_token,
     now_iso,
 )
+from core import accounts as accounts_repo
 from core.navigation import normalize_nav_labels, normalize_nav_layout
 from services.progression import normalize_realm_labels
 from core.runtime_paths import APP_ROOT
@@ -160,6 +162,37 @@ def hub_url_for(request: Request, name: str, **params: Any) -> str:
     raise RuntimeError(f"同行会路由不存在：{name}")
 
 
+def initial_admin_hint(request: Request) -> dict[str, str] | None:
+    """Expose the one-time admin credential on the login page of the host only.
+
+    The file is created once, is deleted as soon as the admin changes the
+    password, and is never shown to remote clients.  The credential is also
+    re-verified against the account table so a stale file cannot leak a
+    password that no longer works.
+    """
+    host = (request.client.host if request.client else "") or ""
+    if host not in {"127.0.0.1", "::1", "localhost"}:
+        return None
+    if not HUB_ADMIN_PATH.exists():
+        return None
+    try:
+        text = HUB_ADMIN_PATH.read_text(encoding="utf-8")
+    except OSError:
+        return None
+    username = password = ""
+    for line in text.splitlines():
+        if line.startswith("用户名:"):
+            username = line.split(":", 1)[1].strip()
+        elif line.startswith("密码:"):
+            password = line.split(":", 1)[1].strip()
+    if not username or not password:
+        return None
+    with connect_hub() as conn:
+        if not accounts_repo.authenticate(conn, username, password):
+            return None
+    return {"username": username, "password": password}
+
+
 def hub_context(request: Request, active: str, **extra: Any) -> dict[str, Any]:
     user = current_user(request)
     base = {
@@ -171,6 +204,8 @@ def hub_context(request: Request, active: str, **extra: Any) -> dict[str, Any]:
         "flashes": request.session.pop("flashes", []),
         "version": VERSION,
         "media_base": request.scope.get("root_path", "").rstrip("/"),
+        "system_home": os.environ.get("RESEARCH_OS_SYSTEM_URL", "").strip()
+        or ("/" if request.scope.get("root_path", "").rstrip("/") else ""),
         "site_name": "科研系统 · 同行会",
     }
     if user:

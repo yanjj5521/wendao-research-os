@@ -22,7 +22,7 @@ import tkinter as tk
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from PIL import Image, ImageTk
+from PIL import Image, ImageDraw, ImageFilter, ImageTk
 
 from core.database import connect
 from core.runtime_paths import USER_CONFIG_DIR
@@ -79,6 +79,68 @@ MOOD_EMOJI = {
     "calm": "🌿",
     "nudge": "💡",
 }
+# 灵知的新背景：一层随心情变色的柔光，加一块贴地的软阴影。
+PET_PADDING = 30
+AURA_TINT = {
+    "happy": (255, 198, 112),
+    "proud": (244, 164, 190),
+    "sleepy": (128, 154, 208),
+    "nudge": (255, 214, 126),
+    "calm": (150, 192, 164),
+}
+_AURA_CACHE: dict[tuple[int, int, str], Image.Image] = {}
+
+
+def _aura_layer(width: int, height: int, mood: str) -> Image.Image:
+    """Cached radial glow plus a soft ground shadow for the pet window."""
+    key = (width, height, mood)
+    cached = _AURA_CACHE.get(key)
+    if cached is not None:
+        return cached
+    pad = PET_PADDING
+    size = (width + pad * 2, height + pad * 2)
+    glow = Image.new("L", (160, 160), 0)
+    draw = ImageDraw.Draw(glow)
+    for radius in range(80, 0, -1):
+        alpha = int(78 * (1 - radius / 80) ** 1.7)
+        draw.ellipse(
+            (80 - radius, 80 - radius, 80 + radius, 80 + radius), fill=alpha
+        )
+    glow = glow.resize(size, Image.Resampling.LANCZOS)
+    aura = Image.new("RGBA", size, AURA_TINT.get(mood, AURA_TINT["calm"]) + (255,))
+    aura.putalpha(glow)
+
+    shadow = Image.new("RGBA", size, (0, 0, 0, 0))
+    shadow_draw = ImageDraw.Draw(shadow)
+    shadow_draw.ellipse(
+        (pad + width * 0.16, pad + height * 0.88, pad + width * 0.84, pad + height * 1.0),
+        fill=(58, 42, 32, 88),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(max(4, width // 22)))
+    frame = Image.alpha_composite(aura, shadow)
+    _AURA_CACHE[key] = frame
+    if len(_AURA_CACHE) > 64:
+        _AURA_CACHE.clear()
+        _AURA_CACHE[key] = frame
+    return frame
+
+
+def _compose_frame(original: Image.Image, width: int, height: int, mood: str) -> Image.Image:
+    frame = _aura_layer(width, height, mood).copy()
+    pet = _tinted(
+        original.resize((width, height), Image.Resampling.LANCZOS), mood
+    )
+    frame.alpha_composite(pet, (PET_PADDING, PET_PADDING))
+    return frame
+
+
+def _clamp_position(
+    x: int, y: int, width: int, height: int, screen_width: int, screen_height: int
+) -> tuple[int, int]:
+    return (
+        max(0, min(int(x), max(0, screen_width - width))),
+        max(0, min(int(y), max(0, screen_height - height))),
+    )
 
 
 def _asset_path() -> Path:
@@ -178,11 +240,15 @@ def mood_line(mood: str) -> str:
 
 
 def _tinted(frame: Image.Image, mood: str) -> Image.Image:
+    """Tint only the pet's own pixels; transparent corners stay transparent."""
     color = MOOD_TINT.get(mood)
     if not color:
         return frame
+    frame = frame.convert("RGBA")
     overlay = Image.new("RGBA", frame.size, color)
-    return Image.alpha_composite(frame.convert("RGBA"), overlay)
+    tinted = Image.blend(frame, overlay, 0.16)
+    tinted.putalpha(frame.getchannel("A"))
+    return tinted
 
 
 def run_pet() -> None:
@@ -203,10 +269,14 @@ def run_pet() -> None:
     mood = detect_mood()
     pats = int(settings.get("pats", 0))
     muted = tk.BooleanVar(value=bool(settings.get("muted", False)))
+    locked = tk.BooleanVar(value=bool(settings.get("locked", False)))
     phase = 0.0
     squish_until = 0.0
+    quiet_until = 0.0
     dragging = False
-    start_x = start_y = 0
+    moved = False
+    offset_x = offset_y = 0
+    press_root = (0, 0)
     image_label = tk.Label(root, bg=transparent, borderwidth=0, cursor="hand2")
     image_label.pack()
     hint = tk.Label(
@@ -228,7 +298,7 @@ def run_pet() -> None:
         width = max(MIN_SIZE, round(desired_size * wobble))
         height_factor = 0.96 if (squish or now < squish_until) else 1.0
         height = max(MIN_SIZE, round(original.height * width / max(original.width, 1) * height_factor))
-        frame = _tinted(original.resize((width, height), Image.Resampling.LANCZOS), mood)
+        frame = _compose_frame(original, width, height, mood)
         photo = ImageTk.PhotoImage(frame)
         image_label.configure(image=photo)
         image_label.image = photo
@@ -241,7 +311,7 @@ def run_pet() -> None:
 
     def _speak(text: str, seconds: int = 4200) -> None:
         hint.configure(text=text)
-        hint.place(x=4, y=max(0, image_label.winfo_height() - 6), anchor="sw")
+        hint.place(x=10, y=max(0, image_label.winfo_height() - 8), anchor="sw")
         root.after(seconds, hint.place_forget)
 
     def show_hint(_event=None) -> None:
@@ -260,7 +330,11 @@ def run_pet() -> None:
         _speak(f"{MOOD_EMOJI.get(mood, '🌿')} {line}", 3200)
 
     def chatter() -> None:
-        if not muted.get() and not dragging:
+        if (
+            not muted.get()
+            and not dragging
+            and datetime.now().timestamp() >= quiet_until
+        ):
             if random.random() < 0.35:
                 show_hint()
             else:
@@ -287,17 +361,60 @@ def run_pet() -> None:
     def wheel(event) -> None:
         resize(16 if event.delta > 0 else -16)
 
+    def _remember_position() -> None:
+        current = _load_settings()
+        current["pos"] = [root.winfo_x(), root.winfo_y()]
+        _save_settings(current)
+
     def drag_start(event) -> None:
-        nonlocal dragging, start_x, start_y
+        nonlocal dragging, moved, offset_x, offset_y, press_root
         dragging = True
-        start_x, start_y = event.x, event.y
+        moved = False
+        press_root = (event.x_root, event.y_root)
+        offset_x = event.x_root - root.winfo_x()
+        offset_y = event.y_root - root.winfo_y()
 
     def drag_move(event) -> None:
-        root.geometry(f"+{root.winfo_x() + event.x - start_x}+{root.winfo_y() + event.y - start_y}")
+        nonlocal moved
+        if not dragging or locked.get():
+            return
+        if abs(event.x_root - press_root[0]) + abs(event.y_root - press_root[1]) > 5:
+            moved = True
+        root.geometry(f"+{event.x_root - offset_x}+{event.y_root - offset_y}")
 
     def drag_end(_event) -> None:
         nonlocal dragging
         dragging = False
+        if moved:
+            _remember_position()
+        else:
+            show_hint()
+
+    def toggle_lock() -> None:
+        current = _load_settings()
+        current["locked"] = locked.get()
+        _save_settings(current)
+        _speak("位置已锁定，不会再被拖动。" if locked.get() else "位置已解锁，可以拖动了。", 2400)
+
+    def quiet_for(minutes: int) -> None:
+        nonlocal quiet_until
+        quiet_until = datetime.now().timestamp() + minutes * 60
+        _speak(f"好，我安静 {minutes} 分钟。", 2400)
+
+    def back_to_corner() -> None:
+        width = max(image_label.winfo_width(), desired_size + PET_PADDING * 2)
+        height = max(image_label.winfo_height(), desired_size + PET_PADDING * 2)
+        x, y = _clamp_position(
+            root.winfo_screenwidth() - width - 36,
+            root.winfo_screenheight() - height - 64,
+            width,
+            height,
+            root.winfo_screenwidth(),
+            root.winfo_screenheight(),
+        )
+        root.geometry(f"+{x}+{y}")
+        _remember_position()
+        _speak("灵知回到右下角了。", 2000)
 
     def popup(event) -> None:
         menu.tk_popup(event.x_root, event.y_root)
@@ -306,14 +423,16 @@ def run_pet() -> None:
     menu.add_command(label="给我一句研究提示", command=lambda: _speak(f"💡 {random.choice(PET_LINES)}"))
     menu.add_command(label="摸摸头", command=pat)
     menu.add_separator()
+    menu.add_checkbutton(label="锁定位置（防误拖）", variable=locked, command=toggle_lock)
+    menu.add_command(label="安静 30 分钟", command=lambda: quiet_for(30))
     menu.add_checkbutton(label="安静模式（不主动说话）", variable=muted, command=toggle_mute)
     menu.add_separator()
     menu.add_command(label="放大", command=lambda: resize(16))
     menu.add_command(label="缩小", command=lambda: resize(-16))
     menu.add_command(label="恢复小尺寸", command=lambda: resize(DEFAULT_SIZE - desired_size))
+    menu.add_command(label="回到右下角", command=back_to_corner)
     menu.add_separator()
     menu.add_command(label="关闭灵知", command=root.destroy)
-    image_label.bind("<Button-1>", show_hint)
     image_label.bind("<Double-Button-1>", pat)
     image_label.bind("<ButtonPress-1>", drag_start, add="+")
     image_label.bind("<B1-Motion>", drag_move)
@@ -323,7 +442,20 @@ def run_pet() -> None:
     image_label.bind("<Button-5>", lambda _event: resize(-16))
     image_label.bind("<Button-3>", popup)
     root.bind("<Escape>", lambda _event: root.destroy())
-    root.geometry("+1040+620")
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    window_width = desired_size + PET_PADDING * 2
+    window_height = round(desired_size * original.height / max(original.width, 1)) + PET_PADDING * 2
+    saved_pos = settings.get("pos")
+    if isinstance(saved_pos, list) and len(saved_pos) == 2:
+        start_x, start_y = int(saved_pos[0]), int(saved_pos[1])
+    else:
+        start_x = screen_width - window_width - 36
+        start_y = screen_height - window_height - 64
+    start_x, start_y = _clamp_position(
+        start_x, start_y, window_width, window_height, screen_width, screen_height
+    )
+    root.geometry(f"+{start_x}+{start_y}")
     render(animate=False)
     animate()
     root.after(45_000, chatter)
