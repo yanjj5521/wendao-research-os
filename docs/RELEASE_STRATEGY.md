@@ -168,3 +168,9 @@ gh release create vX.Y.Z --title "问道科研 vX.Y.Z" --notes-file docs/release
 - `MAJOR.MINOR.PATCH`，纯数字点分；比较时按数值逐段，`1.3.10 > 1.3.9`。
 - 任何改变用户可见行为或入口的提交都必须升版本，否则更新通道不会触发。
 - 标签只打一次，不移动已发布的标签；修正版用新版本号。
+
+## 八、云端演示实例
+
+- `deploy-cloud/` 由 `tools/prepare_cloud_deploy.py` 生成，经 WorkBuddy Sites 发布；云端只承载演示数据，不同步任何个人论文、笔记与附件。
+- **2026-10-30 已下线**，原分享链接失效，站点根路径返回 404。需要时重新生成并部署，访问口令通过环境变量 `RESEARCH_OS_ACCESS_CODE` 提供，不写入仓库。
+- 云端实例不是发布主线：正式分发只走本文件的 GitHub Release 两个包，以及同行会版本中心的更新包。
