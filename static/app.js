@@ -12,6 +12,23 @@
     sideNav.scrollTop = Number(savedSidebar) || 0;
   }
 
+  const rememberScroll = path => {
+    const payload = JSON.stringify({ path, y: window.scrollY, at: Date.now() });
+    sessionStorage.setItem(NAV_SCROLL_KEY, payload);
+    if (sideNav) sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(sideNav.scrollTop));
+    // Export links only download a file and never unload this document.  Drop
+    // the marker after a few seconds so it cannot hijack a later navigation.
+    window.setTimeout(() => {
+      try {
+        if (sessionStorage.getItem(NAV_SCROLL_KEY) === payload) {
+          sessionStorage.removeItem(NAV_SCROLL_KEY);
+        }
+      } catch (error) {
+        // Ignore storage being unavailable.
+      }
+    }, 4000);
+  };
+
   document.addEventListener('click', event => {
     const link = event.target.closest('a[href]');
     if (!link) return;
@@ -22,11 +39,7 @@
     const url = new URL(link.href, location.href);
     if (url.origin !== location.origin) return;
     if (url.hash && url.pathname === location.pathname && url.search === location.search) return;
-    sessionStorage.setItem(
-      NAV_SCROLL_KEY,
-      JSON.stringify({ path: url.pathname + url.search, y: window.scrollY, at: Date.now() }),
-    );
-    if (sideNav) sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(sideNav.scrollTop));
+    rememberScroll(url.pathname + url.search);
   });
 
   // Saving a record, switching a filter or turning a page are form submits and
@@ -38,26 +51,35 @@
     if (!(form instanceof HTMLFormElement)) return;
     if (form.dataset.noScrollRestore === '1') return;
     if (form.target && form.target !== '_self') return;
-    sessionStorage.setItem(
-      NAV_SCROLL_KEY,
-      JSON.stringify({ path: null, y: window.scrollY, at: Date.now() }),
-    );
-    if (sideNav) sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(sideNav.scrollTop));
+    rememberScroll(null);
   });
 
+  let pendingScroll = null;
   try {
-    const saved = JSON.parse(sessionStorage.getItem(NAV_SCROLL_KEY) || 'null');
+    pendingScroll = JSON.parse(sessionStorage.getItem(NAV_SCROLL_KEY) || 'null');
     sessionStorage.removeItem(NAV_SCROLL_KEY);
-    const matches = saved && (saved.path === null || saved.path === location.pathname + location.search);
-    if (matches && Date.now() - saved.at < 15000) {
-      const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
-      const previous = document.documentElement.style.scrollBehavior;
-      document.documentElement.style.scrollBehavior = 'auto';
-      window.scrollTo(0, Math.min(Number(saved.y) || 0, limit));
-      document.documentElement.style.scrollBehavior = previous;
-    }
   } catch (error) {
     // A blocked sessionStorage must never stop the rest of the UI.
+  }
+  if (pendingScroll) {
+    const matches =
+      pendingScroll.path === null ||
+      pendingScroll.path === location.pathname + location.search;
+    if (matches && Date.now() - pendingScroll.at < 15000) {
+      const applyScroll = () => {
+        const limit = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+        const previous = document.documentElement.style.scrollBehavior;
+        document.documentElement.style.scrollBehavior = 'auto';
+        window.scrollTo(0, Math.min(Number(pendingScroll.y) || 0, limit));
+        document.documentElement.style.scrollBehavior = previous;
+      };
+      applyScroll();
+      // Fonts and images can still change the page height after the first
+      // paint; re-check once after layout settles.  Timeouts only, no animation
+      // loop: motion in this project stays in CSS.
+      window.setTimeout(applyScroll, 0);
+      window.setTimeout(applyScroll, 90);
+    }
   }
 
   const menu = document.getElementById('menuButton');

@@ -402,7 +402,8 @@ def portable_export():
     archive = BACKUP_DIR / f"ResearchCultivationOS_portable_{timestamp}.zip"
     excluded_dirs = {
         ".venv", "__pycache__", ".git", "backups", "autobackups", "build", "dist",
-        "instance", "storage", "user_data",
+        "instance", "storage", "user_data", "out", "deploy-cloud", ".runtime",
+        ".pytest_cache", ".ruff_cache",
     }
     excluded_suffixes = {".pyc", ".pyo"}
     program_root = DISTRIBUTION_ROOT

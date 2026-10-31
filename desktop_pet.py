@@ -22,7 +22,7 @@ import tkinter as tk
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter, ImageTk
+from PIL import Image, ImageTk
 
 from core.database import connect
 from core.runtime_paths import USER_CONFIG_DIR
@@ -79,59 +79,8 @@ MOOD_EMOJI = {
     "calm": "🌿",
     "nudge": "💡",
 }
-# 灵知的新背景：一层随心情变色的柔光，加一块贴地的软阴影。
-PET_PADDING = 30
-AURA_TINT = {
-    "happy": (255, 198, 112),
-    "proud": (244, 164, 190),
-    "sleepy": (128, 154, 208),
-    "nudge": (255, 214, 126),
-    "calm": (150, 192, 164),
-}
-_AURA_CACHE: dict[tuple[int, int, str], Image.Image] = {}
-
-
-def _aura_layer(width: int, height: int, mood: str) -> Image.Image:
-    """Cached radial glow plus a soft ground shadow for the pet window."""
-    key = (width, height, mood)
-    cached = _AURA_CACHE.get(key)
-    if cached is not None:
-        return cached
-    pad = PET_PADDING
-    size = (width + pad * 2, height + pad * 2)
-    glow = Image.new("L", (160, 160), 0)
-    draw = ImageDraw.Draw(glow)
-    for radius in range(80, 0, -1):
-        alpha = int(78 * (1 - radius / 80) ** 1.7)
-        draw.ellipse(
-            (80 - radius, 80 - radius, 80 + radius, 80 + radius), fill=alpha
-        )
-    glow = glow.resize(size, Image.Resampling.LANCZOS)
-    aura = Image.new("RGBA", size, AURA_TINT.get(mood, AURA_TINT["calm"]) + (255,))
-    aura.putalpha(glow)
-
-    shadow = Image.new("RGBA", size, (0, 0, 0, 0))
-    shadow_draw = ImageDraw.Draw(shadow)
-    shadow_draw.ellipse(
-        (pad + width * 0.16, pad + height * 0.88, pad + width * 0.84, pad + height * 1.0),
-        fill=(58, 42, 32, 88),
-    )
-    shadow = shadow.filter(ImageFilter.GaussianBlur(max(4, width // 22)))
-    frame = Image.alpha_composite(aura, shadow)
-    _AURA_CACHE[key] = frame
-    if len(_AURA_CACHE) > 64:
-        _AURA_CACHE.clear()
-        _AURA_CACHE[key] = frame
-    return frame
-
-
-def _compose_frame(original: Image.Image, width: int, height: int, mood: str) -> Image.Image:
-    frame = _aura_layer(width, height, mood).copy()
-    pet = _tinted(
-        original.resize((width, height), Image.Resampling.LANCZOS), mood
-    )
-    frame.alpha_composite(pet, (PET_PADDING, PET_PADDING))
-    return frame
+# 灵知保持透明背景：不铺光晕、不铺阴影，窗口只显示灵知自身像素。
+# 心情只通过灵知本体染色表达，避免在桌面上出现一圈粉色/彩色的光斑。
 
 
 def _clamp_position(
@@ -298,7 +247,7 @@ def run_pet() -> None:
         width = max(MIN_SIZE, round(desired_size * wobble))
         height_factor = 0.96 if (squish or now < squish_until) else 1.0
         height = max(MIN_SIZE, round(original.height * width / max(original.width, 1) * height_factor))
-        frame = _compose_frame(original, width, height, mood)
+        frame = _tinted(original.resize((width, height), Image.Resampling.LANCZOS), mood)
         photo = ImageTk.PhotoImage(frame)
         image_label.configure(image=photo)
         image_label.image = photo
@@ -311,7 +260,7 @@ def run_pet() -> None:
 
     def _speak(text: str, seconds: int = 4200) -> None:
         hint.configure(text=text)
-        hint.place(x=10, y=max(0, image_label.winfo_height() - 8), anchor="sw")
+        hint.place(x=2, y=max(0, image_label.winfo_height() - 4), anchor="sw")
         root.after(seconds, hint.place_forget)
 
     def show_hint(_event=None) -> None:
@@ -402,8 +351,8 @@ def run_pet() -> None:
         _speak(f"好，我安静 {minutes} 分钟。", 2400)
 
     def back_to_corner() -> None:
-        width = max(image_label.winfo_width(), desired_size + PET_PADDING * 2)
-        height = max(image_label.winfo_height(), desired_size + PET_PADDING * 2)
+        width = max(image_label.winfo_width(), desired_size)
+        height = max(image_label.winfo_height(), desired_size)
         x, y = _clamp_position(
             root.winfo_screenwidth() - width - 36,
             root.winfo_screenheight() - height - 64,
@@ -444,8 +393,8 @@ def run_pet() -> None:
     root.bind("<Escape>", lambda _event: root.destroy())
     screen_width = root.winfo_screenwidth()
     screen_height = root.winfo_screenheight()
-    window_width = desired_size + PET_PADDING * 2
-    window_height = round(desired_size * original.height / max(original.width, 1)) + PET_PADDING * 2
+    window_width = desired_size
+    window_height = round(desired_size * original.height / max(original.width, 1))
     saved_pos = settings.get("pos")
     if isinstance(saved_pos, list) and len(saved_pos) == 2:
         start_x, start_y = int(saved_pos[0]), int(saved_pos[1])

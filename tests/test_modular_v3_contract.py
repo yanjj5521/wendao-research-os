@@ -434,7 +434,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.3.5")
+        self.assertEqual(version, "1.3.6")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",
@@ -479,7 +479,8 @@ else:
             "SIDEBAR_SCROLL_KEY",
             "window.scrollTo(0, Math.min",
             "addEventListener('submit'",
-            "path: null",
+            "rememberScroll(null)",
+            "rememberScroll(url.pathname + url.search)",
         ):
             self.assertIn(marker, script)
         base = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
