@@ -79,6 +79,9 @@ MOOD_EMOJI = {
     "calm": "🌿",
     "nudge": "💡",
 }
+# 透明键取灵知自身边缘的青光色：Tk 会把半透明像素与键色混合，
+# 用洋红会混出一圈粉边；用同色系则混成自然的辉光。
+TRANSPARENT_KEY = "#a8e6f2"
 # 灵知保持透明背景：不铺光晕、不铺阴影，窗口只显示灵知自身像素。
 # 心情只通过灵知本体染色表达，避免在桌面上出现一圈粉色/彩色的光斑。
 
@@ -188,6 +191,18 @@ def mood_line(mood: str) -> str:
     return f"{emoji} {random.choice(CALM_LINES)}"
 
 
+def _trim_haze(frame: Image.Image, threshold: int = 8) -> Image.Image:
+    """Drop near-transparent background haze that would tint the whole window.
+
+    The source render carries a very low alpha veil; blended with the key colour
+    it becomes a faint rectangular wash.  Pixels below the threshold are cleared,
+    while genuine anti-aliased edges keep their alpha.
+    """
+    alpha = frame.getchannel("A").point(lambda value: 0 if value < threshold else value)
+    frame.putalpha(alpha)
+    return frame
+
+
 def _tinted(frame: Image.Image, mood: str) -> Image.Image:
     """Tint only the pet's own pixels; transparent corners stay transparent."""
     color = MOOD_TINT.get(mood)
@@ -205,7 +220,7 @@ def run_pet() -> None:
     root.title("灵知")
     root.overrideredirect(True)
     root.attributes("-topmost", True)
-    transparent = "#ff00ff"
+    transparent = TRANSPARENT_KEY
     try:
         root.wm_attributes("-transparentcolor", transparent)
     except tk.TclError:
@@ -228,10 +243,18 @@ def run_pet() -> None:
     press_root = (0, 0)
     image_label = tk.Label(root, bg=transparent, borderwidth=0, cursor="hand2")
     image_label.pack()
-    hint = tk.Label(
-        root, text="", bg="#213242", fg="#fff4d2",
-        font=("Microsoft YaHei UI", 9), padx=8, pady=4,
+    hint = tk.Toplevel(root)
+    hint.overrideredirect(True)
+    hint.attributes("-topmost", True)
+    hint.configure(bg="#213242")
+    hint_label = tk.Label(
+        hint, text="", bg="#213242", fg="#fff4d2",
+        font=("Microsoft YaHei UI", 9), padx=10, pady=6,
+        wraplength=260, justify="left",
     )
+    hint_label.pack()
+    hint.withdraw()
+    hint_token = 0
     menu = tk.Menu(root, tearoff=False)
 
     def _wobble_scale() -> float:
@@ -247,7 +270,9 @@ def run_pet() -> None:
         width = max(MIN_SIZE, round(desired_size * wobble))
         height_factor = 0.96 if (squish or now < squish_until) else 1.0
         height = max(MIN_SIZE, round(original.height * width / max(original.width, 1) * height_factor))
-        frame = _tinted(original.resize((width, height), Image.Resampling.LANCZOS), mood)
+        frame = _trim_haze(
+            _tinted(original.resize((width, height), Image.Resampling.LANCZOS), mood)
+        )
         photo = ImageTk.PhotoImage(frame)
         image_label.configure(image=photo)
         image_label.image = photo
@@ -259,10 +284,25 @@ def run_pet() -> None:
         root.after(130, animate)
 
     def _speak(text: str, seconds: int = 4200) -> None:
-        hint.configure(text=text)
-        hint.place(x=2, y=max(0, image_label.winfo_height() - 4), anchor="sw")
-        root.after(seconds, hint.place_forget)
-
+        nonlocal hint_token
+        hint_token += 1
+        token = hint_token
+        hint_label.configure(text=text)
+        hint.update_idletasks()
+        width = max(hint.winfo_reqwidth(), 80)
+        height = hint.winfo_reqheight()
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        x = root.winfo_x() + (root.winfo_width() - width) // 2
+        y = root.winfo_y() + root.winfo_height() + 6
+        if y + height > screen_height:
+            y = root.winfo_y() - height - 6
+        x = max(0, min(x, screen_width - width))
+        y = max(0, min(y, screen_height - height))
+        hint.geometry(f"+{x}+{y}")
+        hint.deiconify()
+        hint.lift()
+        root.after(seconds, lambda: hint.withdraw() if token == hint_token else None)
     def show_hint(_event=None) -> None:
         _speak(f"灵知 · {mood_line(mood)}")
 
@@ -319,6 +359,7 @@ def run_pet() -> None:
         nonlocal dragging, moved, offset_x, offset_y, press_root
         dragging = True
         moved = False
+        hint.withdraw()
         press_root = (event.x_root, event.y_root)
         offset_x = event.x_root - root.winfo_x()
         offset_y = event.y_root - root.winfo_y()

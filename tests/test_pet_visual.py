@@ -22,6 +22,21 @@ class PetVisualTests(unittest.TestCase):
         self.assertEqual(frame.getpixel((0, 0))[3], 0)
         self.assertEqual(frame.getpixel((119, 119))[3], 0)
 
+    def test_haze_trim_clears_near_transparent_pixels(self) -> None:
+        frame = Image.new("RGBA", (4, 1))
+        frame.putdata([(0, 0, 0, 0), (0, 0, 0, 7), (0, 0, 0, 8), (0, 0, 0, 200)])
+        cleaned = pet._trim_haze(frame)
+        self.assertEqual(
+            [cleaned.getpixel((x, 0))[3] for x in range(4)], [0, 0, 8, 200]
+        )
+
+    def test_transparent_key_never_matches_the_art(self) -> None:
+        key = tuple(int(pet.TRANSPARENT_KEY[i : i + 2], 16) for i in (1, 3, 5))
+        image = Image.open(pet._asset_path()).convert("RGBA")
+        for r, g, b, alpha in image.getdata():
+            if alpha > 0 and (r, g, b) == key:
+                self.fail(f"透明键 {key} 与灵知本体像素重合，会在角色上挖洞")
+
     def test_pet_has_no_painted_background_layer(self) -> None:
         source = Path(pet.__file__).read_text(encoding="utf-8")
         for marker in ("_aura_layer", "AURA_TINT", "_compose_frame", "PET_PADDING"):
