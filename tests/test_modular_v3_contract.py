@@ -191,6 +191,9 @@ class ModularV3ContractTests(unittest.TestCase):
         self.assertIn('"cultivation"', database)
         for template in ("forum.html", "chat.html", "market.html"):
             self.assertTrue((ROOT / "hub_templates" / template).is_file(), template)
+        forum = (ROOT / "hub_templates" / "forum.html").read_text(encoding="utf-8")
+        self.assertIn("data-forum-room", forum)
+        self.assertIn('data-refresh-seconds="30"', forum)
 
     def test_layers_are_reachable_without_compatibility_shims(self) -> None:
         # 1.0 删掉了 app.py / db.py 两个转发层：入口与数据访问各自只有一条路径。
@@ -434,7 +437,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.3.11")
+        self.assertEqual(version, "1.3.12")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",
