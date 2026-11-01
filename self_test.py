@@ -162,6 +162,12 @@ def _run_integration(client: TestClient, failures: list[str]) -> None:
     _check_response(failures, "starter artifact storefront", world_before)
     if "购入 · 12 灵石" not in world_before.text:
         failures.append("starter gift could not visibly afford the starter artifact")
+    if "/world/buildings/scripture_pavilion" not in world_before.text:
+        failures.append("world page does not link into the scripture pavilion")
+    world_room = client.get("/world/buildings/scripture_pavilion")
+    _check_response(failures, "cave building interior", world_room)
+    if "在这里可以" not in world_room.text:
+        failures.append("cave building interior has no room actions")
     _check_response(
         failures,
         "starter artifact exact-balance purchase",

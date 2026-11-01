@@ -1,0 +1,98 @@
+/* World page: larger type, larger building glyphs and a richer cave scene. */
+.world-luxe{font-size:15px}
+.world-luxe .page-head h1{font-size:46px;letter-spacing:-.02em}
+.world-luxe .page-head p{font-size:15px;line-height:1.85;max-width:860px}
+.world-luxe .eyebrow{font-size:12px;letter-spacing:.18em}
+.world-luxe .world-head-actions .soft-button{font-size:13px;padding:10px 15px;border-radius:14px}
+
+.world-luxe .world-wallet{gap:14px;margin-bottom:22px}
+.world-luxe .world-wallet>div{padding:18px 20px;border-radius:22px;background:linear-gradient(145deg,#fffaf2,#f8ead8);box-shadow:0 10px 24px rgba(122,84,55,.08)}
+.world-luxe .world-wallet>div>span{font-size:34px}
+.world-luxe .world-wallet strong{font-size:28px;line-height:1.1}
+.world-luxe .world-wallet small{font-size:12px;margin-top:2px}
+
+.world-luxe .realm-scene{min-height:560px;background:linear-gradient(150deg,#f8e8d2 0%,#cfdccb 48%,#7f9b90 100%);border:1px solid rgba(255,255,255,.5);box-shadow:0 26px 60px rgba(29,57,56,.18)}
+.world-luxe .realm-scene::after{content:"";position:absolute;inset:0;z-index:2;pointer-events:none;background:radial-gradient(circle at 72% 28%,rgba(255,221,164,.22),transparent 46%),linear-gradient(180deg,transparent 58%,rgba(12,34,34,.2))}
+.world-luxe .cave-sun{right:15%;top:54px;width:96px;height:96px;box-shadow:0 0 0 32px rgba(231,120,79,.1),0 0 90px rgba(228,131,76,.28)}
+.world-luxe .cave-poem{left:32px;top:26px;max-width:620px;padding:16px 20px;font-size:21px;line-height:1.7;border-left-width:3px}
+.world-luxe .mountain-back{height:72%}
+.world-luxe .mountain-front{height:52%}
+.world-luxe .cave-river{right:20%;bottom:-50px;width:210px;height:370px;border-left-width:34px}
+.world-luxe .realm-scene .building-row{inset:auto 26px 26px;gap:12px;grid-template-columns:repeat(5,minmax(0,1fr))}
+
+.world-luxe .world-building{width:100%;min-width:0;grid-template-columns:64px minmax(0,1fr);gap:12px;min-height:122px;text-align:left;padding:16px 14px;border:1px solid rgba(255,255,255,.6);border-radius:20px;background:rgba(255,252,244,.9);box-shadow:0 18px 38px rgba(20,47,48,.2);backdrop-filter:blur(14px);text-decoration:none;color:inherit;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.world-luxe .world-building:hover{transform:translateY(-5px);border-color:rgba(214,166,99,.9);box-shadow:0 24px 46px rgba(20,47,48,.28)}
+.world-luxe .building-glyph{width:64px;height:64px;border-radius:19px;background:linear-gradient(145deg,#1d4650,#102c35);color:#fbf0dd;font-size:30px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.12),0 10px 20px rgba(12,37,42,.24)}
+.world-luxe .building-copy{min-width:0}
+.world-luxe .building-copy strong{display:block;font-size:17px;line-height:1.25;color:#223b3b}
+.world-luxe .building-copy small{display:block;margin-top:5px;color:#5c716d;font-size:11px;line-height:1.55}
+.world-luxe .building-copy em{display:block;margin-top:7px;font-style:normal;font-size:10px;font-weight:700;color:#a45f3f;letter-spacing:.04em}
+.world-luxe .world-building.level-0{opacity:.84}
+.world-luxe .world-building.level-0 .building-glyph{background:linear-gradient(145deg,#5f6f6a,#3d4c49)}
+.world-luxe .moon-well button{min-height:122px;border-radius:20px;background:linear-gradient(150deg,rgba(20,51,55,.86),rgba(11,32,36,.78));box-shadow:0 16px 30px rgba(15,38,40,.2)}
+.world-luxe .moon-well button>span{width:48px;height:18px}
+.world-luxe .moon-well small{font-size:10px}
+
+.world-luxe .equipped-artifact-panel{padding:20px;border-radius:22px}
+.world-luxe .equipped-artifact-glyph{width:78px;height:78px;font-size:32px;border-radius:24px}
+.world-luxe .equipped-artifact-panel h2{font-size:24px}
+.world-luxe .equipped-artifact-panel p{font-size:13px;line-height:1.7}
+.world-luxe .artifact-category{font-size:10px;padding:5px 10px}
+
+.world-luxe .garden-panel{padding:20px}
+.world-luxe .herb-garden{gap:14px;grid-template-columns:repeat(5,minmax(0,1fr))}
+.world-luxe .herb-pot{padding:18px 12px 12px;border-radius:22px}
+.world-luxe .herb-icon{height:82px;font-size:64px}
+.world-luxe .herb-pot strong{font-size:14px}
+.world-luxe .herb-pot small{font-size:11px}
+.world-luxe .rich-artifact-grid .artifact-card{min-height:300px;padding:18px;border-radius:22px}
+.world-luxe .artifact-glyph{width:56px;height:56px;font-size:22px;border-radius:18px}
+.world-luxe .artifact-card h3{font-size:17px}
+.world-luxe .artifact-card p{font-size:11px;line-height:1.65}
+.world-luxe .artifact-effect{padding:12px;border-radius:14px}
+.world-luxe .artifact-effect strong{font-size:10px}
+.world-luxe .egg-preview-grid{gap:10px}
+.world-luxe .egg-row{padding:15px 0}
+.world-luxe .egg-row strong{font-size:14px}
+.world-luxe .egg-row small{font-size:11px;line-height:1.6}
+
+/* Building interior */
+.room-page{max-width:1180px;margin:0 auto}
+.room-topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 14px;color:var(--muted);font-size:13px}
+.room-stage{position:relative;display:grid;grid-template-columns:160px 1fr auto;gap:26px;align-items:center;min-height:300px;padding:34px 38px;border-radius:28px;overflow:hidden;color:#fff8ea;box-shadow:0 26px 60px rgba(24,43,47,.24)}
+.room-stage::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 20% 30%,rgba(255,226,170,.22),transparent 38%),linear-gradient(180deg,transparent 55%,rgba(8,24,28,.28));pointer-events:none}
+.room-scripture{background:linear-gradient(140deg,#274b52,#17383f 55%,#0f2a31)}
+.room-alchemy{background:linear-gradient(140deg,#5c3b31,#3d2927 55%,#261c1d)}
+.room-forge{background:linear-gradient(140deg,#3d4548,#2a3035 55%,#1b2227)}
+.room-garden{background:linear-gradient(140deg,#3e5d45,#284737 55%,#183124)}
+.room-plain{background:linear-gradient(140deg,#3f4b4a,#2c3737 60%,#1e2829)}
+.room-aura{position:absolute;right:-60px;top:-80px;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle,rgba(244,206,128,.22),transparent 62%)}
+.room-glyph{position:relative;z-index:1;width:132px;height:132px;display:grid;place-items:center;border-radius:34px;background:rgba(255,248,232,.12);border:1px solid rgba(255,240,210,.35);font-family:"STKaiti","KaiTi",serif;font-size:66px;box-shadow:inset 0 0 30px rgba(255,225,170,.12),0 20px 50px rgba(0,0,0,.22)}
+.room-copy{position:relative;z-index:1}
+.room-copy .eyebrow{color:#f0cf95}
+.room-copy h1{font-size:50px;line-height:1.08;margin:6px 0 10px;color:#fff8ea}
+.room-copy p{max-width:620px;margin:0;color:rgba(255,247,232,.82);font-size:16px;line-height:1.8}
+.room-copy em{display:block;margin-top:14px;font-style:normal;color:#f0cf95;font-size:14px;line-height:1.7}
+.room-level{position:relative;z-index:1;text-align:right;align-self:start}
+.room-level strong{display:block;font-size:42px;color:#f4d49a;line-height:1}
+.room-level span{font-size:14px;color:rgba(255,247,232,.6)}
+.room-grid{display:grid;grid-template-columns:1.35fr .65fr;gap:16px;margin-top:16px}
+.room-actions,.room-upgrade,.room-log{padding:20px 22px;border-radius:22px}
+.room-actions h2,.room-upgrade h2,.room-log h2{font-size:24px;margin:3px 0 12px}
+.room-action-list{display:grid;gap:10px}
+.room-action{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:16px 18px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(145deg,#fffaf2,#f7ead9);text-decoration:none;color:inherit;transition:transform .14s ease,border-color .14s ease}
+.room-action:hover{transform:translateY(-2px);border-color:#d6a663}
+.room-action strong{font-size:16px}
+.room-action small{grid-column:1;color:var(--muted);font-size:12px;line-height:1.6}
+.room-action span{grid-column:2;grid-row:1/3;justify-self:end;align-self:center;font-size:20px;color:#b06a43}
+.room-upgrade p{font-size:13px;line-height:1.75;color:var(--muted)}
+.room-upgrade strong{color:var(--text)}
+.room-upgrade .primary-button{margin-top:8px}
+.room-log ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.room-log li{display:flex;gap:16px;align-items:baseline;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.room-log li span{min-width:132px;color:var(--muted);font-size:12px}
+.room-log li b{font-weight:600}
+
+@media(max-width:1120px){.world-luxe .herb-garden{grid-template-columns:repeat(3,minmax(0,1fr))}.world-luxe .realm-scene{min-height:650px}.world-luxe .realm-scene .building-row{grid-template-columns:repeat(3,1fr)}.room-grid{grid-template-columns:1fr}.room-stage{grid-template-columns:120px 1fr}.room-level{grid-column:2;text-align:left}}
+@media(max-width:760px){.world-luxe .herb-garden{grid-template-columns:repeat(2,minmax(0,1fr))}.world-luxe .realm-scene{min-height:840px}.world-luxe .realm-scene .building-row{grid-template-columns:repeat(2,1fr)}.world-luxe .page-head h1{font-size:36px}.room-stage{grid-template-columns:1fr;padding:26px}.room-glyph{width:104px;height:104px;font-size:52px}.room-copy h1{font-size:38px}.room-level{grid-column:auto}}
+@media(max-width:520px){.world-luxe .realm-scene{min-height:1120px}.world-luxe .realm-scene .building-row{grid-template-columns:1fr}.world-luxe .world-wallet{grid-template-columns:1fr 1fr}.room-copy h1{font-size:32px}}

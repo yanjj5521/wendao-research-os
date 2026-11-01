@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ building.name }} · 洞府内部{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/world-luxe.css') }}">{% endblock %}
+{% block content %}
+<div class="world-luxe room-page">
+  <div class="room-topbar">
+    <a class="soft-button" href="{{ url_for('world_page') }}">← 返回洞府</a>
+    <span>{{ building.name }} · 内部</span>
+  </div>
+
+  <section class="room-stage room-{{ room.theme }}">
+    <div class="room-aura" aria-hidden="true"></div>
+    <div class="room-glyph">{{ building.icon }}</div>
+    <div class="room-copy">
+      <span class="eyebrow">Cave Interior</span>
+      <h1>{{ building.name }}</h1>
+      <p>{{ room.tagline or building.desc }}</p>
+      <em>{{ room.ritual }}</em>
+    </div>
+    <div class="room-level"><strong>Lv.{{ building.level }}</strong><span>/ {{ max_level }}</span></div>
+  </section>
+
+  <div class="room-grid">
+    <section class="panel room-actions">
+      <div class="panel-head simple"><div><span class="eyebrow">Inside</span><h2>在这里可以</h2></div></div>
+      <div class="room-action-list">
+        {% for label, endpoint, hint in room.actions %}
+        <a class="room-action" href="{{ url_for(endpoint) }}"><strong>{{ label }}</strong><small>{{ hint }}</small><span>→</span></a>
+        {% else %}
+        <div class="empty">这间屋子还在收拾，先回去看看别的建筑。</div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel room-upgrade">
+      <span class="eyebrow">Build</span>
+      <h2>继续修建</h2>
+      <p>当前 <strong>Lv.{{ building.level }}</strong> / {{ max_level }}，每次升级都会让内部更完整。</p>
+      <p>下一级需要 <strong>{{ building.cost }} {{ asset_label }}</strong>，当前库存 {{ wallet[building.asset] }}。</p>
+      {% if building.level >= max_level %}
+      <button class="primary-button" disabled>已达当前上限</button>
+      {% else %}
+      <form method="post" action="{{ url_for('world_building_upgrade', building_key=building.key) }}">
+        <button class="primary-button">升级到 Lv.{{ building.level + 1 }}</button>
+      </form>
+      {% endif %}
+    </section>
+  </div>
+
+  <section class="panel room-log">
+    <div class="panel-head simple"><div><span class="eyebrow">Log</span><h2>最近修建</h2></div></div>
+    {% if recent %}
+    <ul>{% for item in recent %}<li><span>{{ item.created_at[:16].replace('T',' ') }}</span><b>{{ item.detail }}</b></li>{% endfor %}</ul>
+    {% else %}
+    <div class="empty">还没有修建记录。第一次升级会记在这里。</div>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

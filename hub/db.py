@@ -22,21 +22,48 @@ HUB_ADMIN_PATH = INSTANCE_DIR / "HUB_ADMIN_CREDENTIALS.txt"
 
 # These are deliberately only the light-weight, shared assets of a 同行会.
 # They are not a mirror of a member's private local research database.
-ASSET_KEYS = ("cultivation", "spirit_stone", "spirit_wood", "mystic_iron", "star_sand")
+ASSET_KEYS = (
+    "cultivation",
+    "spirit_stone",
+    "spirit_wood",
+    "qi_grass",
+    "dew_flower",
+    "red_ganoderma",
+    "azure_sword",
+    "heart_mirror",
+    "cosmos_bag",
+    "mystic_iron",
+    "star_sand",
+    "primordial_stone",
+)
 WELFARE_SINGLE_LIMITS = {
     "xp": 60,
     "spirit_stone": 50,
     "spirit_wood": 6,
+    "qi_grass": 10,
+    "dew_flower": 6,
+    "red_ganoderma": 3,
+    "azure_sword": 2,
+    "heart_mirror": 2,
+    "cosmos_bag": 1,
     "mystic_iron": 6,
     "star_sand": 6,
+    "primordial_stone": 2,
 }
 WELFARE_DAILY_LIMITS = {
     "grants": 3,
     "xp": 120,
     "spirit_stone": 100,
     "spirit_wood": 12,
+    "qi_grass": 20,
+    "dew_flower": 12,
+    "red_ganoderma": 6,
+    "azure_sword": 4,
+    "heart_mirror": 4,
+    "cosmos_bag": 2,
     "mystic_iron": 12,
     "star_sand": 12,
+    "primordial_stone": 4,
 }
 
 
@@ -99,7 +126,16 @@ def create_user(
     """创建账号并发放联机开宗礼包（身份逻辑在 core.accounts）。"""
     user_id, token = accounts.create_account(conn, username, password, display_name, role, email)
     ts = now_iso()
-    for key, amount in {"cultivation": 100, "spirit_stone": 12, "spirit_wood": 4, "mystic_iron": 2, "star_sand": 2}.items():
+    for key, amount in {
+        "cultivation": 100,
+        "spirit_stone": 12,
+        "spirit_wood": 4,
+        "mystic_iron": 2,
+        "star_sand": 2,
+        "qi_grass": 3,
+        "dew_flower": 2,
+        "primordial_stone": 1,
+    }.items():
         conn.execute(
             "INSERT INTO hub_asset_transactions(user_id,asset_key,amount,reason,created_at) VALUES (?,?,?,?,?)",
             (user_id, key, amount, "联机开宗礼包", ts),

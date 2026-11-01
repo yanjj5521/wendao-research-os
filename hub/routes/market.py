@@ -18,6 +18,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from hub.common import audit, flash, hub_context, hub_url_for, require_user, templates, verify_csrf
 from hub.red_packets import split_share
 from hub.social import (
+    SOCIAL_ASSET_GROUPS,
     SOCIAL_ASSET_LABELS,
     social_amount,
     social_asset,
@@ -127,6 +128,7 @@ def market_page(request: Request):
             request,
             "market",
             social_assets=SOCIAL_ASSET_LABELS,
+            social_asset_groups=SOCIAL_ASSET_GROUPS,
             market_balances=market_balances,
             recipients=recipients,
             transfers=transfers,
@@ -225,8 +227,6 @@ def group_red_packet_claim(
             ).fetchone()
             if not packet:
                 raise ValueError("红包不存在。")
-            if int(packet["sender_id"]) == int(user["id"]):
-                raise ValueError("不能抢自己发的红包。")
             if packet["status"] != "open" or int(packet["shares_left"]) <= 0:
                 raise ValueError("红包已抢完或已过期。")
             claimed = conn.execute(

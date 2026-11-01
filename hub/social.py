@@ -7,19 +7,45 @@ from typing import Any
 from hub.db import ASSET_KEYS
 
 
+SOCIAL_ASSET_GROUPS = (
+    (
+        "基础",
+        (("cultivation", "修为"), ("spirit_stone", "灵石"), ("spirit_wood", "灵木")),
+    ),
+    (
+        "灵草",
+        (("qi_grass", "聚气草"), ("dew_flower", "凝露花"), ("red_ganoderma", "赤霞芝")),
+    ),
+    (
+        "法宝",
+        (("azure_sword", "青锋剑"), ("heart_mirror", "护心镜"), ("cosmos_bag", "乾坤袋")),
+    ),
+    (
+        "天地灵物",
+        (("mystic_iron", "玄铁"), ("star_sand", "星砂"), ("primordial_stone", "太初石")),
+    ),
+)
 SOCIAL_ASSET_LABELS = {
-    "cultivation": "修为",
-    "spirit_stone": "灵石",
-    "spirit_wood": "灵木",
-    "mystic_iron": "玄铁",
-    "star_sand": "星砂",
+    key: label for _, items in SOCIAL_ASSET_GROUPS for key, label in items
 }
+CHAT_EMOJIS = (
+    "😀", "😄", "😊", "🥹", "😭", "😅", "👍", "🙏",
+    "💪", "✨", "🌿", "🧪", "📚", "🔍", "💡", "🔥",
+    "🎉", "☕", "🌙", "⭐", "🧠", "📌", "✅", "🧧",
+)
 SOCIAL_TRANSFER_LIMITS = {
     "cultivation": 500,
     "spirit_stone": 200,
     "spirit_wood": 50,
+    "qi_grass": 30,
+    "dew_flower": 20,
+    "red_ganoderma": 10,
+    "azure_sword": 5,
+    "heart_mirror": 5,
+    "cosmos_bag": 2,
     "mystic_iron": 50,
     "star_sand": 50,
+    "primordial_stone": 5,
 }
 
 

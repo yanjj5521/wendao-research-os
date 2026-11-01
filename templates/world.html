@@ -1,6 +1,8 @@
 {% extends "base.html" %}
 {% block title %}我的洞府 · {{ site_name }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/world-luxe.css') }}">{% endblock %}
 {% block content %}
+<div class="world-luxe">
 <div class="page-head minimal-head world-head">
   <div>
     <span class="eyebrow">Research Habitat</span>
@@ -35,13 +37,10 @@
   <blockquote class="cave-poem">{{ ui_home_poem }}</blockquote>
   <div class="building-row">
     {% for building in buildings %}
-    <article class="world-building level-{{ building.level }}">
+    <a class="world-building level-{{ building.level }}" href="{{ url_for('world_building_page', building_key=building.key) }}" aria-label="进入{{ building.name }}内部">
       <span class="building-glyph">{{ building.icon }}</span>
-      <div><strong>{{ building.name }}</strong><small>Lv.{{ building.level }} · {{ building.desc }}</small></div>
-      <form method="post" action="{{ url_for('world_building_upgrade', building_key=building.key) }}">
-        <button class="tiny-world-button">升级 · {{ building.cost }}{{ assets[building.asset].icon }}</button>
-      </form>
-    </article>
+      <div class="building-copy"><strong>{{ building.name }}</strong><small>Lv.{{ building.level }} · {{ building.desc }}</small><em>点击进入内部 →</em></div>
+    </a>
     {% endfor %}
     <form class="moon-well" method="post" action="{{ url_for('world_moon_well') }}" title="井面似乎有一圈不同寻常的光">
       <button aria-label="查看月影井"><span></span><small>月影井</small></button>
@@ -129,4 +128,5 @@
     {% endfor %}
   </div>
 </section>
+</div>
 {% endblock %}

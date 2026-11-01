@@ -15,6 +15,7 @@ from hub.common import (
     verify_csrf,
 )
 from hub.social import (
+    CHAT_EMOJIS,
     SOCIAL_ASSET_LABELS,
     social_text,
 )
@@ -162,7 +163,7 @@ def chat_page(request: Request):
             )
         ]
     messages.reverse()
-    return templates.TemplateResponse(request=request, name="chat.html", context=hub_context(request, "chat", messages=messages, chat_refresh_seconds=20))
+    return templates.TemplateResponse(request=request, name="chat.html", context=hub_context(request, "chat", messages=messages, chat_refresh_seconds=20, chat_emojis=CHAT_EMOJIS))
 
 
 @router.post("/chat", name="hub_chat_send")

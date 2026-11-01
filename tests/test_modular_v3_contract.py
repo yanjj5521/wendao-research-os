@@ -204,11 +204,23 @@ class ModularV3ContractTests(unittest.TestCase):
         self.assertIn('data-priority="chat-immediate"', chat)
         self.assertIn("hub_chat_send_json", chat)
         self.assertIn("hub_chat_messages_json", chat)
+        self.assertIn("data-chat-emoji", chat)
+        market = (ROOT / "hub_templates" / "market.html").read_text(encoding="utf-8")
+        self.assertIn("指定红包", market)
+        self.assertIn("群发红包", market)
+        self.assertIn("social_asset_groups", market)
         resources = (ROOT / "hub_templates" / "resources.html").read_text(encoding="utf-8")
         self.assertIn('data-priority="paper-deferred"', resources)
         hub_css = (ROOT / "hub_static" / "system-entry.css").read_text(encoding="utf-8")
         self.assertIn("content-visibility:auto", hub_css)
         self.assertIn(".group-packet", hub_css)
+        world = (ROOT / "templates" / "world.html").read_text(encoding="utf-8")
+        self.assertIn("world_building_page", world)
+        self.assertIn('class="world-luxe"', world)
+        self.assertTrue((ROOT / "templates" / "world_building.html").is_file())
+        world_css = (ROOT / "static" / "world-luxe.css").read_text(encoding="utf-8")
+        self.assertIn(".room-stage", world_css)
+        self.assertIn(".world-luxe .building-glyph", world_css)
 
     def test_layers_are_reachable_without_compatibility_shims(self) -> None:
         # 1.0 删掉了 app.py / db.py 两个转发层：入口与数据访问各自只有一条路径。
@@ -452,7 +464,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.3.13")
+        self.assertEqual(version, "1.3.14")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",

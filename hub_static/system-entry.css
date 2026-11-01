@@ -27,4 +27,7 @@
 .chat-message.pending{opacity:.55}
 .chat-message.failed{outline:1px dashed #c26b5a;outline-offset:3px}
 .chat-delivery{display:block;margin-top:4px;color:var(--muted);font-size:10px}
+.chat-emoji-palette{display:flex;flex-wrap:wrap;gap:4px;padding:8px 2px 2px}
+.chat-emoji-palette button{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:#fffaf4;font-size:18px;line-height:1;cursor:pointer;transition:transform .12s ease,background .12s ease}
+.chat-emoji-palette button:hover{transform:translateY(-1px);background:#fff0d8}
 @media(max-width:900px){.group-packets{grid-template-columns:1fr}.grid.three.market-forms{grid-template-columns:1fr}}

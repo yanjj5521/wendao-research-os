@@ -13,6 +13,7 @@ from services.economy import ASSETS, balance, balances, transact
 from services.game_world import (
     ARTIFACTS,
     BUILDINGS,
+    BUILDING_ROOMS,
     building_cost,
     building_level,
     equipped_artifact,
@@ -119,6 +120,42 @@ def register_game_routes(
                             egg_count=sum(1 for egg in eggs if egg["unlocked"])),
         )
 
+    @router.get("/world/buildings/{building_key}", response_class=HTMLResponse, name="world_building_page")
+    def world_building_page(request: Request, building_key: str):
+        spec = BUILDINGS.get(building_key)
+        if not spec:
+            raise HTTPException(status_code=404)
+        room = BUILDING_ROOMS.get(
+            building_key,
+            {"tagline": spec["desc"], "ritual": "先做一件最小的事，再离开。", "theme": "plain", "actions": ()},
+        )
+        with connect() as conn:
+            level = building_level(conn, building_key)
+            cost = building_cost(building_key, level)
+            wallet = balances(conn)
+            recent = [
+                dict(row)
+                for row in conn.execute(
+                    "SELECT action,detail,created_at FROM activities "
+                    "WHERE action='building_upgrade' AND detail LIKE ? ORDER BY id DESC LIMIT 6",
+                    (f"%{spec['name']}%",),
+                )
+            ]
+        return templates.TemplateResponse(
+            request=request,
+            name="world_building.html",
+            context=context(
+                request,
+                "world",
+                building={"key": building_key, **spec, "level": level, "cost": cost},
+                room=room,
+                wallet=wallet,
+                asset_label=ASSETS[spec["asset"]]["name"],
+                recent=recent,
+                max_level=9,
+            ),
+        )
+
     @router.post("/world/buildings/{building_key}/upgrade", name="world_building_upgrade")
     def world_building_upgrade(request: Request, building_key: str):
         if building_key not in BUILDINGS:
@@ -127,14 +164,14 @@ def register_game_routes(
             level = building_level(conn, building_key)
             if level >= 9:
                 flash(request, "该建筑已达到当前版本上限。", "error")
-                return RedirectResponse(request.url_for("world_page"), status_code=303)
+                return RedirectResponse(request.url_for("world_building_page", building_key=building_key), status_code=303)
             spec = BUILDINGS[building_key]
             cost = building_cost(building_key, level)
             try:
                 transact(conn, spec["asset"], -cost, f"升级建筑：{spec['name']}")
             except ValueError:
                 flash(request, f"{ASSETS[spec['asset']]['name']}不足，还需要 {cost}。", "error")
-                return RedirectResponse(request.url_for("world_page"), status_code=303)
+                return RedirectResponse(request.url_for("world_building_page", building_key=building_key), status_code=303)
             ts = now_iso()
             conn.execute(
                 """INSERT INTO inventory_items(item_key,item_type,quantity,level,equipped,acquired_at,updated_at)
@@ -147,7 +184,7 @@ def register_game_routes(
             conn.commit()
         best_effort_sync()
         flash(request, f"{spec['name']}已升至 {level+1} 级。", "success")
-        return RedirectResponse(request.url_for("world_page"), status_code=303)
+        return RedirectResponse(request.url_for("world_building_page", building_key=building_key), status_code=303)
 
     @router.post("/world/artifacts/{artifact_key}/buy", name="world_artifact_buy")
     def world_artifact_buy(request: Request, artifact_key: str):

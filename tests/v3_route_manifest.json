@@ -760,6 +760,11 @@
     "name": "world_artifact_upgrade"
   },
   {
+    "method": "GET",
+    "path": "/world/buildings/{building_key}",
+    "name": "world_building_page"
+  },
+  {
     "method": "POST",
     "path": "/world/buildings/{building_key}/upgrade",
     "name": "world_building_upgrade"

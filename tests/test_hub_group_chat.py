@@ -60,13 +60,19 @@ self_claim = alice.post(
     data={"_csrf": csrf(alice, "/market")},
 )
 assert self_claim.status_code == 200
-assert "不能抢自己发的红包" in self_claim.text
-for client in (bob, carol, dave):
+assert "抢到" in self_claim.text
+for client in (bob, carol):
     response = client.post(
         f"/market/group-red-packets/{packet_id}/claim",
         data={"_csrf": csrf(client, "/market")},
     )
     assert response.status_code == 200
+exhausted = dave.post(
+    f"/market/group-red-packets/{packet_id}/claim",
+    data={"_csrf": csrf(dave, "/market")},
+)
+assert exhausted.status_code == 200
+assert "已抢完" in exhausted.text
 with connect_hub() as conn:
     packet = conn.execute("SELECT * FROM hub_red_packets WHERE id=?", (packet_id,)).fetchone()
     claims = [

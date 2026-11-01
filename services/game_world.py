@@ -87,6 +87,45 @@ BUILDINGS = {
     },
 }
 
+BUILDING_ROOMS = {
+    "scripture_pavilion": {
+        "tagline": "推门先闻到旧纸与墨香，适合把零散线索收进同一只书架。",
+        "ritual": "进门先问：我今天要留下的是可检索的证据，还是只是一段读后感？",
+        "theme": "scripture",
+        "actions": (
+            ("打开知识库", "library", "按主题整理笔记、文献与资料卡"),
+            ("全库检索", "search", "从一句话、一个图号或作者找回证据"),
+        ),
+    },
+    "alchemy_room": {
+        "tagline": "炉火不旺，但每一次实验都能留下条件、测量与失败原因。",
+        "ritual": "先写清变量与单位，再点火；没有对照的实验，不算炼成。",
+        "theme": "alchemy",
+        "actions": (
+            ("打开实验台账", "experiments_page", "记录条件、测量与结论"),
+            ("查看数据集", "datasets_page", "把可复用的数据资产放到同一层架子"),
+        ),
+    },
+    "forge_hall": {
+        "tagline": "锤声很轻，更多时候是在把流程、代码与 SOP 打磨到别人能复现。",
+        "ritual": "把“我知道怎么做”改写成“别人照此能再做一次”。",
+        "theme": "forge",
+        "actions": (
+            ("进入项目", "projects_page", "把交付拆成证据链与下一步"),
+            ("打开学习工作台", "workbench_page", "处理文本、图片与计算工具"),
+        ),
+    },
+    "herb_garden": {
+        "tagline": "灵草不因浇水而长，只在你完成真实任务后抽出一片新叶。",
+        "ritual": "先看库存，再决定要不要接新的特殊任务；不要为了数量而做任务。",
+        "theme": "garden",
+        "actions": (
+            ("去炼丹炉", "alchemy_page", "接特殊任务，换取分级灵草"),
+            ("秘境试炼", "trials_page", "用反证与迁移检验理解"),
+        ),
+    },
+}
+
 HERB_STAGES = [
     (0, "种子", "·"),
     (8, "破土", "♩"),
