@@ -20,6 +20,7 @@ from hub.common import (
     verify_csrf,
 )
 from hub.db import (
+    ensure_instance_id,
     connect_hub,
     create_user,
     get_hub_setting,
@@ -86,10 +87,14 @@ def register_submit(
             return RedirectResponse("/register", status_code=303)
         row, reason = find_invite(conn, invite)
         if not row:
+            instance = ensure_instance_id(conn)
             messages = {
                 "empty": "请输入邀请码。",
                 "format": "邀请码格式不正确，请粘贴管理员生成的完整邀请码或注册链接。",
-                "missing": "邀请码不存在或已失效，请让管理员重新生成。",
+                "missing": (
+                    f"邀请码不存在或已失效（中心实例 {instance}）。"
+                    "请确认注册地址与管理员面板属于同一实例，或让管理员重新生成。"
+                ),
                 "used": "邀请码已用完。",
                 "expired": "邀请码已过期。",
             }
@@ -101,6 +106,40 @@ def register_submit(
                 else f"/register?invite={quote(preserved)}"
             )
             return RedirectResponse(target, status_code=303)
+        # 建号冲突先于扣次检测：避免先消耗邀请码再回滚，也避免把邮箱冲突误报成用户名冲突。
+        uname = username.strip().lower()
+        existing = conn.execute(
+            "SELECT username,status FROM accounts WHERE username=?", (uname,)
+        ).fetchone()
+        if existing:
+            if uname == "admin":
+                flash(
+                    request,
+                    "admin 是首次启动时自动创建的管理员账号，请直接登录；"
+                    "忘记密码时使用 WendaoResearchV3.exe admin-path 查看凭据文件，无需重新注册。",
+                    "error",
+                )
+            elif existing["status"] != "active":
+                flash(
+                    request,
+                    f"用户名 {existing['username']} 已被停用账号占用，请联系管理员恢复或换一个。",
+                    "error",
+                )
+            else:
+                flash(request, f"用户名 {existing['username']} 已被使用，请换一个。", "error")
+            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
+        clean_email = email.strip()
+        if clean_email:
+            taken = conn.execute(
+                "SELECT username FROM accounts WHERE email=? COLLATE NOCASE", (clean_email,)
+            ).fetchone()
+            if taken:
+                flash(
+                    request,
+                    f"邮箱 {clean_email} 已被账号 {taken['username']} 使用，请换一个邮箱或留空。",
+                    "error",
+                )
+                return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
         if not consume_invite(conn, row["code"]):
             flash(request, "邀请码已用完。", "error")
             return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
@@ -108,7 +147,7 @@ def register_submit(
             user_id, _ = create_user(conn, username, password, display_name, email=email.strip() or None)
         except sqlite3.IntegrityError:
             conn.rollback()
-            flash(request, "用户名已经存在。", "error")
+            flash(request, "创建账户失败：账号信息冲突，请更换用户名或邮箱后重试。", "error")
             return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
         except ValueError as exc:
             conn.rollback()

@@ -28,6 +28,7 @@ from hub.db import (
     HUB_BACKUP_DIR,
     HUB_RELEASE_DIR,
     WELFARE_SINGLE_LIMITS,
+    hub_instance_id,
     backup_hub_db,
     connect_hub,
     enforce_welfare_daily_limits,
@@ -65,7 +66,7 @@ def admin_page(request: Request):
                 """
             )
         ]
-        invites=[dict(row) for row in conn.execute("SELECT * FROM hub_invites ORDER BY created_at DESC")]
+        invites=[dict(row) for row in conn.execute("SELECT * FROM hub_invites ORDER BY rowid DESC")]
         releases=[dict(row) for row in conn.execute("SELECT * FROM hub_releases ORDER BY id DESC")]
         audits=[dict(row) for row in conn.execute("SELECT a.*,u.display_name FROM hub_audit_log a LEFT JOIN accounts u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 50")]
         welfare=[dict(row) for row in conn.execute("""SELECT g.*,r.display_name recipient_name,a.display_name admin_name
@@ -94,6 +95,7 @@ def admin_page(request: Request):
             "admin",
             users=users,
             invites=invites,
+            instance_id=hub_instance_id(conn),
             releases=releases,
             audits=audits,
             admin_credentials_path=str(HUB_ADMIN_PATH),

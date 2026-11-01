@@ -109,6 +109,7 @@
 
   <div class="panel">
     <div class="section-head"><div><small>邀请</small><h2>邀请码</h2></div></div>
+    <p class="form-help">中心实例 ID：<b>{{ instance_id }}</b> · 成员注册地址必须与当前管理地址同源，否则邀请码会提示“不存在”。</p>
     <div class="invite-list">
       {% for i in invites %}
       <div><code>{{ i.code }}</code><span>剩余 {{ i.uses_remaining }} · 到期 {{ (i.expires_at or '永久')[:10] }}</span><a href="{{ url_for('hub_register', invite=i.code) }}">打开注册页</a></div>

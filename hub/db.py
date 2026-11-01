@@ -306,6 +306,11 @@ def init_hub_db() -> None:
                 (invite, 9, (datetime.now().astimezone() + timedelta(days=30)).isoformat(timespec="seconds"), user_id, now_iso()),
             )
 
+        conn.execute(
+            "INSERT OR IGNORE INTO hub_settings(key,value) VALUES ('instance_id',?)",
+            (generate_invite_code(8),),
+        )
+
 
 def get_user_by_token(conn: sqlite3.Connection, token: str) -> sqlite3.Row | None:
     return accounts.account_by_token(conn, token)
@@ -314,4 +319,24 @@ def get_user_by_token(conn: sqlite3.Connection, token: str) -> sqlite3.Row | Non
 def get_hub_setting(conn: sqlite3.Connection, key: str, default: str = "") -> str:
     row = conn.execute("SELECT value FROM hub_settings WHERE key=?", (key,)).fetchone()
     return row["value"] if row else default
+
+
+def hub_instance_id(conn: sqlite3.Connection) -> str:
+    """Read-only per-database fingerprint; created at init or in write paths.
+
+    Never INSERT from a read-only request: the admin page holds a WAL read
+    snapshot, and upgrading it to a write fails with "database is locked".
+    """
+    row = conn.execute("SELECT value FROM hub_settings WHERE key='instance_id'").fetchone()
+    return str(row["value"]) if row and row["value"] else ""
+
+
+def ensure_instance_id(conn: sqlite3.Connection) -> str:
+    """Create the fingerprint inside a context that already owns the write lock."""
+    value = hub_instance_id(conn)
+    if value:
+        return value
+    value = generate_invite_code(8)
+    conn.execute("INSERT OR IGNORE INTO hub_settings(key,value) VALUES ('instance_id',?)", (value,))
+    return hub_instance_id(conn) or value
 
