@@ -5,7 +5,7 @@
     <p class="form-help">同行会是邀请制的小圈子：资料卡与论坛对成员公开；科研原文件永远留在各自电脑，中心只沉淀名片、讨论与虚拟资产。</p>
     <form class="form-grid" method="post" action="{{ url_for('hub_register_submit') }}">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <label>邀请码<input name="invite" value="{{ invite }}" required></label>
+      <label>邀请码<small>可直接粘贴管理员发来的注册链接，系统会自动提取</small><input name="invite" value="{{ invite }}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="邀请码或注册链接" required></label>
       <label>用户名<small>（英文、数字、下划线，登录用）</small><input name="username" autocomplete="username" placeholder="英文、数字、下划线" required></label>
       <label>显示名称<small>（朋友看到的名字）</small><input name="display_name" autocomplete="nickname" placeholder="朋友看到的名字" required></label>
       <label>邮箱<small>（可选，方便管理员联系你）</small><input name="email" type="email" autocomplete="email" placeholder="you@example.com"></label>

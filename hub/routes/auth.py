@@ -7,7 +7,7 @@ from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from core import accounts as accounts_repo
-from hub.invites import consume_invite, find_invite
+from hub.invites import consume_invite, find_invite, normalize_code
 from hub.common import (
     audit,
     client_ip,
@@ -57,7 +57,11 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
 
 @router.get("/register", response_class=HTMLResponse, name="hub_register")
 def register_page(request: Request, invite: str = ""):
-    return templates.TemplateResponse(request=request, name="register.html", context=hub_context(request, "register", invite=invite))
+    return templates.TemplateResponse(
+        request=request,
+        name="register.html",
+        context=hub_context(request, "register", invite=normalize_code(invite)),
+    )
 
 
 @router.post("/register", name="hub_register_submit")
@@ -84,12 +88,18 @@ def register_submit(
         if not row:
             messages = {
                 "empty": "请输入邀请码。",
-                "missing": "邀请码无效，请确认是否复制完整。",
+                "format": "邀请码格式不正确，请粘贴管理员生成的完整邀请码或注册链接。",
+                "missing": "邀请码不存在或已失效，请让管理员重新生成。",
                 "used": "邀请码已用完。",
                 "expired": "邀请码已过期。",
             }
             flash(request, messages.get(reason, "邀请码无效。"), "error")
-            target = "/register" if reason == "empty" else f"/register?invite={quote(invite.strip())}"
+            preserved = normalize_code(invite)
+            target = (
+                "/register"
+                if reason in {"empty", "format"} or not preserved
+                else f"/register?invite={quote(preserved)}"
+            )
             return RedirectResponse(target, status_code=303)
         if not consume_invite(conn, row["code"]):
             flash(request, "邀请码已用完。", "error")

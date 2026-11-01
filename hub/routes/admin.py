@@ -21,6 +21,7 @@ from hub.common import (
     templates,
     verify_csrf,
 )
+from hub.invites import generate_invite_code
 from hub.db import (
     ASSET_KEYS,
     HUB_ADMIN_PATH,
@@ -110,7 +111,7 @@ def admin_page(request: Request):
 def invite_create(request:Request,uses:int=Form(1),days:int=Form(14),csrf_value:str=Form(..., alias="_csrf")):
     user = require_user(request, admin=True)
     verify_csrf(request, csrf_value)
-    code=secrets.token_urlsafe(8)
+    code=generate_invite_code()
     expires=(datetime.now().astimezone()+timedelta(days=max(1,min(days,90)))).isoformat(timespec="seconds")
     with hub_transaction() as conn:
         conn.execute("INSERT INTO hub_invites(code,uses_remaining,expires_at,created_by,created_at) VALUES (?,?,?,?,?)",(code,max(1,min(uses,10)),expires,user["id"],now_iso()))

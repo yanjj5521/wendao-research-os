@@ -11,6 +11,7 @@ from core import accounts
 from core import migrations as migration_engine
 from core.migrations import HUB_MIGRATIONS
 from core.schema import HUB_SCHEMA_SQL, HUB_SCHEMA_VERSION
+from hub.invites import generate_invite_code
 from core.runtime_paths import INSTANCE_DIR, STORAGE_ROOT
 from core.version import APP_VERSION
 
@@ -299,7 +300,7 @@ def init_hub_db() -> None:
                 encoding="utf-8",
             )
             _restrict_private_file(HUB_ADMIN_PATH)
-            invite = secrets.token_urlsafe(8)
+            invite = generate_invite_code()
             conn.execute(
                 "INSERT INTO hub_invites(code,uses_remaining,expires_at,created_by,created_at) VALUES (?,?,?,?,?)",
                 (invite, 9, (datetime.now().astimezone() + timedelta(days=30)).isoformat(timespec="seconds"), user_id, now_iso()),
