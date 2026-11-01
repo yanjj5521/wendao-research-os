@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image
 
@@ -49,6 +52,26 @@ class PetVisualTests(unittest.TestCase):
         original = Image.new("RGBA", (20, 20), (120, 180, 140, 255))
         same = pet._form_tinted(original, {"tint": (110, 170, 120), "alpha": 0.0})
         self.assertEqual(same.getpixel((10, 10)), original.getpixel((10, 10)))
+
+    def test_save_settings_is_atomic_and_readable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "desktop_pet.json"
+            with patch.object(pet, "SETTINGS_PATH", path), patch.object(
+                pet, "USER_CONFIG_DIR", Path(directory)
+            ):
+                pet._save_settings({"progression": {"xp": 3}, "pats": 2})
+            self.assertEqual(
+                json.loads(path.read_text(encoding="utf-8")),
+                {"progression": {"xp": 3}, "pats": 2},
+            )
+            self.assertFalse((Path(directory) / "desktop_pet.json.tmp").exists())
+
+    def test_corrupt_settings_fall_back_to_defaults(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "desktop_pet.json"
+            path.write_text("{not json", encoding="utf-8")
+            with patch.object(pet, "SETTINGS_PATH", path):
+                self.assertEqual(pet._load_settings(), {})
 
     def test_pet_has_no_painted_background_layer(self) -> None:
         source = Path(pet.__file__).read_text(encoding="utf-8")

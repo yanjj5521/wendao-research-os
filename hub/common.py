@@ -67,16 +67,30 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else ""
 
 
+def _prune_login_attempts(now: float) -> None:
+    for address in list(_LOGIN_ATTEMPTS):
+        queue = _LOGIN_ATTEMPTS[address]
+        while queue and now - queue[0] > 600:
+            queue.popleft()
+        if not queue:
+            del _LOGIN_ATTEMPTS[address]
+
+
 def login_allowed(ip: str) -> bool:
     now = time.time()
-    queue = _LOGIN_ATTEMPTS[ip]
-    while queue and now - queue[0] > 600:
-        queue.popleft()
-    return len(queue) < 8
+    _prune_login_attempts(now)
+    queue = _LOGIN_ATTEMPTS.get(ip)
+    return not queue or len(queue) < 8
 
 
 def record_login_failure(ip: str) -> None:
-    _LOGIN_ATTEMPTS[ip].append(time.time())
+    now = time.time()
+    _prune_login_attempts(now)
+    _LOGIN_ATTEMPTS[ip].append(now)
+
+
+def record_login_success(ip: str) -> None:
+    _LOGIN_ATTEMPTS.pop(ip, None)
 
 
 def csrf_token(request: Request) -> str:

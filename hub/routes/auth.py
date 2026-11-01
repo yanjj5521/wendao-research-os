@@ -15,6 +15,7 @@ from hub.common import (
     hub_context,
     login_allowed,
     record_login_failure,
+    record_login_success,
     templates,
     verify_csrf,
 )
@@ -45,7 +46,9 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
             conn.commit()
             flash(request, "用户名或密码不正确。", "error")
             return RedirectResponse("/", status_code=303)
+        request.session.clear()
         request.session["hub_user_id"] = int(row["id"])
+        record_login_success(ip)
         accounts_repo.mark_login(conn, int(row["id"]))
         audit(conn, int(row["id"]), "login", "网页登录", request)
         conn.commit()
@@ -72,7 +75,7 @@ def register_submit(
     if password != password_confirm:
         flash(request, "两次密码不一致。", "error")
         return RedirectResponse(f"/register?invite={invite}", status_code=303)
-    with hub_transaction() as conn:
+    with hub_transaction(immediate=True) as conn:
         max_members = int(get_hub_setting(conn, "max_members", "10"))
         if conn.execute("SELECT COUNT(*) n FROM accounts WHERE active=1").fetchone()["n"] >= max_members:
             flash(request, "同行会成员已达到当前上限。", "error")
@@ -106,6 +109,7 @@ def register_submit(
             flash(request, "创建账户失败，请稍后重试。", "error")
             return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
         audit(conn, user_id, "register", "邀请码注册", request)
+        request.session.clear()
         request.session["hub_user_id"] = user_id
     return RedirectResponse("/me", status_code=303)
 

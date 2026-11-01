@@ -26,10 +26,11 @@ from __future__ import annotations
 import base64
 import json
 import math
+import os
 import random
 import tempfile
 import tkinter as tk
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 from PIL import Image, ImageTk
@@ -40,6 +41,7 @@ from services.pet_progression import (
     award,
     describe,
     form_for_level,
+    form_gallery,
     load_progress,
     record_pat,
     rules_text,
@@ -135,7 +137,9 @@ def _load_settings() -> dict:
 def _save_settings(data: dict) -> None:
     try:
         USER_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        SETTINGS_PATH.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        temporary = SETTINGS_PATH.with_name(SETTINGS_PATH.name + ".tmp")
+        temporary.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        os.replace(temporary, SETTINGS_PATH)
     except OSError:
         pass
 
@@ -198,6 +202,39 @@ def _progress_snapshot(day: str) -> tuple[list[int], int]:
         return ids, int(row["n"])
     except Exception:
         return [], 0
+
+
+def _activity_stats() -> tuple[int, int, int]:
+    """(今日活动数, 近 7 天活跃天数, 连续活跃天数)；失败时返回 0。"""
+    try:
+        today = date.today()
+        since = (today - timedelta(days=6)).isoformat()
+        with connect() as conn:
+            today_count = int(
+                conn.execute(
+                    "SELECT COUNT(*) n FROM activities WHERE substr(created_at,1,10)=?",
+                    (today.isoformat(),),
+                ).fetchone()["n"]
+            )
+            days = [
+                str(row["d"])
+                for row in conn.execute(
+                    "SELECT DISTINCT substr(created_at,1,10) d FROM activities "
+                    "WHERE substr(created_at,1,10) >= ? ORDER BY d DESC",
+                    (since,),
+                )
+            ]
+        streak = 0
+        cursor = today
+        for day in days:
+            if day == cursor.isoformat():
+                streak += 1
+                cursor -= timedelta(days=1)
+            else:
+                break
+        return today_count, len(days), streak
+    except Exception:
+        return 0, 0, 0
 
 
 def _form_tinted(frame: Image.Image, form: dict) -> Image.Image:
@@ -326,6 +363,7 @@ def run_pet() -> None:
 
     def _wobble_scale() -> float:
         base = {"happy": 0.045, "proud": 0.035, "nudge": 0.03, "calm": 0.025, "sleepy": 0.014}.get(mood, 0.025)
+        base *= float(form.get("wobble", 1.0))
         speed = {"happy": 0.3, "proud": 0.26, "sleepy": 0.12}.get(mood, 0.22)
         return 1.0 + (base * math.sin(phase * speed / 0.22))
 
@@ -459,6 +497,35 @@ def run_pet() -> None:
             ),
             bg="#213242", fg="#b9c7d4", font=("Microsoft YaHei UI", 9),
         ).pack(anchor="w", pady=(8, 0))
+        today_count, active_days, streak = _activity_stats()
+        tk.Label(
+            body,
+            text=(
+                f"今日活动 {today_count} 条 · 近 7 天活跃 {active_days} 天 · "
+                f"连续 {streak} 天 · 累计摸头 {pats} 次"
+            ),
+            bg="#213242", fg="#b9c7d4", font=("Microsoft YaHei UI", 9),
+            wraplength=300, justify="left",
+        ).pack(anchor="w", pady=(4, 0))
+        tk.Label(
+            body, text="形态图鉴", bg="#213242", fg="#d9a85c",
+            font=("Microsoft YaHei UI", 10, "bold"),
+        ).pack(anchor="w", pady=(10, 2))
+        gallery = tk.Frame(body, bg="#213242")
+        gallery.pack(anchor="w")
+        for item in form_gallery(progress.level):
+            if item["current"]:
+                mark, color, suffix = "●", "#d9a85c", " · 当前"
+            elif item["unlocked"]:
+                mark, color, suffix = "○", "#fff4d2", ""
+            else:
+                mark, color, suffix = "·", "#6f7f8e", "（未解锁）"
+            tk.Label(
+                gallery,
+                text=f"{mark} Lv.{item['min_level']} {item['name']}{suffix}",
+                bg="#213242", fg=color, font=("Microsoft YaHei UI", 9),
+                anchor="w",
+            ).pack(anchor="w")
         tk.Label(
             body, text="经验规则\n" + "\n".join(rules_text()),
             bg="#213242", fg="#b9c7d4", font=("Microsoft YaHei UI", 9),

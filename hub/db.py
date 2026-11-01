@@ -64,9 +64,11 @@ def connect_hub() -> sqlite3.Connection:
 
 
 @contextmanager
-def hub_transaction() -> Iterable[sqlite3.Connection]:
+def hub_transaction(immediate: bool = False) -> Iterable[sqlite3.Connection]:
     conn = connect_hub()
     try:
+        if immediate:
+            conn.execute("BEGIN IMMEDIATE")
         yield conn
         conn.commit()
     except Exception:

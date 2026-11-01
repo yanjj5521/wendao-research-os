@@ -22,6 +22,7 @@ PAT_CAP = 5
 FORMS: tuple[dict[str, Any], ...] = (
     {
         "key": "sprout",
+        "wobble": 0.85,
         "name": "幼芽",
         "min_level": 1,
         "tint": (110, 170, 120),
@@ -31,38 +32,42 @@ FORMS: tuple[dict[str, Any], ...] = (
     },
     {
         "key": "leaf",
+        "wobble": 1.0,
         "name": "青叶",
         "min_level": 3,
-        "tint": (72, 148, 112),
-        "alpha": 0.08,
-        "scale": 1.02,
+        "tint": (40, 130, 95),
+        "alpha": 0.30,
+        "scale": 1.03,
         "note": "叶脉清晰，摇起来更有弹性。",
     },
     {
         "key": "flower",
+        "wobble": 1.15,
         "name": "灵花",
         "min_level": 5,
-        "tint": (208, 158, 88),
-        "alpha": 0.10,
-        "scale": 1.04,
+        "tint": (235, 150, 45),
+        "alpha": 0.32,
+        "scale": 1.06,
         "note": "边缘泛起暖金色，像把光收在叶尖。",
     },
     {
         "key": "fruit",
+        "wobble": 0.95,
         "name": "道果",
         "min_level": 8,
-        "tint": (196, 118, 76),
-        "alpha": 0.12,
-        "scale": 1.06,
+        "tint": (200, 85, 45),
+        "alpha": 0.34,
+        "scale": 1.09,
         "note": "颜色沉下来，动作也更稳。",
     },
     {
         "key": "star",
+        "wobble": 1.25,
         "name": "星灵",
         "min_level": 12,
-        "tint": (118, 168, 208),
-        "alpha": 0.10,
-        "scale": 1.05,
+        "tint": (60, 145, 225),
+        "alpha": 0.30,
+        "scale": 1.07,
         "note": "带一点冷光，像夜里值班的小灯。",
     },
 )
@@ -91,6 +96,19 @@ def next_form(level: int) -> dict[str, Any] | None:
         if form["min_level"] > level:
             return form
     return None
+
+
+def form_gallery(level: int) -> list[dict[str, Any]]:
+    """All forms with unlock/current flags for the growth panel."""
+    current = form_for_level(level)["key"]
+    return [
+        {
+            **form,
+            "unlocked": form["min_level"] <= level,
+            "current": form["key"] == current,
+        }
+        for form in FORMS
+    ]
 
 
 @dataclass

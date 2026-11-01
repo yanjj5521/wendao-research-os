@@ -9,6 +9,7 @@ from services.pet_progression import (
     award,
     describe,
     form_for_level,
+    form_gallery,
     level_for_xp,
     load_progress,
     record_pat,
@@ -129,6 +130,14 @@ class AwardTests(unittest.TestCase):
         text = "\n".join(rules_text())
         self.assertIn("唤醒", text)
         self.assertIn("形态", text)
+
+    def test_form_gallery_marks_current_and_locked(self) -> None:
+        gallery = form_gallery(5)
+        by_key = {item["key"]: item for item in gallery}
+        self.assertTrue(by_key["flower"]["current"])
+        self.assertTrue(by_key["leaf"]["unlocked"])
+        self.assertFalse(by_key["fruit"]["unlocked"])
+        self.assertFalse(by_key["star"]["unlocked"])
 
 
 if __name__ == "__main__":
