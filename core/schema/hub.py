@@ -206,6 +206,31 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
                 FOREIGN KEY(sender_id) REFERENCES accounts(id) ON DELETE CASCADE,
                 FOREIGN KEY(recipient_id) REFERENCES accounts(id) ON DELETE CASCADE
             );
+            CREATE TABLE IF NOT EXISTS hub_red_packets(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_id INTEGER NOT NULL,
+                asset_key TEXT NOT NULL,
+                total_amount INTEGER NOT NULL,
+                shares_total INTEGER NOT NULL,
+                shares_left INTEGER NOT NULL,
+                note TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'open',
+                created_at TEXT NOT NULL,
+                expires_at TEXT,
+                closed_at TEXT,
+                FOREIGN KEY(sender_id) REFERENCES accounts(id) ON DELETE CASCADE
+            );
+            CREATE TABLE IF NOT EXISTS hub_red_packet_claims(
+                packet_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                amount INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY(packet_id,user_id),
+                FOREIGN KEY(packet_id) REFERENCES hub_red_packets(id) ON DELETE CASCADE,
+                FOREIGN KEY(user_id) REFERENCES accounts(id) ON DELETE CASCADE
+            );
+            CREATE INDEX IF NOT EXISTS idx_hub_red_packets_status
+                ON hub_red_packets(status, expires_at);
             CREATE TABLE IF NOT EXISTS hub_feedback(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 account_id INTEGER,

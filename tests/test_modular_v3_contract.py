@@ -171,6 +171,10 @@ class ModularV3ContractTests(unittest.TestCase):
         for marker in (
             'name="hub_forum"',
             'name="hub_chat"',
+            'name="hub_chat_send_json"',
+            'name="hub_chat_messages_json"',
+            'name="hub_group_red_packet_create"',
+            'name="hub_group_red_packet_claim"',
             'name="hub_market"',
             'name="hub_red_packet_send"',
             'name="hub_trade_accept"',
@@ -180,6 +184,8 @@ class ModularV3ContractTests(unittest.TestCase):
             self.assertIn(marker, hub)
         for marker in (
             "CREATE TABLE IF NOT EXISTS hub_forum_posts",
+            "CREATE TABLE IF NOT EXISTS hub_red_packets",
+            "CREATE TABLE IF NOT EXISTS hub_red_packet_claims",
             "CREATE TABLE IF NOT EXISTS hub_chat_messages",
             "CREATE TABLE IF NOT EXISTS hub_social_transfers",
             "CREATE TABLE IF NOT EXISTS accounts",
@@ -194,6 +200,15 @@ class ModularV3ContractTests(unittest.TestCase):
         forum = (ROOT / "hub_templates" / "forum.html").read_text(encoding="utf-8")
         self.assertIn("data-forum-room", forum)
         self.assertIn('data-refresh-seconds="30"', forum)
+        chat = (ROOT / "hub_templates" / "chat.html").read_text(encoding="utf-8")
+        self.assertIn('data-priority="chat-immediate"', chat)
+        self.assertIn("hub_chat_send_json", chat)
+        self.assertIn("hub_chat_messages_json", chat)
+        resources = (ROOT / "hub_templates" / "resources.html").read_text(encoding="utf-8")
+        self.assertIn('data-priority="paper-deferred"', resources)
+        hub_css = (ROOT / "hub_static" / "system-entry.css").read_text(encoding="utf-8")
+        self.assertIn("content-visibility:auto", hub_css)
+        self.assertIn(".group-packet", hub_css)
 
     def test_layers_are_reachable_without_compatibility_shims(self) -> None:
         # 1.0 删掉了 app.py / db.py 两个转发层：入口与数据访问各自只有一条路径。
@@ -437,7 +452,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.3.12")
+        self.assertEqual(version, "1.3.13")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",

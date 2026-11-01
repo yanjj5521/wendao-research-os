@@ -98,6 +98,7 @@
 | `common.py` | 会话、安全、上下文、审计 |
 | `db.py` | 中心数据库连接与辅助（原 `hub_db.py`） |
 | `invites.py` | 邀请码查询、时区兼容的到期判断与原子扣次 |
+| `red_packets.py` | 群红包份额拆分（二倍均值、最后一份兜底） |
 | `social.py` | 红包/交换的限额与成员辅助 |
 | `sync.py` | 成员节点事件的落库校验 |
 | `routes/` | 按领域拆分的路由（system/pages/auth/social/market/me/admin/api） |

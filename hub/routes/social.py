@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Any
 
 from fastapi import APIRouter, Form, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 
 from hub.common import (
     audit,
@@ -178,6 +178,80 @@ def chat_send(request: Request, body: str = Form(...), csrf_value: str = Form(..
         conn.execute("INSERT INTO hub_chat_messages(user_id,body,created_at) VALUES (?,?,?)", (user["id"], clean_body, now_iso()))
         audit(conn, int(user["id"]), "chat_send", clean_body[:80], request)
     return RedirectResponse("/chat", status_code=303)
+
+
+@router.post("/chat/send.json", name="hub_chat_send_json")
+def chat_send_json(
+    request: Request, body: str = Form(...), csrf_value: str = Form(..., alias="_csrf")
+):
+    user = require_user(request)
+    verify_csrf(request, csrf_value)
+    try:
+        clean_body = social_text(body, limit=500, label="消息")
+    except ValueError as exc:
+        return JSONResponse({"ok": False, "error": str(exc)}, status_code=400)
+    with hub_transaction() as conn:
+        cursor = conn.execute(
+            "INSERT INTO hub_chat_messages(user_id,body,created_at) VALUES (?,?,?)",
+            (user["id"], clean_body, now_iso()),
+        )
+        message_id = int(cursor.lastrowid)
+        audit(conn, int(user["id"]), "chat_send", clean_body[:80], request)
+        row = conn.execute(
+            """SELECT c.*,u.display_name,h.avatar_symbol FROM hub_chat_messages c
+               JOIN accounts u ON u.id=c.user_id
+               JOIN account_profiles h ON h.account_id=c.user_id
+               WHERE c.id=?""",
+            (message_id,),
+        ).fetchone()
+    return JSONResponse(
+        {
+            "ok": True,
+            "message": {
+                "id": message_id,
+                "user_id": int(user["id"]),
+                "display_name": row["display_name"],
+                "avatar_symbol": row["avatar_symbol"],
+                "body": row["body"],
+                "created_at": row["created_at"],
+                "mine": True,
+                "can_delete": True,
+            },
+        }
+    )
+
+
+@router.get("/chat/messages.json", name="hub_chat_messages_json")
+def chat_messages_json(request: Request, after: int = 0):
+    user = require_user(request)
+    with connect_hub() as conn:
+        rows = conn.execute(
+            """SELECT c.*,u.display_name,h.avatar_symbol FROM hub_chat_messages c
+               JOIN accounts u ON u.id=c.user_id
+               JOIN account_profiles h ON h.account_id=c.user_id
+               WHERE u.active=1 AND c.id > ? ORDER BY c.id ASC LIMIT 100""",
+            (max(0, int(after)),),
+        ).fetchall()
+    messages = [
+        {
+            "id": int(row["id"]),
+            "user_id": int(row["user_id"]),
+            "display_name": row["display_name"],
+            "avatar_symbol": row["avatar_symbol"],
+            "body": row["body"],
+            "created_at": row["created_at"],
+            "mine": int(row["user_id"]) == int(user["id"]),
+            "can_delete": int(row["user_id"]) == int(user["id"]) or user["role"] == "admin",
+        }
+        for row in rows
+    ]
+    return JSONResponse(
+        {
+            "ok": True,
+            "messages": messages,
+            "last_id": messages[-1]["id"] if messages else max(0, int(after)),
+        }
+    )
 
 
 @router.post("/chat/{message_id}/delete", name="hub_chat_delete")

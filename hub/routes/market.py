@@ -8,12 +8,15 @@
 
 from __future__ import annotations
 
+import sqlite3
+from datetime import datetime, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from hub.common import audit, flash, hub_context, hub_url_for, require_user, templates, verify_csrf
+from hub.red_packets import split_share
 from hub.social import (
     SOCIAL_ASSET_LABELS,
     social_amount,
@@ -21,7 +24,7 @@ from hub.social import (
     social_members,
     social_text,
 )
-from hub.db import balances, connect_hub, hub_transaction, now_iso, transact_asset
+from hub.db import balances, hub_transaction, now_iso, transact_asset
 
 router = APIRouter()
 
@@ -34,6 +37,45 @@ WHERE t.sender_id = ? OR t.recipient_id = ?
 ORDER BY t.id DESC
 LIMIT 40
 """
+
+_GROUP_PACKET_QUERY = """
+SELECT p.*, s.display_name AS sender_name,
+       (SELECT COUNT(*) FROM hub_red_packet_claims c WHERE c.packet_id = p.id) AS claimed_count,
+       (SELECT amount FROM hub_red_packet_claims c WHERE c.packet_id = p.id AND c.user_id = ?) AS my_amount
+FROM hub_red_packets p
+JOIN accounts s ON s.id = p.sender_id
+ORDER BY p.id DESC
+LIMIT 20
+"""
+
+
+def _settle_expired_packets(conn) -> None:
+    """Refund the unclaimed remainder once a group packet passes its deadline."""
+    now = now_iso()
+    rows = conn.execute(
+        "SELECT * FROM hub_red_packets WHERE status='open' AND expires_at IS NOT NULL AND expires_at <= ?",
+        (now,),
+    ).fetchall()
+    for row in rows:
+        claimed = int(
+            conn.execute(
+                "SELECT COALESCE(SUM(amount),0) n FROM hub_red_packet_claims WHERE packet_id=?",
+                (int(row["id"]),),
+            ).fetchone()["n"]
+        )
+        remaining = int(row["total_amount"]) - claimed
+        if remaining > 0:
+            transact_asset(
+                conn,
+                int(row["sender_id"]),
+                row["asset_key"],
+                remaining,
+                f"群红包 #{int(row['id'])} 过期退回",
+            )
+        conn.execute(
+            "UPDATE hub_red_packets SET status='expired', closed_at=? WHERE id=? AND status='open'",
+            (now, int(row["id"])),
+        )
 
 
 def _recipient(conn, recipient_id: int, sender_id: int) -> dict[str, Any]:
@@ -66,12 +108,17 @@ def _open_transfer(conn, transfer_id: int) -> dict[str, Any]:
 @router.get("/market", response_class=HTMLResponse, name="hub_market")
 def market_page(request: Request):
     user = require_user(request)
-    with connect_hub() as conn:
+    with hub_transaction() as conn:
+        _settle_expired_packets(conn)
         market_balances = balances(conn, int(user["id"]))
         recipients = social_members(conn, int(user["id"]))
         transfers = [
             dict(row)
             for row in conn.execute(_TRANSFER_QUERY, (int(user["id"]), int(user["id"])))
+        ]
+        group_packets = [
+            dict(row)
+            for row in conn.execute(_GROUP_PACKET_QUERY, (int(user["id"]),))
         ]
     return templates.TemplateResponse(
         request=request,
@@ -83,6 +130,7 @@ def market_page(request: Request):
             market_balances=market_balances,
             recipients=recipients,
             transfers=transfers,
+            group_packets=group_packets,
         ),
     )
 
@@ -117,6 +165,107 @@ def red_packet_send(
             )
             audit(conn, int(user["id"]), "red_packet", f"{SOCIAL_ASSET_LABELS[asset]}×{amount} → {recipient['display_name']}", request)
         flash(request, "红包已转入对方账户。")
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+    return RedirectResponse(hub_url_for(request, "hub_market"), status_code=303)
+
+
+@router.post("/market/group-red-packets", name="hub_group_red_packet_create")
+def group_red_packet_create(
+    request: Request,
+    asset_key: str = Form("spirit_stone"),
+    total_amount: int = Form(...),
+    shares: int = Form(...),
+    note: str = Form(""),
+    csrf_value: str = Form(..., alias="_csrf"),
+):
+    user = require_user(request)
+    verify_csrf(request, csrf_value)
+    try:
+        asset = social_asset(asset_key)
+        total = social_amount(asset, total_amount)
+        shares = int(shares)
+        if not 2 <= shares <= 20:
+            raise ValueError("份数需在 2–20 之间。")
+        if total < shares:
+            raise ValueError("总数量至少等于份数，保证每份不少于 1。")
+        note = social_text(note, limit=160, label="祝福") if note.strip() else ""
+        expires = (datetime.now().astimezone() + timedelta(hours=24)).isoformat(timespec="seconds")
+        with hub_transaction(immediate=True) as conn:
+            transact_asset(
+                conn, int(user["id"]), asset, -total, f"群红包（{shares}份）"
+            )
+            conn.execute(
+                """INSERT INTO hub_red_packets(
+                       sender_id,asset_key,total_amount,shares_total,shares_left,
+                       note,status,created_at,expires_at
+                   ) VALUES (?,?,?,?,?,?,'open',?,?)""",
+                (int(user["id"]), asset, total, shares, shares, note, now_iso(), expires),
+            )
+            audit(conn, int(user["id"]), "group_red_packet", f"{SOCIAL_ASSET_LABELS[asset]}×{total}/{shares}份", request)
+        flash(request, f"群红包已发出：{shares} 份，24 小时内可抢。")
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+    return RedirectResponse(hub_url_for(request, "hub_market"), status_code=303)
+
+
+@router.post("/market/group-red-packets/{packet_id}/claim", name="hub_group_red_packet_claim")
+def group_red_packet_claim(
+    request: Request, packet_id: int, csrf_value: str = Form(..., alias="_csrf")
+):
+    user = require_user(request)
+    verify_csrf(request, csrf_value)
+    amount = 0
+    asset_label = ""
+    try:
+        with hub_transaction(immediate=True) as conn:
+            _settle_expired_packets(conn)
+            packet = conn.execute(
+                "SELECT * FROM hub_red_packets WHERE id=?", (int(packet_id),)
+            ).fetchone()
+            if not packet:
+                raise ValueError("红包不存在。")
+            if int(packet["sender_id"]) == int(user["id"]):
+                raise ValueError("不能抢自己发的红包。")
+            if packet["status"] != "open" or int(packet["shares_left"]) <= 0:
+                raise ValueError("红包已抢完或已过期。")
+            claimed = conn.execute(
+                "SELECT 1 FROM hub_red_packet_claims WHERE packet_id=? AND user_id=?",
+                (int(packet_id), int(user["id"])),
+            ).fetchone()
+            if claimed:
+                raise ValueError("你已经抢过这个红包。")
+            claimed_sum = int(
+                conn.execute(
+                    "SELECT COALESCE(SUM(amount),0) n FROM hub_red_packet_claims WHERE packet_id=?",
+                    (int(packet_id),),
+                ).fetchone()["n"]
+            )
+            amount = split_share(
+                int(packet["total_amount"]) - claimed_sum,
+                int(packet["shares_left"]),
+            )
+            left = int(packet["shares_left"]) - 1
+            conn.execute(
+                "INSERT INTO hub_red_packet_claims(packet_id,user_id,amount,created_at) VALUES (?,?,?,?)",
+                (int(packet_id), int(user["id"]), amount, now_iso()),
+            )
+            conn.execute(
+                "UPDATE hub_red_packets SET shares_left=?, status=? WHERE id=?",
+                (left, "open" if left else "finished", int(packet_id)),
+            )
+            transact_asset(
+                conn,
+                int(user["id"]),
+                packet["asset_key"],
+                amount,
+                f"抢到群红包 #{int(packet_id)}",
+            )
+            audit(conn, int(user["id"]), "group_red_packet_claim", f"#{int(packet_id)} {amount}", request)
+            asset_label = SOCIAL_ASSET_LABELS[packet["asset_key"]]
+        flash(request, f"抢到 {asset_label} × {amount}。")
+    except sqlite3.IntegrityError:
+        flash(request, "你已经抢过这个红包。", "error")
     except ValueError as exc:
         flash(request, str(exc), "error")
     return RedirectResponse(hub_url_for(request, "hub_market"), status_code=303)
