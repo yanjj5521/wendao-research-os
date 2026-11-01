@@ -13,7 +13,7 @@
 | `hub_self_test.py` | 同行会中心自检脚本 |
 | `online_integration_test.py` | 联机链路集成测试脚本 |
 | `desktop_shell.py` / `desktop_pet.py` | 桌面窗口与桌宠（仅本地桌面形态使用） |
-| `launchers/cli.py` | 统一子命令：`install` / `shortcut` / `diagnose` / `version` / `reset-env` |
+| `launchers/cli.py` | 统一子命令：`install` / `shortcut` / `diagnose` / `version` / `admin-path` / `reset-env` |
 | `packaging/windows/install_windows.ps1` | 安装与快捷方式实现（由 `launchers/cli.py` 调用，并随 EXE 内置） |
 
 ## core/（内核：数据、迁移、账号、配置）
@@ -80,6 +80,7 @@
 | `content_library.py` | 知识库内容整理 |
 | `workspace_profiles.py` | 七个学习领域的默认配置 |
 | `integral.py` | 曲线文件解析、梯形/Simpson 积分与 SVG 预览 |
+| `pet_progression.py` | 灵知经验、等级曲线与形态解锁（纯逻辑） |
 | `game_world.py` | 洞府建筑与法器数据 |
 | `economy.py` | 灵石与修为结算 |
 | `idle_space.py` | 休闲空间逻辑 |
@@ -96,6 +97,7 @@
 | `app.py` | 中心应用装配 |
 | `common.py` | 会话、安全、上下文、审计 |
 | `db.py` | 中心数据库连接与辅助（原 `hub_db.py`） |
+| `invites.py` | 邀请码查询、时区兼容的到期判断与原子扣次 |
 | `social.py` | 红包/交换的限额与成员辅助 |
 | `sync.py` | 成员节点事件的落库校验 |
 | `routes/` | 按领域拆分的路由（system/pages/auth/social/market/me/admin/api） |

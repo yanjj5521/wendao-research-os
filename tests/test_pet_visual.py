@@ -37,6 +37,19 @@ class PetVisualTests(unittest.TestCase):
             if alpha > 0 and (r, g, b) == key:
                 self.fail(f"透明键 {key} 与灵知本体像素重合，会在角色上挖洞")
 
+    def test_form_tint_preserves_alpha(self) -> None:
+        original = Image.new("RGBA", (100, 100), (0, 0, 0, 0))
+        original.paste(Image.new("RGBA", (40, 40), (200, 200, 200, 255)), (30, 30))
+        tinted = pet._form_tinted(original, {"tint": (200, 120, 60), "alpha": 0.2})
+        self.assertEqual(tinted.getpixel((0, 0))[3], 0)
+        self.assertEqual(tinted.getpixel((50, 50))[3], 255)
+        self.assertNotEqual(tinted.getpixel((50, 50)), original.getpixel((50, 50)))
+
+    def test_sprout_form_keeps_original_colours(self) -> None:
+        original = Image.new("RGBA", (20, 20), (120, 180, 140, 255))
+        same = pet._form_tinted(original, {"tint": (110, 170, 120), "alpha": 0.0})
+        self.assertEqual(same.getpixel((10, 10)), original.getpixel((10, 10)))
+
     def test_pet_has_no_painted_background_layer(self) -> None:
         source = Path(pet.__file__).read_text(encoding="utf-8")
         for marker in ("_aura_layer", "AURA_TINT", "_compose_frame", "PET_PADDING"):

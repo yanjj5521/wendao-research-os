@@ -10,6 +10,16 @@
 
 心情系统：根据今日必做完成度、近 7 天学习活跃天数与当前时段推断心情，
 心情决定灵知的色调、摇摆节奏和说话语气——它不只是贴图，会回应你的状态。
+
+成长系统
+--------
+- 经验：每日首次唤醒 +10；每条学习活动 +2（每日上限 40）；每完成一项今日必做 +8
+  （每日上限 24）；摸摸头 +1（每日上限 5）。
+- 等级：Lv.n 的累计经验为 25·(n−1)·n（Lv.2=50，Lv.3=150…），上限 Lv.20。
+- 形态：Lv.3 青叶、Lv.5 灵花、Lv.8 道果、Lv.12 星灵；形态只改灵知本体色调与轻微尺寸，
+  背景保持透明。
+- 存储：`user_config/desktop_pet.json` 的 `progression` 字段；首次升级到本版时只标记历史，
+  不会把旧活动一次性折算成经验。
 """
 from __future__ import annotations
 
@@ -26,6 +36,14 @@ from PIL import Image, ImageTk
 
 from core.database import connect
 from core.runtime_paths import USER_CONFIG_DIR
+from services.pet_progression import (
+    award,
+    describe,
+    form_for_level,
+    load_progress,
+    record_pat,
+    rules_text,
+)
 
 PET_LINES = (
     "先喝一口水，再继续读这一段。",
@@ -160,6 +178,41 @@ def _recent_days() -> int:
         return 0
 
 
+def _progress_snapshot(day: str) -> tuple[list[int], int]:
+    """今日活动 id 与已完成必做数；数据库异常时安静退回空快照。"""
+    try:
+        with connect() as conn:
+            ids = [
+                int(row["id"])
+                for row in conn.execute(
+                    "SELECT id FROM activities WHERE substr(created_at,1,10)=? ORDER BY id",
+                    (day,),
+                )
+            ]
+            row = conn.execute(
+                """SELECT COUNT(*) n FROM daily_missions m
+                     JOIN study_plans p ON p.id=m.plan_id
+                    WHERE p.status='active' AND m.day_index=p.current_day
+                      AND m.optional=0 AND m.completed=1"""
+            ).fetchone()
+        return ids, int(row["n"])
+    except Exception:
+        return [], 0
+
+
+def _form_tinted(frame: Image.Image, form: dict) -> Image.Image:
+    """Only the pet's own pixels receive the form colour; alpha is preserved."""
+    tint = form.get("tint")
+    alpha = float(form.get("alpha", 0) or 0)
+    if not tint or alpha <= 0:
+        return frame
+    frame = frame.convert("RGBA")
+    overlay = Image.new("RGBA", frame.size, tuple(tint) + (255,))
+    blended = Image.blend(frame, overlay, alpha)
+    blended.putalpha(frame.getchannel("A"))
+    return blended
+
+
 def detect_mood() -> str:
     """心情 = 时段 + 今日完成度 + 近期活跃。只读，不打扰。"""
     hour = datetime.now().hour
@@ -228,6 +281,20 @@ def run_pet() -> None:
     root.configure(bg=transparent)
 
     settings = _load_settings()
+    today = datetime.now().strftime("%Y-%m-%d")
+    raw_progress = settings.get("progression")
+    progress = load_progress(raw_progress, today)
+    activity_ids, missions_done = _progress_snapshot(today)
+    progress, pending_events = award(
+        progress,
+        day=today,
+        activity_ids=activity_ids,
+        missions_done=missions_done,
+        bootstrap=raw_progress is None,
+    )
+    form = form_for_level(progress.level)
+    settings["progression"] = progress.to_dict()
+    _save_settings(settings)
     original = Image.open(_asset_path()).convert("RGBA")
     desired_size = _load_size()
     mood = detect_mood()
@@ -267,11 +334,16 @@ def run_pet() -> None:
         wobble = _wobble_scale() if animate and not dragging else 1.0
         if squish or now < squish_until:
             wobble *= 1.055
-        width = max(MIN_SIZE, round(desired_size * wobble))
+        width = max(MIN_SIZE, round(desired_size * wobble * float(form.get("scale", 1.0))))
         height_factor = 0.96 if (squish or now < squish_until) else 1.0
         height = max(MIN_SIZE, round(original.height * width / max(original.width, 1) * height_factor))
         frame = _trim_haze(
-            _tinted(original.resize((width, height), Image.Resampling.LANCZOS), mood)
+            _form_tinted(
+                _tinted(
+                    original.resize((width, height), Image.Resampling.LANCZOS), mood
+                ),
+                form,
+            )
         )
         photo = ImageTk.PhotoImage(frame)
         image_label.configure(image=photo)
@@ -303,20 +375,140 @@ def run_pet() -> None:
         hint.deiconify()
         hint.lift()
         root.after(seconds, lambda: hint.withdraw() if token == hint_token else None)
+    def _persist_progress() -> None:
+        current = _load_settings()
+        current["progression"] = progress.to_dict()
+        _save_settings(current)
+
+    def _announce(events: list[dict]) -> None:
+        levels = [event for event in events if event.get("type") == "level"]
+        if not levels:
+            return
+        event = levels[-1]
+        text = f"✨ 灵知升到 Lv.{event['level']}"
+        if event.get("unlocked"):
+            text += f"，解锁形态：{event['form_name']}"
+        _speak(text, 5600)
+
+    def _refresh_menu() -> None:
+        menu.entryconfigure(0, label=f"灵知成长 · Lv.{progress.level} {form['name']}")
+
+    def sync_progress() -> None:
+        nonlocal progress, form, mood
+        current_day = datetime.now().strftime("%Y-%m-%d")
+        activity_ids, missions_done = _progress_snapshot(current_day)
+        progress, events = award(
+            progress,
+            day=current_day,
+            activity_ids=activity_ids,
+            missions_done=missions_done,
+        )
+        updated_form = form_for_level(progress.level)
+        if updated_form["key"] != form["key"]:
+            form = updated_form
+            render(animate=False)
+        mood = detect_mood()
+        _persist_progress()
+        _refresh_menu()
+        _announce(events)
+        root.after(300_000, sync_progress)
+
+    def show_growth() -> None:
+        summary = describe(progress)
+        window = tk.Toplevel(root)
+        window.title("灵知成长")
+        window.configure(bg="#213242")
+        window.resizable(False, False)
+        window.transient(root)
+        window.attributes("-topmost", True)
+        body = tk.Frame(window, bg="#213242", padx=16, pady=14)
+        body.pack(fill="both", expand=True)
+        tk.Label(
+            body, text=f"Lv.{summary['level']} · {summary['form']['name']}",
+            bg="#213242", fg="#fff4d2", font=("Microsoft YaHei UI", 13, "bold"),
+        ).pack(anchor="w")
+        tk.Label(
+            body, text=summary["form"]["note"], bg="#213242", fg="#b9c7d4",
+            font=("Microsoft YaHei UI", 9), wraplength=300, justify="left",
+        ).pack(anchor="w", pady=(2, 8))
+        bar = tk.Canvas(body, width=280, height=10, bg="#3a4d5e", highlightthickness=0)
+        bar.pack(anchor="w")
+        bar.create_rectangle(
+            0, 0, max(1, int(280 * summary["percent"])), 10, fill="#d9a85c", width=0
+        )
+        if summary["next_level_xp"]:
+            exp = (
+                f"XP {summary['xp']} / {summary['next_level_xp']} · "
+                f"距下一级还差 {summary['next_level_xp'] - summary['xp']}"
+            )
+        else:
+            exp = f"XP {summary['xp']} · 已满级"
+        tk.Label(body, text=exp, bg="#213242", fg="#fff4d2", font=("Microsoft YaHei UI", 9)).pack(anchor="w", pady=(6, 0))
+        upcoming = summary["next_form"]
+        tk.Label(
+            body,
+            text=(f"下一形态：{upcoming['name']}（Lv.{upcoming['min_level']}）" if upcoming else "全部形态已解锁"),
+            bg="#213242", fg="#d9a85c", font=("Microsoft YaHei UI", 9),
+        ).pack(anchor="w", pady=(4, 0))
+        today = summary["today"]
+        tk.Label(
+            body,
+            text=(
+                f"今日获得：活动 {today.get('activity_xp', 0)} XP · "
+                f"必做 {today.get('mission_xp', 0)} XP · 摸头 {today.get('pat_xp', 0)} XP"
+            ),
+            bg="#213242", fg="#b9c7d4", font=("Microsoft YaHei UI", 9),
+        ).pack(anchor="w", pady=(8, 0))
+        tk.Label(
+            body, text="经验规则\n" + "\n".join(rules_text()),
+            bg="#213242", fg="#b9c7d4", font=("Microsoft YaHei UI", 9),
+            justify="left", wraplength=300,
+        ).pack(anchor="w", pady=(10, 6))
+        tk.Button(
+            body, text="关闭", command=window.destroy,
+            bg="#d9a85c", fg="#2b2016", relief="flat", padx=12, pady=4,
+        ).pack(anchor="e", pady=(8, 0))
+        window.update_idletasks()
+        width, height = window.winfo_reqwidth(), window.winfo_reqheight()
+        x = max(0, min(root.winfo_x() + root.winfo_width() - width, root.winfo_screenwidth() - width))
+        y = root.winfo_y() + root.winfo_height() + 6
+        if y + height > root.winfo_screenheight():
+            y = max(0, root.winfo_y() - height - 6)
+        window.geometry(f"+{x}+{y}")
+
     def show_hint(_event=None) -> None:
-        _speak(f"灵知 · {mood_line(mood)}")
+        summary = describe(progress)
+        if summary["next_level_xp"]:
+            exp = f"XP {summary['xp']}/{summary['next_level_xp']}"
+        else:
+            exp = f"XP {summary['xp']} · 满级"
+        _speak(
+            f"灵知 · Lv.{summary['level']} {summary['form']['name']} · {exp}\n"
+            f"{mood_line(mood)}"
+        )
 
     def pat(_event=None) -> None:
-        nonlocal pats, squish_until, mood
+        nonlocal pats, squish_until, mood, progress, form
         pats += 1
+        progress, events = record_pat(
+            progress, day=datetime.now().strftime("%Y-%m-%d")
+        )
+        updated_form = form_for_level(progress.level)
+        if updated_form["key"] != form["key"]:
+            form = updated_form
         settings = _load_settings()
         settings["pats"] = pats
+        settings["progression"] = progress.to_dict()
         _save_settings(settings)
         squish_until = datetime.now().timestamp() + 0.24
         render(animate=False, squish=True)
         mood = detect_mood()
-        line = PAT_EGG if pats % 7 == 0 else random.choice(PAT_LINES)
-        _speak(f"{MOOD_EMOJI.get(mood, '🌿')} {line}", 3200)
+        level_events = [event for event in events if event.get("type") == "level"]
+        if level_events:
+            _announce(events)
+        else:
+            line = PAT_EGG if pats % 7 == 0 else random.choice(PAT_LINES)
+            _speak(f"{MOOD_EMOJI.get(mood, '🌿')} {line}", 3200)
 
     def chatter() -> None:
         if (
@@ -409,6 +601,8 @@ def run_pet() -> None:
     def popup(event) -> None:
         menu.tk_popup(event.x_root, event.y_root)
 
+    menu.add_command(label="灵知成长", command=show_growth)
+    menu.add_separator()
     menu.add_command(label="查看今日进度", command=show_hint)
     menu.add_command(label="给我一句研究提示", command=lambda: _speak(f"💡 {random.choice(PET_LINES)}"))
     menu.add_command(label="摸摸头", command=pat)
@@ -446,6 +640,9 @@ def run_pet() -> None:
         start_x, start_y, window_width, window_height, screen_width, screen_height
     )
     root.geometry(f"+{start_x}+{start_y}")
+    _refresh_menu()
+    _announce(pending_events)
+    root.after(300_000, sync_progress)
     render(animate=False)
     animate()
     root.after(45_000, chatter)

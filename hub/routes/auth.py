@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from urllib.parse import quote
 
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from core import accounts as accounts_repo
+from hub.invites import consume_invite, find_invite
 from hub.common import (
     audit,
     client_ip,
@@ -76,28 +77,34 @@ def register_submit(
         if conn.execute("SELECT COUNT(*) n FROM accounts WHERE active=1").fetchone()["n"] >= max_members:
             flash(request, "同行会成员已达到当前上限。", "error")
             return RedirectResponse("/register", status_code=303)
-        row = conn.execute("SELECT * FROM hub_invites WHERE code=?", (invite.strip(),)).fetchone()
-        if not row or int(row["uses_remaining"]) <= 0:
-            flash(request, "邀请码无效或已用完。", "error")
-            return RedirectResponse("/register", status_code=303)
-        if row["expires_at"] and datetime.fromisoformat(row["expires_at"]) < datetime.now().astimezone():
-            flash(request, "邀请码已过期。", "error")
-            return RedirectResponse("/register", status_code=303)
+        row, reason = find_invite(conn, invite)
+        if not row:
+            messages = {
+                "empty": "请输入邀请码。",
+                "missing": "邀请码无效，请确认是否复制完整。",
+                "used": "邀请码已用完。",
+                "expired": "邀请码已过期。",
+            }
+            flash(request, messages.get(reason, "邀请码无效。"), "error")
+            target = "/register" if reason == "empty" else f"/register?invite={quote(invite.strip())}"
+            return RedirectResponse(target, status_code=303)
+        if not consume_invite(conn, row["code"]):
+            flash(request, "邀请码已用完。", "error")
+            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
         try:
             user_id, _ = create_user(conn, username, password, display_name, email=email.strip() or None)
         except sqlite3.IntegrityError:
             conn.rollback()
             flash(request, "用户名已经存在。", "error")
-            return RedirectResponse(f"/register?invite={invite}", status_code=303)
+            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
         except ValueError as exc:
             conn.rollback()
             flash(request, str(exc), "error")
-            return RedirectResponse(f"/register?invite={invite}", status_code=303)
+            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
         except sqlite3.Error:
             conn.rollback()
             flash(request, "创建账户失败，请稍后重试。", "error")
-            return RedirectResponse(f"/register?invite={invite}", status_code=303)
-        conn.execute("UPDATE hub_invites SET uses_remaining=uses_remaining-1 WHERE code=?", (invite.strip(),))
+            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
         audit(conn, user_id, "register", "邀请码注册", request)
         request.session["hub_user_id"] = user_id
     return RedirectResponse("/me", status_code=303)
