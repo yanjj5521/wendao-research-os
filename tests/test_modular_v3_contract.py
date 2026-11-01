@@ -434,7 +434,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.3.7")
+        self.assertEqual(version, "1.3.8")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",
@@ -486,15 +486,26 @@ else:
         base = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
         self.assertIn('data-no-scroll-restore="1"', base)
 
-    def test_hub_entry_offers_return_and_first_run_credentials(self) -> None:
+    def test_hub_login_has_recovery_and_no_credentials(self) -> None:
         login = (ROOT / "hub_templates" / "login.html").read_text(encoding="utf-8")
         base = (ROOT / "hub_templates" / "base.html").read_text(encoding="utf-8")
+        error = (ROOT / "hub_templates" / "error.html").read_text(encoding="utf-8")
         css = (ROOT / "hub_static" / "system-entry.css").read_text(encoding="utf-8")
+        common = (ROOT / "hub" / "common.py").read_text(encoding="utf-8")
         self.assertIn("返回系统界面", base)
         self.assertIn("system_home", base)
-        self.assertIn("管理员首次登录凭据", login)
-        self.assertIn("initial_admin", login)
-        self.assertIn(".admin-first-run", css)
+        self.assertIn("刷新页面", login)
+        self.assertIn("清除登录状态并重试", login)
+        self.assertIn("hub_session_reset", login)
+        self.assertNotIn("initial_admin", login)
+        self.assertNotIn("管理员首次登录凭据", login)
+        self.assertNotIn("initial_admin_hint", common)
+        self.assertIn("返回同行会", error)
+        self.assertIn("清除登录状态并重试", error)
+        self.assertIn(".error-page", css)
+        self.assertNotIn(".admin-first-run", css)
+        hub_app = (ROOT / "hub" / "app.py").read_text(encoding="utf-8")
+        self.assertIn('session_cookie="hub_session"', hub_app)
 
     def test_experiment_ledger_is_generic(self) -> None:
         template = (ROOT / "templates" / "experiments.html").read_text(encoding="utf-8")

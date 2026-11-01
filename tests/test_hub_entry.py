@@ -1,71 +1,25 @@
 from __future__ import annotations
 
-import tempfile
 import types
 import unittest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
-from hub import common
+from hub.routes.auth import session_reset
 
 
-def _request(host: str) -> types.SimpleNamespace:
-    return types.SimpleNamespace(client=types.SimpleNamespace(host=host))
-
-
-class InitialAdminHintTests(unittest.TestCase):
-    def _credential_file(self) -> Path:
-        handle = tempfile.NamedTemporaryFile(
-            "w", suffix=".txt", delete=False, encoding="utf-8"
+class SessionResetTests(unittest.TestCase):
+    def test_clears_stale_session_without_csrf(self) -> None:
+        request = types.SimpleNamespace(
+            session={"hub_user_id": 7, "csrf": "stale-token"}
         )
-        handle.write("用户名: admin\n密码: secret123\nAPI Token: token\n")
-        handle.close()
-        return Path(handle.name)
+        response = session_reset(request)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(response.headers["location"], "/")
+        self.assertEqual(request.session, {})
 
-    def test_remote_client_never_sees_the_credential(self) -> None:
-        path = self._credential_file()
-        try:
-            with patch.object(common, "HUB_ADMIN_PATH", path):
-                self.assertIsNone(common.initial_admin_hint(_request("10.0.0.8")))
-        finally:
-            path.unlink()
-
-    def test_loopback_reads_a_verified_credential(self) -> None:
-        path = self._credential_file()
-        connection = MagicMock()
-        manager = MagicMock()
-        manager.__enter__.return_value = connection
-        try:
-            with patch.object(common, "HUB_ADMIN_PATH", path):
-                with patch.object(common, "connect_hub", return_value=manager):
-                    with patch.object(
-                        common.accounts_repo, "authenticate", return_value={"id": 1}
-                    ):
-                        hint = common.initial_admin_hint(_request("127.0.0.1"))
-        finally:
-            path.unlink()
-        self.assertEqual(hint, {"username": "admin", "password": "secret123"})
-
-    def test_stale_file_is_not_shown(self) -> None:
-        path = self._credential_file()
-        connection = MagicMock()
-        manager = MagicMock()
-        manager.__enter__.return_value = connection
-        try:
-            with patch.object(common, "HUB_ADMIN_PATH", path):
-                with patch.object(common, "connect_hub", return_value=manager):
-                    with patch.object(
-                        common.accounts_repo, "authenticate", return_value=None
-                    ):
-                        self.assertIsNone(
-                            common.initial_admin_hint(_request("127.0.0.1"))
-                        )
-        finally:
-            path.unlink()
-
-    def test_missing_file_is_not_shown(self) -> None:
-        with patch.object(common, "HUB_ADMIN_PATH", Path("no-such-credential.txt")):
-            self.assertIsNone(common.initial_admin_hint(_request("127.0.0.1")))
+    def test_repeat_reset_is_idempotent(self) -> None:
+        request = types.SimpleNamespace(session={})
+        response = session_reset(request)
+        self.assertEqual(response.status_code, 303)
 
 
 if __name__ == "__main__":

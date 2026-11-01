@@ -28,7 +28,7 @@ router = APIRouter()
 
 
 @router.post("/login", name="hub_login")
-def login(request: Request, username: str = Form(...), password: str = Form(...), csrf_value: str = Form(..., alias="_csrf")):
+def login(request: Request, username: str = Form(...), password: str = Form(...), csrf_value: str = Form("", alias="_csrf")):
     verify_csrf(request, csrf_value)
     ip = client_ip(request)
     if not login_allowed(ip):
@@ -106,5 +106,17 @@ def register_submit(
 @router.post("/logout", name="hub_logout")
 def logout(request: Request, csrf_value: str = Form(..., alias="_csrf")):
     verify_csrf(request, csrf_value)
+    request.session.clear()
+    return RedirectResponse("/", status_code=303)
+
+
+@router.post("/session/reset", name="hub_session_reset")
+def session_reset(request: Request):
+    """Break out of an expired/foreign session without needing a CSRF token.
+
+    A stale cookie can make every POST (including logout) fail CSRF, leaving the
+    user stuck.  Clearing the session is idempotent and has no side effects, so
+    this escape hatch deliberately skips CSRF.
+    """
     request.session.clear()
     return RedirectResponse("/", status_code=303)

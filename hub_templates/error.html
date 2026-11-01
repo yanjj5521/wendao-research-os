@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · {{ site_name }}{% endblock %}
+{% block content %}
+<section class="panel error-page">
+  <span class="eyebrow">ERROR {{ status_code }}</span>
+  <h1>{{ title }}</h1>
+  <p>{{ message }}</p>
+  <div class="error-actions">
+    <a class="primary" href="{{ url_for('hub_home') }}">返回同行会</a>
+    {% if user %}
+    <form method="post" action="{{ url_for('hub_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf }}"><button class="button">退出登录</button></form>
+    {% else %}
+    <form method="post" action="{{ url_for('hub_session_reset') }}"><button class="button">清除登录状态并重试</button></form>
+    {% endif %}
+    {% if system_home %}<a class="button" href="{{ system_home }}">返回系统界面</a>{% endif %}
+  </div>
+</section>
+{% endblock %}

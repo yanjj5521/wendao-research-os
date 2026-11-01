@@ -11,7 +11,6 @@ from hub.common import (
     BASE_DIR,
     current_user,
     hub_context,
-    initial_admin_hint,
     require_user,
     templates,
 )
@@ -30,9 +29,7 @@ def home(request: Request):
         return templates.TemplateResponse(
             request=request,
             name="login.html",
-            context=hub_context(
-                request, "login", initial_admin=initial_admin_hint(request)
-            ),
+            context=hub_context(request, "login"),
         )
     with connect_hub() as conn:
         profile = dict(conn.execute("SELECT * FROM account_profiles WHERE account_id=?", (user["id"],)).fetchone())
