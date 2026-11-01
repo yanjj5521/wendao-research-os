@@ -137,6 +137,7 @@ NAV_ITEM_DEFINITIONS = {
     "experiments": {"endpoint": "experiments_page", "icon": "验"},
     "simulations": {"endpoint": "simulations_page", "icon": "算"},
     "datasets": {"endpoint": "datasets_page", "icon": "数"},
+    "integral": {"endpoint": "integral_page", "icon": "∫"},
     "retreat": {"endpoint": "retreat_page", "icon": "静"},
     "idle": {"endpoint": "idle_page", "icon": "守"},
     "literature_report": {"endpoint": "literature_report_page", "icon": "阅"},

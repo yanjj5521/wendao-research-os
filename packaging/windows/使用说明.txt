@@ -1,4 +1,4 @@
-问道科研 1.3.8
+问道科研 1.3.9
 ================
 
 唯一入口：
@@ -24,8 +24,14 @@
 
   登录页左上角有“返回系统界面”，点击回到个人端首页；独立中心模式可通过
   环境变量 RESEARCH_OS_SYSTEM_URL 指定要返回的系统地址。
-  首次启动生成的管理员账号与密码只写入主机的
-  instance/HUB_ADMIN_CREDENTIALS.txt，不会在登录页展示；改密后该文件自动销毁。
+  首次启动生成的管理员账号与密码只写入主机的管理员凭据文件，不会在登录页展示。
+  文件位置：
+    安装版：%LOCALAPPDATA%\WendaoResearchV3\instance\HUB_ADMIN_CREDENTIALS.txt
+    便携版：<解压目录>\user_data\instance\HUB_ADMIN_CREDENTIALS.txt
+    源码运行：<项目目录>\.runtime\instance\HUB_ADMIN_CREDENTIALS.txt
+  命名固定为 HUB_ADMIN_CREDENTIALS.txt，只有首次创建 admin 账户时才生成；
+  改密成功后自动销毁。压缩包内不会附带该文件，需要在首次运行后到上述位置查看。
+  找不到时可运行：WendaoResearchV3.exe admin-path（只显示路径，不显示密码）。
   登录无响应或页面已过期时，可点“刷新页面”或“清除登录状态并重试”。
 
 更新：

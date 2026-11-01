@@ -96,7 +96,7 @@ class ModularV3ContractTests(unittest.TestCase):
         self.assertTrue(all(NAV_ITEM_DEFAULT_VISIBLE.values()))
         for key in (
             "dashboard", "daily", "plans", "review", "literature_report",
-            "projects", "experiments", "datasets", "simulations", "library",
+            "projects", "experiments", "datasets", "integral", "simulations", "library",
             "workspaces", "settings", "workbench", "career", "retreat", "idle",
             "trials", "achievements", "alchemy", "world", "assistant", "online",
         ):
@@ -104,7 +104,7 @@ class ModularV3ContractTests(unittest.TestCase):
         self.assertTrue(GAMIFICATION_ITEMS.issubset(visible))
         self.assertEqual(
             NAV_GROUP_DEFAULT_ITEMS["research"],
-            ("literature_report", "projects", "experiments", "datasets", "simulations"),
+            ("literature_report", "projects", "experiments", "datasets", "integral", "simulations"),
         )
         self.assertIn("trials", NAV_GROUP_DEFAULT_ITEMS["growth"])
 
@@ -434,7 +434,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.3.8")
+        self.assertEqual(version, "1.3.9")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",
@@ -533,7 +533,7 @@ else:
         spec = (ROOT / "packaging" / "WendaoResearchV3.spec").read_text(encoding="utf-8")
         self.assertEqual(
             set(COMMANDS),
-            {"install", "shortcut", "diagnose", "version", "reset-env", "help"},
+            {"install", "shortcut", "diagnose", "version", "admin-path", "reset-env", "help"},
         )
         for command in ("install", "shortcut", "diagnose", "version", "reset-env"):
             self.assertIn(f'"{command}"', cli, f"{command} must be a subcommand")

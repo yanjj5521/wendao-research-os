@@ -10,6 +10,7 @@ ever need one file on disk::
     WendaoResearchV3.exe shortcut       # 只重建桌面/开始菜单快捷方式
     WendaoResearchV3.exe diagnose       # 自检并输出诊断信息
     WendaoResearchV3.exe version        # 版本与数据目录
+    WendaoResearchV3.exe admin-path     # 管理员凭据文件的路径与生成状态
     WendaoResearchV3.exe reset-env      # 仅源码模式：删除 .venv
 
 Source checkouts use the same words through ``python run_local.py <command>``.
@@ -26,7 +27,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-COMMANDS = ("install", "shortcut", "diagnose", "version", "reset-env", "help")
+COMMANDS = ("install", "shortcut", "diagnose", "version", "admin-path", "reset-env", "help")
 
 
 def _repo_root() -> Path:
@@ -199,6 +200,29 @@ def _command_reset_env(argv: list[str]) -> int:
     return 0
 
 
+def _command_admin_path(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(
+        prog="admin-path", description="显示同行会管理员凭据文件的位置与生成状态"
+    )
+    parser.parse_args(argv)
+    from core.runtime_paths import DATA_ROOT
+    from hub.db import HUB_ADMIN_PATH
+
+    exists = HUB_ADMIN_PATH.is_file()
+    print(f"数据目录：{DATA_ROOT}")
+    print(f"管理员凭据文件：{HUB_ADMIN_PATH}")
+    if exists:
+        print("状态：已生成（仅主机本机可读；改密后会自动销毁）")
+        print(f"文件大小：{HUB_ADMIN_PATH.stat().st_size} 字节")
+        first = HUB_ADMIN_PATH.read_text(encoding="utf-8").splitlines()[:1]
+        if first:
+            print(f"文件头：{first[0]}")
+    else:
+        print("状态：未生成")
+        print("说明：首次启动同行会并创建 admin 账户时才会写入；改密成功后文件会被销毁。")
+    return 0
+
+
 def _command_help(argv: list[str]) -> int:
     print(__doc__)
     return 0
@@ -209,6 +233,7 @@ _HANDLERS = {
     "shortcut": _command_shortcut,
     "diagnose": _command_diagnose,
     "version": _command_version,
+    "admin-path": _command_admin_path,
     "reset-env": _command_reset_env,
     "help": _command_help,
 }

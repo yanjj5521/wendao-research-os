@@ -1,4 +1,4 @@
-# 问道科研 1.3.8
+# 问道科研 1.3.9
 
 个人科研工作流与内置同行会，使用 FastAPI、Jinja2 和 SQLite。Windows 发布版是单文件桌面 EXE，同行会作为同一个程序内的模块运行，不另开浏览器或第二个程序。
 
@@ -31,7 +31,7 @@ Linux 使用 `start_linux.sh`。
 
 ```powershell
 python tools/build.py --assemble --output out
-out\WendaoResearch-v1.3.8-Windows-x64.exe install
+out\WendaoResearch-v1.3.9-Windows-x64.exe install
 ```
 
 构建会生成单文件 `WendaoResearchV3.exe`、便携 ZIP 和同行会更新 ZIP。`install` 把程序安装到 `%LOCALAPPDATA%\Programs\WendaoResearchV3`，并创建桌面和开始菜单图标；程序本身仍可直接双击运行。
@@ -43,6 +43,7 @@ out\WendaoResearch-v1.3.8-Windows-x64.exe install
 ## 功能边界
 
 - 今日学习、近期计划、温故知新、文献精读、知识库、领域管理与项目证据链构成默认科研闭环。
+- 实用工作台提供文本、图片与**积分面积计算**：读取 .txt/.csv/.bin 曲线数据，按梯形法或 Simpson 1/3 输出净面积、正负面积、公式与推导。
 - 交付必须有可检查证据；复盘只读取本人交付的关键文本。
 - 联机中心只保存账号、公开主页、公开交流与虚拟资产，不同步论文原文件、实验数据或私人附件。
 - 趣味层默认开启、可在设置中关闭；秘境试炼与复习调度保留。
@@ -54,6 +55,7 @@ out\WendaoResearch-v1.3.8-Windows-x64.exe install
 - Windows EXE：`%LOCALAPPDATA%\WendaoResearchV3`。
 - 便携模式：程序旁边的 `user_data/`。
 - 联机中心：独立的数据目录，不与个人端混用。
+- 管理员凭据：`<数据目录>/instance/HUB_ADMIN_CREDENTIALS.txt`，仅在首次创建 admin 账户时生成，改密后自动销毁；发布包按设计不包含该文件。可用 `WendaoResearchV3.exe admin-path` 查看路径。
 
 数据目录与程序目录分离，是自动更新不丢数据的核心约束。安装、便携运行和原地更新都必须保持这条边界。
 
@@ -82,7 +84,7 @@ python run_local.py --serve
 - [1.0 收敛决策](docs/CONVERGENCE_1.0.md)
 - [数据层约束](docs/DATA_LAYER.md)
 - [发布策略与更新机制](docs/RELEASE_STRATEGY.md)
-- [1.3.8 发布说明](docs/releases/v1.3.8.md)
+- [1.3.9 发布说明](docs/releases/v1.3.9.md)
 - [规模化同步接口](docs/SCALE_READY_SYNC_INTERFACE.md)
 
 仓库只保留当前源码、运行资源、测试和最新文档；旧发行包、历史版本说明、生成缓存及本地虚拟环境不在版本库内。

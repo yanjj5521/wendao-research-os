@@ -326,6 +326,16 @@
   },
   {
     "method": "GET",
+    "path": "/integral",
+    "name": "integral_page"
+  },
+  {
+    "method": "POST",
+    "path": "/integral",
+    "name": "integral_calculate"
+  },
+  {
+    "method": "GET",
     "path": "/knowledge/export",
     "name": "knowledge_export"
   },

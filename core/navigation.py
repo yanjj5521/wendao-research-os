@@ -13,6 +13,7 @@ DEFAULT_NAV_LABELS = {
     "experiments": "实验台账",
     "simulations": "模拟案例",
     "datasets": "数据集",
+    "integral": "积分面积",
     "career": "成长罗盘",
     "retreat": "闭关计时",
     "idle": "挂机静修",
@@ -51,7 +52,7 @@ NAV_GROUP_DEFAULT_ITEMS = {
     "cultivation": (
         "dashboard", "daily", "plans", "review", "workbench", "cultivation", "retreat", "idle",
     ),
-    "research": ("literature_report", "projects", "experiments", "datasets", "simulations"),
+    "research": ("literature_report", "projects", "experiments", "datasets", "integral", "simulations"),
     "knowledge": (
         "library", "search", "note_new", "upload", "folders", "discover",
     ),
@@ -77,6 +78,7 @@ NAV_ITEM_DEFAULT_VISIBLE = {
         "projects",
         "experiments",
         "datasets",
+        "integral",
         "simulations",
         "library",
         "search",

@@ -62,6 +62,7 @@
 | `routes/settings.py` | 设置（外观、备份、个性化包） |
 | `routes/analysis.py` | 数据分析页 |
 | `routes/research_tools.py` | 科研工具页（配比计算等） |
+| `routes/integral.py` | 积分面积计算页（文件上传、解析与结果渲染） |
 | `routes/foundation.py` | 科研主线旧路由（含文件夹上传） |
 
 ## services/（业务逻辑层）
@@ -78,6 +79,7 @@
 | `scholar_search.py` | 学术检索（Crossref 等） |
 | `content_library.py` | 知识库内容整理 |
 | `workspace_profiles.py` | 七个学习领域的默认配置 |
+| `integral.py` | 曲线文件解析、梯形/Simpson 积分与 SVG 预览 |
 | `game_world.py` | 洞府建筑与法器数据 |
 | `economy.py` | 灵石与修为结算 |
 | `idle_space.py` | 休闲空间逻辑 |

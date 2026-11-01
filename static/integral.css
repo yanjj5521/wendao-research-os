@@ -1,0 +1,28 @@
+.integral-layout{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(250px,.7fr);gap:16px;align-items:start}
+.integral-form{display:grid;gap:12px}
+.integral-form label{display:grid;gap:5px;font-size:11px;color:var(--muted)}
+.integral-form input[type=file]{padding:10px;border:1px dashed var(--line);border-radius:12px;background:#fffaf4}
+.integral-binary{border:1px solid var(--line);border-radius:13px;padding:10px 12px;background:#fffaf4}
+.integral-binary summary{cursor:pointer;font-size:12px;font-weight:600;color:var(--text)}
+.integral-binary .mini-form-grid{margin-top:10px}
+.integral-binary small,.integral-help p,.integral-note{font-size:10px;color:var(--muted);line-height:1.7}
+.integral-help{margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.integral-help strong{font-size:12px}
+.integral-help p{margin:6px 0 0}
+.integral-error{margin-top:12px;padding:12px 14px;border:1px solid #d9aaa3;border-radius:13px;background:#fff3f1;color:var(--danger)}
+.integral-error p{margin:5px 0 0;font-size:11px;line-height:1.7;color:#8a4b45}
+.integral-side h2{margin:6px 0 10px}
+.integral-side ul{margin:0;padding-left:18px;display:grid;gap:7px;font-size:11px;line-height:1.65;color:var(--muted)}
+.integral-side code,.integral-note code{background:#f2e4d4;border-radius:5px;padding:1px 5px;font-size:10px}
+.integral-result{margin-top:18px}
+.integral-stats{grid-template-columns:repeat(5,1fr)}
+.integral-facts{display:flex;flex-wrap:wrap;gap:8px 16px;margin:6px 0 4px;font-size:11px;color:var(--muted)}
+.integral-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+.integral-formula p{font-family:Georgia,"Noto Serif SC",serif;font-size:16px;line-height:1.75;margin:8px 0}
+.integral-formula small{display:block;font-size:10px;color:var(--muted);line-height:1.7}
+.integral-plot{width:100%;height:auto;display:block;border-radius:12px}
+.integral-derivation ol{margin:8px 0 0;padding-left:20px;display:grid;gap:6px;font-size:11px;line-height:1.7;color:var(--muted)}
+.integral-preview .table-wrap{max-height:220px;overflow:auto}
+.integral-preview small{display:block;margin-top:6px;font-size:10px;color:var(--muted)}
+.integral-notes{margin:14px 0 0;padding-left:18px;font-size:10px;color:var(--muted);line-height:1.7}
+@media(max-width:900px){.integral-layout,.integral-grid{grid-template-columns:1fr}.integral-stats{grid-template-columns:repeat(2,1fr)}}
