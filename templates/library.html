@@ -28,4 +28,30 @@
 {% else %}
 <div class="empty-state panel"><div>📚</div><h3>没有符合条件的资料</h3><p>降低筛选条件，或收录新的学习资料。</p><a class="primary-button" href="{{ url_for('upload') }}">上传第一份资料</a></div>
 {% endif %}
+{% if withdrawals %}
+<section class="panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Withdrawals</span><h2>撤回记录</h2><p>自动执行与待确认的撤回单都在这里；已撤回条目可从快照一键恢复。</p></div></div>
+  <table class="hub-table">
+    <thead><tr><th>条目</th><th>错误类型</th><th>说明</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for w in withdrawals %}
+      <tr>
+        <td>{{ w.entry_title or ('条目 #' ~ w.entry_id) }}</td>
+        <td>{{ {'duplicate':'重复上传','wrong_file':'传错文件','wrong_workspace':'归档错位','content_error':'内容有误','privacy':'涉密/隐私','other':'其他原因'}.get(w.error_type, w.error_type) }}</td>
+        <td><small>{{ w.description }}</small></td>
+        <td><span class="role-badge">{{ {'approved':'已撤回','pending_review':'待确认','cancelled':'已取消','obsolete':'已关闭'}.get(w.status, w.status) }}</span></td>
+        <td>
+          {% if w.status == 'pending_review' %}
+          <form method="post" action="{{ url_for('withdrawal_confirm', withdrawal_id=w.id) }}" style="display:inline"><button class="primary-button">确认执行</button></form>
+          <form method="post" action="{{ url_for('withdrawal_cancel', withdrawal_id=w.id) }}" style="display:inline"><button class="button">取消</button></form>
+          {% elif w.status == 'approved' and w.entry_status == 'withdrawn' %}
+          <form method="post" action="{{ url_for('entry_restore', entry_id=w.entry_id) }}"><button class="soft-button">从快照恢复</button></form>
+          {% else %}<small>—</small>{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
 {% endblock %}

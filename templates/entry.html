@@ -63,7 +63,19 @@
       {% if entry.file_path %}<a class="primary-button full-button" href="{{ url_for('entry_file', entry_id=entry.id) }}">下载原文件</a>
       <form method="post" action="{{url_for('entry_reindex',entry_id=entry.id)}}"><button class="ghost-button full-button">重新提取全文</button></form>{% endif %}
     </section>
-    {% if related %}<section class="panel"><div class="panel-head"><h2>相关资产</h2></div><div class="related-list">{% for item in related %}<a href="{{ url_for('entry_view', entry_id=item.id) }}"><span>{{ item.kind_icon }}</span><div><strong>{{ item.title }}</strong><small>{{ item.domain }} · {{ item.kind_label }}</small></div></a>{% endfor %}</div></section>{% endif %}
+    <section class="panel">
+      <div class="panel-head simple"><div><span class="eyebrow">Withdraw</span><h2>内容有误？申请撤回</h2><p>24 小时内自动执行并留存快照；超出窗口转待确认记录，全程留痕、可恢复。</p></div></div>
+      {% if entry_withdrawal %}
+      <p class="form-help">已有处理中的撤回单 #{{ entry_withdrawal.id }}（{{ entry_withdrawal.status }}），可在知识库页的撤回记录里处理。</p>
+      {% else %}
+      <form method="post" action="{{ url_for('entry_withdraw', entry_id=entry.id) }}" style="display:grid;gap:8px;max-width:560px">
+        <select name="error_type">{% for key, label in error_types.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select>
+        <textarea name="description" rows="2" minlength="10" required placeholder="至少 10 个字：哪里错了、为什么要撤回"></textarea>
+        <button class="soft-button">提交撤回申请</button>
+      </form>
+      {% endif %}
+    </section>
+        {% if related %}<section class="panel"><div class="panel-head"><h2>相关资产</h2></div><div class="related-list">{% for item in related %}<a href="{{ url_for('entry_view', entry_id=item.id) }}"><span>{{ item.kind_icon }}</span><div><strong>{{ item.title }}</strong><small>{{ item.domain }} · {{ item.kind_label }}</small></div></a>{% endfor %}</div></section>{% endif %}
   </aside>
 </div>
 {% endblock %}

@@ -1,6 +1,7 @@
 # 任务上传系统：错误提交处理与撤回机制设计
 
-状态：设计稿（v1，2026-11-02）　适用范围：问道科研个人端“资料库/任务上传”
+状态：M1 已实施（v1.9.0，2026-11-02）；M2/M3 未实施
+实现说明：个人端无独立管理员，"越界转人工"落地为 pending_review + 本人显式确认（全程留痕）　适用范围：问道科研个人端“资料库/任务上传”
 关联模块：`web/routes/library.py`（上传/编辑/删除/任务）、`core/schema/personal.py`
 （`entries`/`quests`/`activities`）、`services/economy.py`（修为 XP 与灵石）、
 `services/file_storage.py`（附件落盘）、`core/database.py`（settings/迁移）。

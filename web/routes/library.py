@@ -38,6 +38,7 @@ from web.runtime import (
     xp_for_kind,
 )
 from services.file_storage import save_upload_limited
+from services import withdrawal as withdrawal_service
 
 app = APIRouter()
 
@@ -59,6 +60,7 @@ def library(request: Request, kind: str = "", domain: str = "", favorite: str = 
     sql += " ORDER BY favorite DESC, updated_at DESC LIMIT 300"
     with connect() as conn:
         entries = [entry_dict(row) for row in conn.execute(sql, params)]
+        withdrawals = withdrawal_service.recent_withdrawals(conn)
         selected_workspace = conn.execute(
             "SELECT id,name,icon FROM workspaces WHERE id=?", (workspace,)
         ).fetchone() if workspace else None
@@ -73,7 +75,7 @@ def library(request: Request, kind: str = "", domain: str = "", favorite: str = 
             selected_domain=domain,
             favorite=favorite,
             selected_workspace=dict(selected_workspace) if selected_workspace else None,
-            active_workspace_id=workspace or None,
+            active_workspace_id=workspace or None, withdrawals=withdrawals, error_types=withdrawal_service.ERROR_TYPES,
         ),
     )
 
@@ -301,7 +303,10 @@ def entry_view(request: Request, entry_id: int):
         row = conn.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
         if not row:
             raise HTTPException(status_code=404)
+        if row["status"] == "withdrawn":
+            raise HTTPException(status_code=404)
         entry = entry_dict(row)
+        withdrawal = withdrawal_service.entry_withdrawal(conn, entry_id)
         related = [
             entry_dict(r)
             for r in conn.execute(
@@ -312,7 +317,8 @@ def entry_view(request: Request, entry_id: int):
     return templates.TemplateResponse(
         request=request,
         name="entry.html",
-        context=context(request, "entry", entry=entry, related=related),
+        context=context(request, "entry", entry=entry, related=related,
+                           entry_withdrawal=withdrawal, error_types=withdrawal_service.ERROR_TYPES),
     )
 
 
@@ -416,6 +422,57 @@ def entry_edit_post(
         old_path.unlink(missing_ok=True)
     flash(request, "条目已更新，知识结构更加完整。")
     return redirect("entry_view", request, entry_id=str(entry_id))
+
+
+@app.post("/entry/{entry_id}/withdraw", name="entry_withdraw")
+def entry_withdraw(request: Request, entry_id: int, error_type: str = Form(""), description: str = Form("")):
+    with connect() as conn:
+        try:
+            result = withdrawal_service.request_withdrawal(conn, entry_id, error_type, description)
+        except withdrawal_service.WithdrawalError as exc:
+            flash(request, str(exc), "error")
+        else:
+            if result["status"] == "approved":
+                flash(request, f"《{result['entry_title']}》已自动撤回；快照与附件副本已留存，可在撤回记录里恢复。", "success")
+            else:
+                flash(request, "该条目超出 24 小时自动撤回窗口，已转入待确认记录；请在知识库页的撤回记录里确认执行。", "success")
+    return redirect("library", request)
+
+
+@app.post("/withdrawal/{withdrawal_id}/confirm", name="withdrawal_confirm")
+def withdrawal_confirm(request: Request, withdrawal_id: int):
+    with connect() as conn:
+        try:
+            result = withdrawal_service.confirm_withdrawal(conn, withdrawal_id)
+        except withdrawal_service.WithdrawalError as exc:
+            flash(request, str(exc), "error")
+        else:
+            flash(request, f"撤回单 #{result['id']} 已执行，条目已下架并留存快照。", "success")
+    return redirect("library", request)
+
+
+@app.post("/withdrawal/{withdrawal_id}/cancel", name="withdrawal_cancel")
+def withdrawal_cancel(request: Request, withdrawal_id: int):
+    with connect() as conn:
+        try:
+            withdrawal_service.cancel_withdrawal(conn, withdrawal_id)
+        except withdrawal_service.WithdrawalError as exc:
+            flash(request, str(exc), "error")
+        else:
+            flash(request, f"撤回单 #{withdrawal_id} 已取消。", "success")
+    return redirect("library", request)
+
+
+@app.post("/entry/{entry_id}/restore", name="entry_restore")
+def entry_restore(request: Request, entry_id: int):
+    with connect() as conn:
+        try:
+            title = withdrawal_service.restore_entry(conn, entry_id)
+        except withdrawal_service.WithdrawalError as exc:
+            flash(request, str(exc), "error")
+        else:
+            flash(request, f"《{title}》已从撤回快照恢复。", "success")
+    return redirect("library", request)
 
 
 @app.post("/entry/{entry_id}/delete", name="entry_delete")

@@ -10,7 +10,7 @@ from __future__ import annotations
 - 新增 `schema_migrations`，为后续版本升级留出可追溯的入口。
 """
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 6
 DATABASE_FILENAME = "wendao.db"
 
 BASE_SCHEMA_SQL = r"""
@@ -646,6 +646,27 @@ CREATE INDEX IF NOT EXISTS idx_delivery_files_delivery ON mission_delivery_files
 CREATE INDEX IF NOT EXISTS idx_milestones_project ON project_milestones(project_id, status, sort_order);
 CREATE INDEX IF NOT EXISTS idx_project_updates_project ON project_updates(project_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_career_moments_project ON career_moments(project_id, occurred_on DESC);
+CREATE TABLE IF NOT EXISTS upload_withdrawals(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER NOT NULL,
+    error_type TEXT NOT NULL,
+    description TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending_review',
+    auto_level TEXT NOT NULL DEFAULT 'auto',
+    decided_by TEXT NOT NULL DEFAULT '',
+    decision_note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    decided_at TEXT
+);
+CREATE TABLE IF NOT EXISTS entry_revisions(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    entry_id INTEGER NOT NULL,
+    rev_no INTEGER NOT NULL,
+    snapshot_json TEXT NOT NULL,
+    file_copy_path TEXT NOT NULL DEFAULT '',
+    note TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
 CREATE INDEX IF NOT EXISTS idx_queue_status ON online_sync_queue(status, created_at);
 CREATE INDEX IF NOT EXISTS idx_workspaces_active ON workspaces(active, sort_order);
 CREATE INDEX IF NOT EXISTS idx_quests_open ON quests(completed, status);

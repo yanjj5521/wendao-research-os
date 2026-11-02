@@ -185,6 +185,16 @@
     "name": "entry_reindex"
   },
   {
+    "method": "POST",
+    "path": "/entry/{entry_id}/restore",
+    "name": "entry_restore"
+  },
+  {
+    "method": "POST",
+    "path": "/entry/{entry_id}/withdraw",
+    "name": "entry_withdraw"
+  },
+  {
     "method": "GET",
     "path": "/experiments",
     "name": "experiments_page"
@@ -803,6 +813,16 @@
     "method": "POST",
     "path": "/upload",
     "name": "upload_post"
+  },
+  {
+    "method": "POST",
+    "path": "/withdrawal/{withdrawal_id}/cancel",
+    "name": "withdrawal_cancel"
+  },
+  {
+    "method": "POST",
+    "path": "/withdrawal/{withdrawal_id}/confirm",
+    "name": "withdrawal_confirm"
   },
   {
     "method": "GET",

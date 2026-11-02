@@ -189,6 +189,37 @@ PERSONAL_MIGRATIONS: list[Migration] = [
         note="实验台账通用化：条件/指标字段与默认领域改名",
         runner=_upgrade_experiment_ledger,
     ),
+    Migration(
+        version=6,
+        note="撤回机制：新增 upload_withdrawals 与 entry_revisions",
+        statements=(
+            """
+            CREATE TABLE IF NOT EXISTS upload_withdrawals(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entry_id INTEGER NOT NULL,
+                error_type TEXT NOT NULL,
+                description TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending_review',
+                auto_level TEXT NOT NULL DEFAULT 'auto',
+                decided_by TEXT NOT NULL DEFAULT '',
+                decision_note TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL,
+                decided_at TEXT
+            );
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS entry_revisions(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entry_id INTEGER NOT NULL,
+                rev_no INTEGER NOT NULL,
+                snapshot_json TEXT NOT NULL,
+                file_copy_path TEXT NOT NULL DEFAULT '',
+                note TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            );
+            """,
+        ),
+    ),
 ]
 _HUB_LEGACY_IDENTITY_TABLES = (
     "hub_profiles",

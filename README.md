@@ -1,4 +1,4 @@
-# 问道科研 1.8.4
+# 问道科研 1.9.0
 
 个人科研工作流与内置同行会，使用 FastAPI、Jinja2 和 SQLite。Windows 发布版是单文件桌面 EXE，同行会作为同一个程序内的模块运行，不另开浏览器或第二个程序。
 
@@ -31,7 +31,7 @@ Linux 使用 `start_linux.sh`。
 
 ```powershell
 python tools/build.py --assemble --output out
-out\WendaoResearch-v1.8.4-Windows-x64.exe install
+out\WendaoResearch-v1.9.0-Windows-x64.exe install
 ```
 
 构建会生成单文件 `WendaoResearchV3.exe`、便携 ZIP 和同行会更新 ZIP。`install` 把程序安装到 `%LOCALAPPDATA%\Programs\WendaoResearchV3`，并创建桌面和开始菜单图标；程序本身仍可直接双击运行。
@@ -91,7 +91,7 @@ python run_local.py --serve
 - [1.0 收敛决策](docs/CONVERGENCE_1.0.md)
 - [数据层约束](docs/DATA_LAYER.md)
 - [发布策略与更新机制](docs/RELEASE_STRATEGY.md)
-- [1.8.4 发布说明](docs/releases/v1.8.4.md)
+- [1.9.0 发布说明](docs/releases/v1.9.0.md)
 - [自建 Headscale 虚拟专网指南](docs/HEADSCALE.md)
 - [1.8.2 发布说明](docs/releases/v1.8.2.md)
 - [同行会网络连接指南](docs/HUB_NETWORK.md)

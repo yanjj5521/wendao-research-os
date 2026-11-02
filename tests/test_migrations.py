@@ -33,9 +33,12 @@ def _run(script: str) -> str:
 
 
 UPGRADE = """
-from core.database import DB_PATH, connect, init_db
+from core.database import DB_PATH, SCHEMA_VERSION, connect, init_db
 from core.migrations import Migration
 import core.database as dbm
+
+N = SCHEMA_VERSION          # 当前基线版本
+NEXT = N + 1                # 测试注册的迁移版本
 
 # 1) 建 v2 库，写入一条可被迁移改写的数据
 init_db()
@@ -48,7 +51,7 @@ with connect() as connection:
 # 2) 注册一条 v3 迁移：加列 + 回填
 dbm.PERSONAL_MIGRATIONS.append(
     Migration(
-        version=6,
+        version=NEXT,
         note="为 activities 增加 note 字段并回填",
         statements=(
             "ALTER TABLE activities ADD COLUMN note TEXT NOT NULL DEFAULT '';",
@@ -56,29 +59,32 @@ dbm.PERSONAL_MIGRATIONS.append(
         ),
     )
 )
-dbm.SCHEMA_VERSION = 6
+dbm.SCHEMA_VERSION = NEXT
 
 # 3) 升级
 init_db()
 with connect() as connection:
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 6
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == NEXT
     columns = {row[1] for row in connection.execute("PRAGMA table_info(activities)")}
     assert "note" in columns
     row = connection.execute("SELECT * FROM activities WHERE action='mtest'").fetchone()
     assert row["note"] == "migrated", "已有数据必须被回填"
     versions = [r[0] for r in connection.execute("SELECT version FROM schema_migrations ORDER BY version")]
-    assert versions == [5, 6], versions
+    assert versions == [N, NEXT], versions
 
-snapshots = list((DB_PATH.parent / "migration_snapshots").glob("wendao_to_v6_*.db"))
+snapshots = list((DB_PATH.parent / "migration_snapshots").glob(f"wendao_to_v{NEXT}_*.db"))
 assert len(snapshots) == 1, snapshots
 assert snapshots[0].stat().st_size > 0
 print("upgrade-ok")
 """
 
 FAILURE = """
-from core.database import DB_PATH, connect, init_db
+from core.database import DB_PATH, SCHEMA_VERSION, connect, init_db
 from core.migrations import Migration
 import core.database as dbm
+
+N = SCHEMA_VERSION
+NEXT = N + 1
 
 init_db()
 with connect() as connection:
@@ -89,7 +95,7 @@ with connect() as connection:
 
 dbm.PERSONAL_MIGRATIONS.append(
     Migration(
-        version=6,
+        version=NEXT,
         note="第二条会失败",
         statements=(
             "ALTER TABLE activities ADD COLUMN note TEXT NOT NULL DEFAULT '';",
@@ -97,7 +103,7 @@ dbm.PERSONAL_MIGRATIONS.append(
         ),
     )
 )
-dbm.SCHEMA_VERSION = 6
+dbm.SCHEMA_VERSION = NEXT
 try:
     init_db()
 except RuntimeError:
@@ -106,14 +112,14 @@ else:
     raise SystemExit("坏迁移必须抛 RuntimeError")
 
 with connect() as connection:
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5, "失败后版本号必须留在原位"
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == N, "失败后版本号必须留在原位"
     columns = {row[1] for row in connection.execute("PRAGMA table_info(activities)")}
     assert "note" not in columns, "失败迁移的结构变更必须回滚"
     assert connection.execute("SELECT COUNT(*) n FROM activities").fetchone()["n"] == 1
     ledger = [r[0] for r in connection.execute("SELECT version FROM schema_migrations ORDER BY version")]
-    assert ledger == [5], ledger
+    assert ledger == [N], ledger
 
-snapshots = list((DB_PATH.parent / "migration_snapshots").glob("wendao_to_v6_*.db"))
+snapshots = list((DB_PATH.parent / "migration_snapshots").glob(f"wendao_to_v{NEXT}_*.db"))
 assert len(snapshots) == 1, "失败也要留下迁移前快照"
 print("rollback-ok")
 """

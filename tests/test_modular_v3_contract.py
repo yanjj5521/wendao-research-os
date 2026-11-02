@@ -262,7 +262,9 @@ class ModularV3ContractTests(unittest.TestCase):
         for marker in forbidden:
             self.assertNotIn(marker, combined)
         self.assertIn('DATABASE_FILENAME = "wendao.db"', combined)
-        self.assertIn("SCHEMA_VERSION = 5", combined)
+        from core.schema.personal import SCHEMA_VERSION as _sv
+
+        self.assertIn(f"SCHEMA_VERSION = {_sv}", combined)
         self.assertIn('PRODUCT_DIR_NAME = "WendaoResearchV3"', combined)
 
     def test_hub_entrypoint_self_check_uses_current_account_schema(self) -> None:
@@ -286,11 +288,11 @@ class ModularV3ContractTests(unittest.TestCase):
             environment["RESEARCH_OS_DATA_DIR"] = temp_dir
             environment["PYTHONPATH"] = str(ROOT)
             script = """
-from core.database import DB_PATH, connect, init_db
+from core.database import DB_PATH, SCHEMA_VERSION, connect, init_db
 init_db()
 init_db()
 with connect() as connection:
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == SCHEMA_VERSION
     assert connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0] == 1
     assert connection.execute("SELECT COUNT(*) FROM research_tracks").fetchone()[0] == 0
     assert connection.execute("SELECT COUNT(*) FROM workspaces").fetchone()[0] == 7
@@ -467,7 +469,7 @@ else:
         self.assertTrue((ROOT / "hub" / "session_isolation.py").is_file())
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.8.4")
+        self.assertEqual(version, "1.9.0")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",
