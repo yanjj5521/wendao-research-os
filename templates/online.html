@@ -46,7 +46,7 @@
         <option value="cloud_v2" disabled>规模化云端 v2 · 尚未实现</option>
       </select>
     </label>
-    <label><span>轻量中心地址</span><input name="hub_url" value="{{ hub_url }}" placeholder="例如 http://192.168.1.20:5050"></label>
+    <label><span>轻量中心地址</span><input name="hub_url" value="{{ hub_url }}" placeholder="例如 http://192.168.1.20:5050 或 http://100.64.0.10:5050"></label>
     <small class="form-help {% if not hub_url_ok %}text-danger{% endif %}">{{ hub_url_policy }}</small>
     <label><span>轻量中心 Token</span><input type="password" name="hub_api_token" autocomplete="new-password" placeholder="{% if hub_token_configured %}已安全保存；留空保持不变{% else %}从“我的联机主页”复制{% endif %}"></label>
     <label class="check-label"><input type="checkbox" name="auto_sync" value="1" {% if auto_sync or sync_provider == 'disabled' %}checked{% endif %}>连接成功后自动同步轻量状态</label>
@@ -54,7 +54,7 @@
       <button class="primary-button" name="connect_now" value="1">保存并联机</button>
       <button class="soft-button" name="connect_now" value="0">只保存</button>
     </div>
-    <small class="form-help">选择“关闭”后不会新建同步队列；启用时，公网地址必须使用 HTTPS，HTTP 只允许本机或私有局域网。</small>
+    <small class="form-help">选择“关闭”后不会新建同步队列；启用时，公网地址必须使用 HTTPS，HTTP 只允许本机、局域网或 VPN。</small>
   </form>
 
   <section class="panel">
@@ -73,11 +73,21 @@
   <article class="panel">
     <div class="panel-head simple"><div><span class="eyebrow">本机联机中心</span><h2>{{ '运行中' if hub_host.running else '未启动' }}</h2></div></div>
     {% if hub_host.running %}
-    <p>局域网：<code>{{ hub_host.lan_url }}</code></p>
+    {% if hub_host.access_urls %}
+    <div class="hub-access-list">
+      {% for item in hub_host.access_urls %}
+      <div><span>{{ item.label }}{% if item.interface %} · {{ item.interface }}{% endif %}</span><code>{{ item.url }}</code></div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-danger">未检测到局域网或 VPN 地址。可在同行会管理控制台填写固定连接地址。</p>
+    {% endif %}
+    {% if hub_host.custom_url %}<p>固定成员入口：<code>{{ hub_host.custom_url }}</code></p>{% endif %}
     <div class="button-row">
       <a class="primary-button" href="{{ hub_host.local_url }}" target="_blank" rel="noopener">打开联机中心</a>
       <form method="post" action="{{ url_for('online_hub_host_stop') }}"><button class="soft-button">停止中心</button></form>
     </div>
+    <small class="form-help">同一房间可优先使用有线/无线地址；跨局域网时，所有成员先加入同一个 VPN 虚拟网络，再使用 VPN 地址。Windows 防火墙需允许该端口的专用或可信网络访问。</small>
     {% else %}
     <form method="post" action="{{ url_for('online_hub_host_start') }}" class="clean-form">
       <label><span>端口</span><input type="number" name="port" value="5050" min="1024" max="65535"></label>

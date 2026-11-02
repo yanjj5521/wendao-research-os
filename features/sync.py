@@ -186,13 +186,24 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
     def online_hub_host_start(request: Request, port: int = Form(5050)):
         try:
             host = hub_host.start(STORAGE_ROOT.parent, port=port)
-        except OSError as exc:
+        except (OSError, RuntimeError) as exc:
             flash(request, f"同行会中心未能启动：{exc}", "error")
         else:
-            flash(
-                request,
-                f"同行会已在本程序后台启动。成员填写 {host['lan_url']}；管理员界面会在下方“进入同行会”中按身份显示。",
-            )
+            access_urls = host.get("access_urls") or []
+            preferred = str(host.get("preferred_url") or host.get("local_url") or "")
+            if access_urls:
+                flash(
+                    request,
+                    f"同行会已启动。成员可尝试 {preferred}；有线、无线和 VPN 地址已列在下方，"
+                    "请选择双方都能访问的地址。",
+                )
+            else:
+                flash(
+                    request,
+                    "同行会已在本机启动，但未检测到局域网/VPN 地址。"
+                    "请在管理控制台填写固定的 VPN 或公网连接地址。",
+                    "error",
+                )
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/hub-host/stop", name="online_hub_host_stop")

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import ipaddress
 import json
 import urllib.request
 from urllib.parse import urlparse
@@ -8,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from core.version import APP_VERSION
+from services.network_access import http_host_allowed
 
 SYNC_CONTRACT_VERSION = "2026-07-27"
 SYNC_EVENT_SCHEMA_VERSION = 1
@@ -217,12 +217,6 @@ def validate_hub_url(value: str) -> tuple[bool, str]:
     if parsed.scheme == "https":
         return True, "HTTPS 加密连接"
     host = parsed.hostname.lower()
-    if host in {"localhost", "127.0.0.1", "::1"} or host.endswith(".local"):
-        return True, "仅限本机或局域网的 HTTP"
-    try:
-        address = ipaddress.ip_address(host)
-    except ValueError:
-        address = None
-    if address and (address.is_private or address.is_loopback or address.is_link_local):
-        return True, "仅限局域网的 HTTP"
-    return False, "公网中心必须使用 HTTPS；HTTP 只允许本机或私有局域网地址。"
+    if http_host_allowed(host):
+        return True, "仅限本机、局域网或 VPN 的 HTTP"
+    return False, "公网中心必须使用 HTTPS；HTTP 只允许本机、局域网或 VPN 地址。"

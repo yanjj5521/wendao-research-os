@@ -35,7 +35,7 @@ admin = TestClient(app)
 assert admin.post("/login", data={"username": "admin", "password": password, "_csrf": csrf(admin, "/")}).status_code == 200
 admin.post("/admin/invites", data={"uses": 5, "days": 7, "_csrf": csrf(admin, "/admin")})
 admin_page = admin.get("/admin").text
-link = re.search(r'href="(/register\?invite=[^"]+)"', admin_page).group(1)
+link = re.search(r'href="([^"]*/register\?invite=[^"]+)"', admin_page).group(1)
 assert "成员名额" in admin_page and "调整成员上限" in admin_page
 
 # 管理员登录态下打开注册页：新账号会加入切换列表，但当前管理员不会退出

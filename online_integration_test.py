@@ -9,6 +9,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+from services.network_access import member_access_urls
+
 
 ROOT = Path(__file__).resolve().parent
 
@@ -32,6 +34,16 @@ def _wait_for_hub(url: str, process: subprocess.Popen[str]) -> None:
         except Exception:
             time.sleep(0.2)
     raise RuntimeError("ResearchHub did not become ready within 20 seconds.")
+
+
+def _verify_member_network(port: int) -> None:
+    rows = member_access_urls(port)
+    if not rows:
+        return
+    member_url = str(rows[0]["url"])
+    with urllib.request.urlopen(f"{member_url}/health", timeout=5) as response:
+        if response.status != 200:
+            raise RuntimeError(f"Non-loopback Hub address failed: {member_url}")
 
 
 def _create_member(hub_data: Path) -> str:
@@ -251,7 +263,7 @@ def main() -> None:
                 "uvicorn",
                 "hub.app:app",
                 "--host",
-                "127.0.0.1",
+                "0.0.0.0",
                 "--port",
                 str(port),
                 "--log-level",
@@ -265,6 +277,7 @@ def main() -> None:
         )
         try:
             _wait_for_hub(hub_url, process)
+            _verify_member_network(port)
             _exercise_personal_node(personal_data, hub_url, token)
         finally:
             process.terminate()

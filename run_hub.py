@@ -15,6 +15,8 @@ from urllib.parse import quote
 
 import uvicorn
 
+from services.network_access import member_access_urls
+
 
 DEFAULT_HOST = "0.0.0.0"
 LOCAL_HOST = "127.0.0.1"
@@ -28,6 +30,11 @@ def preconfigure_runtime() -> argparse.Namespace:
     parser.add_argument("--open-data", action="store_true", help="Open the active hub data directory.")
     parser.add_argument("--self-check", action="store_true", help="Initialize the hub and exit.")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help="Preferred listen port.")
+    parser.add_argument(
+        "--host",
+        default="",
+        help="Advanced IPv4 bind address; default 0.0.0.0 listens on wired, wireless and VPN adapters.",
+    )
     parser.add_argument(
         "--local-only",
         action="store_true",
@@ -84,12 +91,8 @@ def choose_port(host: str, preferred: int) -> tuple[int, bool]:
 
 
 def lan_ip() -> str:
-    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
-        try:
-            sock.connect(("192.0.2.1", 80))
-            return str(sock.getsockname()[0])
-        except OSError:
-            return "this-computer-LAN-IP"
+    rows = member_access_urls(DEFAULT_PORT)
+    return str(rows[0]["address"]) if rows else "this-computer-LAN-IP"
 
 
 def open_browser(port: int) -> None:
@@ -201,25 +204,33 @@ if __name__ == "__main__":
         packaged_self_check()
         raise SystemExit(0)
 
-    from hub.db import HUB_ADMIN_PATH, init_hub_db
+    from hub.db import HUB_ADMIN_PATH, connect_hub, init_hub_db, set_hub_setting
     from core.version import APP_VERSION
 
     init_hub_db()
-    host = LOCAL_HOST if args.local_only else DEFAULT_HOST
+    host = LOCAL_HOST if args.local_only else (args.host.strip() or os.environ.get("HUB_BIND_HOST", "").strip() or DEFAULT_HOST)
     port, already_running = choose_port(host, args.port)
     if already_running:
         print(f"Research Hub is already running: http://{LOCAL_HOST}:{port}")
         open_browser(port)
         raise SystemExit(0)
 
+    member_urls = [] if args.local_only else member_access_urls(port, bind_host=host)
+    preferred_url = str(member_urls[0]["url"]) if member_urls else ""
+    with connect_hub() as conn:
+        set_hub_setting(conn, "runtime_base_url", preferred_url)
+        conn.commit()
+
     print(f"\nResearch System Hub v{APP_VERSION}")
     print(f"Admin page on this computer: http://{LOCAL_HOST}:{port}")
-    if not args.local_only:
-        member_url = f"http://{lan_ip()}:{port}"
-        print(f"LAN address for members: {member_url}")
-        print(f"Android client address: {member_url}")
-        print(f"Android one-tap pairing link: researchos://connect?hub={quote(member_url, safe='')}")
-        print("Windows may ask whether to allow private-network access on the first run.")
+    if member_urls:
+        for item in member_urls:
+            print(f"Member address ({item['label']}): {item['url']}")
+        print(f"Android one-tap pairing link: researchos://connect?hub={quote(preferred_url, safe='')}")
+        print("Allow the Hub TCP port on trusted LAN/VPN profiles in Windows Firewall.")
+        print("VPN members must all join the same virtual network and be allowed to reach the host.")
+    elif not args.local_only:
+        print("No active LAN/VPN IPv4 address was detected; configure a fixed VPN/public base URL in the admin console.")
     print(f"Hub data: {DATA_ROOT}")
     if HUB_ADMIN_PATH.exists():
         print(f"First-run admin credentials: {HUB_ADMIN_PATH}")

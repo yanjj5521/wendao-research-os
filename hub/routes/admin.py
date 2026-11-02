@@ -1,17 +1,20 @@
 from __future__ import annotations
 
-import re
 import hashlib
+import os
+import re
 import secrets
 import sqlite3
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
+from urllib.parse import quote, urlsplit
 
 from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from services import hub_storage
+from services.network_access import member_access_urls, normalize_base_url
 from hub.common import (
     hub_url_for,
     audit,
@@ -74,6 +77,32 @@ def admin_page(request: Request):
         welfare=[dict(row) for row in conn.execute("""SELECT g.*,r.display_name recipient_name,a.display_name admin_name
             FROM hub_welfare_grants g JOIN accounts r ON r.id=g.recipient_id JOIN accounts a ON a.id=g.granted_by
             ORDER BY g.id DESC LIMIT 12""")]
+        raw_public_base_url = get_hub_setting(conn, "public_base_url", "") or os.environ.get("HUB_PUBLIC_URL", "").strip()
+        public_base_url, public_base_error = normalize_base_url(raw_public_base_url)
+        runtime_base_url = get_hub_setting(conn, "runtime_base_url", "")
+    request_base_url = str(request.base_url).rstrip("/")
+    network_addresses = []
+    if runtime_base_url:
+        try:
+            runtime_parts = urlsplit(runtime_base_url)
+            runtime_port = runtime_parts.port or (443 if runtime_parts.scheme == "https" else 80)
+        except ValueError:
+            runtime_port = 0
+        if runtime_port:
+            network_addresses = member_access_urls(runtime_port)
+    discovered_base_url = str(network_addresses[0]["url"]) if network_addresses else ""
+    register_base_url = (
+        public_base_url or discovered_base_url or runtime_base_url or request_base_url
+    ).rstrip("/")
+    for invite in invites:
+        invite["register_url"] = (
+            f"{register_base_url}/register?invite={quote(str(invite['code']))}"
+        )
+    try:
+        register_host = (urlsplit(register_base_url).hostname or "").casefold()
+    except ValueError:
+        register_host = ""
+    register_base_is_local = register_host in {"localhost", "127.0.0.1", "::1"}
     today = now_iso()[:10]
     week_ago = (datetime.now().astimezone() - timedelta(days=7)).isoformat(timespec="seconds")
     month_ago = (datetime.now().astimezone() - timedelta(days=30)).isoformat(timespec="seconds")
@@ -108,6 +137,12 @@ def admin_page(request: Request):
             last_backup=backup_files[0].name if backup_files else "尚无",
             welfare=welfare,
             welfare_limits=WELFARE_SINGLE_LIMITS,
+            public_base_url=public_base_url,
+            public_base_error=public_base_error,
+            runtime_base_url=runtime_base_url,
+            register_base_url=register_base_url,
+            register_base_is_local=register_base_is_local,
+            network_addresses=network_addresses,
         ),
     )
 
@@ -129,6 +164,34 @@ def _stored_invite_code(conn, raw_code: str) -> str | None:
         if normalize_code(stored).casefold() == code.casefold():
             return stored
     return None
+
+
+@router.post("/admin/network", name="hub_admin_network")
+def update_network(
+    request: Request,
+    public_base_url: str = Form(""),
+    csrf_value: str = Form(..., alias="_csrf"),
+):
+    admin = require_user(request, admin=True)
+    verify_csrf(request, csrf_value)
+    normalized, error = normalize_base_url(public_base_url)
+    if error:
+        flash(request, error, "error")
+        return RedirectResponse("/admin", status_code=303)
+    with hub_transaction() as conn:
+        set_hub_setting(conn, "public_base_url", normalized)
+        audit(
+            conn,
+            int(admin["id"]),
+            "network_base_update",
+            normalized or "自动检测局域网/VPN 地址",
+            request,
+        )
+    flash(
+        request,
+        "固定成员入口已保存。" if normalized else "已清除固定入口，恢复自动检测。",
+    )
+    return RedirectResponse("/admin", status_code=303)
 
 
 @router.post("/admin/invites/delete", name="hub_invite_delete")

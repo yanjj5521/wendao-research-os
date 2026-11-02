@@ -33,7 +33,7 @@ import io
 import re
 from fastapi.testclient import TestClient
 from hub.app import app
-from hub.db import HUB_ADMIN_PATH, INSTANCE_DIR, balances, connect_hub, create_user, init_hub_db
+from hub.db import HUB_ADMIN_PATH, INSTANCE_DIR, balances, connect_hub, create_user, get_hub_setting, init_hub_db
 
 init_hub_db()
 password = re.search(r"密码: (.+)", HUB_ADMIN_PATH.read_text(encoding="utf-8")).group(1).strip()
@@ -51,9 +51,26 @@ admin.post("/login", data={"username": "admin", "password": password, "_csrf": c
 page = admin.get("/admin")
 assert page.status_code == 200
 for marker in ("运营概览", "成员总数", "近 7 天新增", "今日在线", "导出账号留存 CSV",
-               "member@example.com", "邀请码", "审计", "邀请码只属于这个中心数据库"):
+               "member@example.com", "邀请码", "审计", "邀请码只属于这个中心数据库",
+               "成员连接地址", "固定成员入口"):
     assert marker in page.text, marker
 assert "注册地址须与此处同源" not in page.text
+
+# A fixed VPN/public entry controls the shareable registration base URL.
+network_saved = admin.post(
+    "/admin/network",
+    data={"public_base_url": "http://100.64.10.20:5050", "_csrf": csrf(admin, "/admin")},
+    follow_redirects=False,
+)
+assert network_saved.status_code == 303, network_saved.status_code
+with connect_hub() as conn:
+    assert get_hub_setting(conn, "public_base_url") == "http://100.64.10.20:5050"
+bad_network_csrf = admin.post(
+    "/admin/network",
+    data={"public_base_url": "http://100.64.10.21:5050", "_csrf": "wrong-token"},
+    follow_redirects=False,
+)
+assert bad_network_csrf.status_code == 403, bad_network_csrf.status_code
 
 # 2) 账号留存 CSV：仅管理员可导出，内容含账号与资产
 csv_response = admin.get("/admin/export/accounts.csv")
@@ -66,6 +83,12 @@ member.post("/login", data={"username": "member", "password": "member-password-1
 member_csv = member.get("/admin/export/accounts.csv")
 assert member_csv.status_code == 403, member_csv.status_code
 assert member.get("/admin").status_code == 403
+member_network = member.post(
+    "/admin/network",
+    data={"public_base_url": "http://100.64.10.22:5050", "_csrf": csrf(member, "/")},
+    follow_redirects=False,
+)
+assert member_network.status_code == 403, member_network.status_code
 # 2.5) 管理员停用/启用成员：派生列 active 不能被直接写入
 toggle_off = admin.post(
     f"/admin/users/{member_id}/toggle",
@@ -99,6 +122,7 @@ with connect_hub() as conn:
 admin_page = admin.get("/admin")
 assert 'action="/admin/invites/delete"' in admin_page.text
 assert invite_to_delete in admin_page.text
+assert f"http://100.64.10.20:5050/register?invite={invite_to_delete}" in admin_page.text
 removed = admin.post(
     "/admin/invites/delete",
     data={"code": invite_to_delete, "_csrf": csrf(admin, "/admin")},

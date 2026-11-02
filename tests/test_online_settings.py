@@ -47,6 +47,13 @@ assert "http://192.168.1.20:5050" in page and "已安全保存" in page
 assert "启动联机中心" in page and "/online/hub-host/start" in page
 assert "进入同行会" in page
 
+# Tailscale/WireGuard-style CGNAT addresses are private enough for HTTP.
+r = c.post("/online/settings", data={"sync_provider": "legacy_hub", "hub_url": "http://100.64.0.10:5050",
+                                     "hub_api_token": "tok-vpn", "auto_sync": "", "connect_now": "0"})
+assert "已保存（未联机）" in flash(r.text), flash(r.text)
+assert db("hub_url") == "http://100.64.0.10:5050"
+assert "http://100.64.0.10:5050" in c.get("/online").text
+
 r = c.post("/online/settings", data={"sync_provider": "disabled", "hub_url": "", "hub_api_token": "",
                                      "auto_sync": "", "connect_now": "0"})
 assert "已保存：联机保持关闭" in flash(r.text)
