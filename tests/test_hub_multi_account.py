@@ -45,6 +45,8 @@ client = TestClient(web.app)
 first = login(client, "admin", admin_password)
 assert first.status_code == 200 and first.url.path == "/team/"
 assert "洞府主人" in first.text
+assert 'href="/team/static/hub.css"' in first.text
+assert client.get("/team/static/hub.css").status_code == 200
 add_page = client.get("/team/login")
 assert add_page.status_code == 200 and "添加另一个账号" in add_page.text
 assert "当前会话不会被替换" in add_page.text
@@ -168,6 +170,9 @@ def login(client, username):
     return client.post("/login", data={"username": username, "password": "Passw0rd!", "_csrf": csrf(client, "/login")})
 
 client = TestClient(app)
+login_page = client.get("/login")
+assert 'href="/static/hub.css"' in login_page.text
+assert client.get("/static/hub.css").status_code == 200
 assert login(client, "standaloneone").status_code == 200
 assert login(client, "standalonetwo").status_code == 200
 page = client.get("/")

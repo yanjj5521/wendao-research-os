@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#f2e5d4"><title>{% block title %}{{ site_name }}{% endblock %}</title>
-  <link rel="icon" href="{{ url_for('static', path='/app-icon.png') }}" type="image/png">
-  <link rel="stylesheet" href="{{ url_for('static', path='/hub.css') }}">
-  <link rel="stylesheet" href="{{ url_for('static', path='/system-entry.css') }}">
+  <link rel="icon" href="{{ media_base }}/static/app-icon.png" type="image/png">
+  <link rel="stylesheet" href="{{ media_base }}/static/hub.css">
+  <link rel="stylesheet" href="{{ media_base }}/static/system-entry.css">
 </head>
 <body class="hub-role-{{ user.role if user else 'guest' }}">
   <header class="hub-topbar">
