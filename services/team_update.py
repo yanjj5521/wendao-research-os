@@ -85,6 +85,19 @@ function Write-UpdateLog([string]$Message) {
     Add-Content -LiteralPath $LogPath -Value "$stamp $Message" -Encoding UTF8
 }
 
+function Copy-WithRetry([string]$Source, [string]$Destination) {
+    for ($i = 0; $i -lt 3; $i++) {
+        try {
+            Copy-Item -LiteralPath $Source -Destination $Destination -Force
+            return
+        } catch {
+            Write-UpdateLog ("copy retry " + ($i + 1) + ": " + $_.Exception.Message)
+            Start-Sleep -Seconds 1
+        }
+    }
+    throw "copy failed after 3 retries: $Source"
+}
+
 function Get-Sha256([string]$Path) {
     $stream = [IO.File]::OpenRead($Path)
     try {
@@ -109,8 +122,8 @@ try {
     Get-Process -Name "WendaoResearchV3" -ErrorAction SilentlyContinue |
         Stop-Process -Force -ErrorAction SilentlyContinue
     Start-Sleep -Milliseconds 800
-    Copy-Item -LiteralPath $Executable -Destination $previous -Force
-    Copy-Item -LiteralPath $newExe.FullName -Destination $incoming -Force
+    Copy-WithRetry $Executable $previous
+    Copy-WithRetry $newExe.FullName $incoming
     $sourceHash = Get-Sha256 $incoming
     [IO.File]::Copy($incoming, $Executable, $true)
     $targetHash = Get-Sha256 $Executable
@@ -188,6 +201,17 @@ def schedule_windows_replace(package: Path) -> None:
         stderr=subprocess.DEVNULL,
         creationflags=flags,
     )
+
+
+def last_apply_log(lines: int = 14) -> str:
+    """Tail of the replacement log so the UI can show why a replace failed."""
+    path = STORAGE_ROOT / "team_updates" / "apply_update.log"
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    rows = [row for row in text.splitlines() if row.strip()]
+    return chr(10).join(rows[-lines:])
 
 
 def exit_for_update() -> None:

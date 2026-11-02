@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 from unittest.mock import patch
 
+from core.version import is_newer_version
 from services import github_update
 
 
@@ -186,6 +187,142 @@ class GithubUpdateTests(unittest.TestCase):
                 with patch.object(github_update.threading, "Thread", _Thread):
                     self.assertTrue(github_update.start_background_check(delay=0))
         self.assertEqual(started, [True])
+
+
+
+
+class _BrokenResponse:
+    """Simulates a socket read timeout escaping urllib (OSError, not URLError)."""
+
+    def read(self, size: int = -1) -> bytes:
+        raise TimeoutError("read timed out")
+
+    def __enter__(self) -> "_BrokenResponse":
+        return self
+
+    def __exit__(self, *exc: object) -> bool:
+        return False
+
+
+class VersionComparisonTests(unittest.TestCase):
+    def test_newer_older_equal(self) -> None:
+        self.assertTrue(is_newer_version("1.4.1", "1.4.0"))
+        self.assertFalse(is_newer_version("1.4.1", "1.4.1"))
+        self.assertFalse(is_newer_version("1.4.0", "1.4.1"))
+
+    def test_component_wise_not_lexical(self) -> None:
+        self.assertTrue(is_newer_version("1.10.0", "1.9.9"))
+        self.assertTrue(is_newer_version("1.4", "1.3.9"))
+
+
+class NetworkFailureTests(unittest.TestCase):
+    def test_read_timeout_becomes_user_facing_error(self) -> None:
+        with patch.object(github_update, "_open", return_value=_BrokenResponse()):
+            with self.assertRaises(github_update.GithubUpdateError) as caught:
+                github_update.latest_release()
+        self.assertIn("连接中断", str(caught.exception))
+
+    def test_checksums_timeout_becomes_user_facing_error(self) -> None:
+        with patch.object(github_update, "_open", side_effect=TimeoutError("read timed out")):
+            with self.assertRaises(github_update.GithubUpdateError) as caught:
+                github_update._checksums("https://example/SHA256SUMS.txt")
+        self.assertIn("校验文件", str(caught.exception))
+
+    def test_checksums_parse_star_prefix(self) -> None:
+        digest = "b" * 64
+        text = f"{digest}  *WendaoResearch-v9.9.9-User.zip\n".encode()
+        with patch.object(github_update, "_open", return_value=_Response(text)):
+            result = github_update._checksums("https://example/SHA256SUMS.txt")
+        self.assertEqual(result["WendaoResearch-v9.9.9-User.zip"], digest)
+
+
+class ResolveApplyReleaseTests(unittest.TestCase):
+    def test_prefers_cached_badge_without_new_api_call(self) -> None:
+        cached = {
+            "version": "9.9.9",
+            "newer": True,
+            "package_url": github_update.DOWNLOAD_PREFIX + "v9.9.9/User.zip",
+        }
+        with patch.object(github_update, "get_setting", return_value=json.dumps(cached)), patch.object(
+            github_update, "latest_release", side_effect=AssertionError("must not re-query")
+        ):
+            release = github_update.resolve_apply_release()
+        self.assertEqual(release["version"], "9.9.9")
+
+    def test_ignores_cache_without_newer_flag(self) -> None:
+        with patch.object(github_update, "get_setting", return_value=json.dumps({"version": "9.9.9"})), patch.object(
+            github_update,
+            "latest_release",
+            return_value={"version": "9.9.9", "newer": True, "package_url": "https://github.com/x/y"},
+        ):
+            release = github_update.resolve_apply_release()
+        self.assertEqual(release["version"], "9.9.9")
+
+    def test_falls_back_to_api_without_cache(self) -> None:
+        with patch.object(github_update, "get_setting", return_value=""), patch.object(
+            github_update,
+            "latest_release",
+            return_value={"version": "9.9.9", "newer": True, "package_url": "https://github.com/x/y"},
+        ):
+            release = github_update.resolve_apply_release()
+        self.assertEqual(release["version"], "9.9.9")
+
+
+class PrepareReuseTests(unittest.TestCase):
+    def test_reuses_verified_package_without_download(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = Path(tmp)
+            target = storage / "team_updates" / "github_update_9.9.9.zip"
+            target.parent.mkdir(parents=True)
+            with zipfile.ZipFile(target, "w") as archive:
+                archive.writestr("WendaoResearchV3.exe", b"MZ")
+                archive.writestr("使用说明.txt", "说明")
+            digest = "c" * 64
+            release = {
+                "version": "9.9.9",
+                "package_url": github_update.DOWNLOAD_PREFIX + "v9.9.9/User.zip",
+                "checksum_url": github_update.DOWNLOAD_PREFIX + "v9.9.9/SHA256SUMS.txt",
+                "package_name": "User.zip",
+            }
+            with patch.object(github_update, "STORAGE_ROOT", storage), patch.object(
+                github_update, "_checksums", return_value={"User.zip": digest}
+            ), patch.object(github_update, "file_sha256", return_value=digest), patch.object(
+                github_update, "fetch_resumable", side_effect=AssertionError("must not download")
+            ), patch.object(
+                github_update, "backup_local_db", return_value=storage / "backup.db"
+            ):
+                result = github_update.prepare_github_update(release)
+            self.assertEqual(result, target)
+
+    def test_mismatched_target_is_redownloaded(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            storage = Path(tmp)
+            target = storage / "team_updates" / "github_update_9.9.9.zip"
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b"stale content")
+            digest = "d" * 64
+            release = {
+                "version": "9.9.9",
+                "package_url": github_update.DOWNLOAD_PREFIX + "v9.9.9/User.zip",
+                "checksum_url": github_update.DOWNLOAD_PREFIX + "v9.9.9/SHA256SUMS.txt",
+                "package_name": "User.zip",
+            }
+
+            def fake_fetch(url: str, destination: Path, **kwargs: object) -> Path:
+                with zipfile.ZipFile(destination, "w") as archive:
+                    archive.writestr("WendaoResearchV3.exe", b"MZ")
+                    archive.writestr("使用说明.txt", "说明")
+                return destination
+
+            with patch.object(github_update, "STORAGE_ROOT", storage), patch.object(
+                github_update, "_checksums", return_value={"User.zip": digest}
+            ), patch.object(github_update, "file_sha256", return_value="e" * 64), patch.object(
+                github_update, "fetch_resumable", side_effect=fake_fetch
+            ), patch.object(
+                github_update, "backup_local_db", return_value=storage / "backup.db"
+            ):
+                result = github_update.prepare_github_update(release)
+            self.assertEqual(result, target)
 
 
 if __name__ == "__main__":

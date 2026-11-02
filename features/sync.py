@@ -39,6 +39,7 @@ from services.team_update import (
     schedule_windows_replace,
 )
 from services import github_update
+from services.team_update import last_apply_log
 from services import hub_host
 
 EXPORT_DIR = STORAGE_ROOT / "sync_exports"
@@ -175,6 +176,7 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 can_self_update=can_self_update(),
                 github_update=_json_setting("github_update", {}),
                 github_update_checked_at=get_setting("github_update_checked_at", ""),
+                update_log_tail=last_apply_log(),
                 data_root=str(DATA_ROOT),
                 hub_host=hub_host.status(),
             ),
@@ -293,7 +295,7 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
             )
             return RedirectResponse(request.url_for("online_page"), status_code=303)
         try:
-            release = github_update.latest_release()
+            release = github_update.resolve_apply_release()
             if not release or not release.get("newer"):
                 flash(request, "GitHub 上没有比当前更新的正式版本。")
                 return RedirectResponse(request.url_for("online_page"), status_code=303)

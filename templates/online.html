@@ -146,6 +146,9 @@
       {% endif %}
     {% endif %}
   </div>
+  {% if update_log_tail %}
+  <details class="privacy-note"><summary>上次自动替换日志（若更新失败，原因在这里）</summary><pre class="form-help">{{ update_log_tail }}</pre></details>
+  {% endif %}
   {% if github_update_checked_at %}<small class="form-help">上次 GitHub 检查：{{ github_update_checked_at }}（当前 v{{ local_version }}）</small>{% endif %}
     <p>ResearchHub 服务十人以内的小团队；本地操作先完成，联机成功与否不会决定资料是否保存。</p>
   <div class="button-row">

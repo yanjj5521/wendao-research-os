@@ -22,6 +22,10 @@ class DownloadError(RuntimeError):
     """Raised when a download cannot be completed or verified."""
 
 
+def file_sha256(path: Path) -> str:
+    return _digest_file(path).hexdigest().lower()
+
+
 def _digest_file(path: Path) -> "hashlib._Hash":
     digest = hashlib.sha256()
     with path.open("rb") as handle:
@@ -63,7 +67,11 @@ def fetch_resumable(
     timeout: int,
     headers: dict[str, str] | None = None,
 ) -> Path:
-    """Download ``url`` into ``destination``, resuming a previous attempt."""
+    """Download ``url`` into ``destination``, resuming a previous attempt.
+
+    Any transient network failure (timeout, reset, disconnect) keeps the
+    ``.part`` file and retries once before surfacing a user-facing error.
+    """
     expected = (expected_sha256 or "").strip().lower()
     if len(expected) != 64:
         raise DownloadError("缺少有效的 SHA-256，已拒绝下载。")
@@ -78,43 +86,50 @@ def fetch_resumable(
         encoding="utf-8",
     )
 
-    request_headers = {"User-Agent": USER_AGENT}
+    base_headers = {"User-Agent": USER_AGENT}
     if headers:
-        request_headers.update(headers)
-    if offset:
-        request_headers["Range"] = f"bytes={offset}-"
+        base_headers.update(headers)
 
     digest = _digest_file(part) if offset else hashlib.sha256()
     total = offset
-    try:
-        with urllib.request.urlopen(
-            urllib.request.Request(url, headers=request_headers), timeout=timeout
-        ) as response:
-            status = getattr(response, "status", 200)
-            if offset and status != 206:
-                # Server ignored the range: start over rather than append twice.
-                offset = 0
-                total = 0
-                digest = hashlib.sha256()
-            mode = "ab" if offset else "wb"
-            with part.open(mode) as out:
-                while chunk := response.read(1024 * 1024):
-                    total += len(chunk)
-                    if total > max_bytes:
-                        raise DownloadError("更新包超过 500 MB，已停止下载。")
-                    digest.update(chunk)
-                    out.write(chunk)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 416 and offset:
-            # The part may already be complete; hash verification decides below.
-            digest = _digest_file(part)
-        else:
+    last_error: Exception | None = None
+    for attempt in range(2):
+        try:
+            request_headers = dict(base_headers)
+            if total:
+                request_headers["Range"] = f"bytes={total}-"
+            with urllib.request.urlopen(
+                urllib.request.Request(url, headers=request_headers), timeout=timeout
+            ) as response:
+                status = getattr(response, "status", 200)
+                if total and status != 206:
+                    # Server ignored the range: start over rather than append twice.
+                    total = 0
+                    digest = hashlib.sha256()
+                mode = "ab" if total else "wb"
+                with part.open(mode) as out:
+                    while chunk := response.read(1024 * 1024):
+                        total += len(chunk)
+                        if total > max_bytes:
+                            raise DownloadError("更新包超过 500 MB，已停止下载。")
+                        digest.update(chunk)
+                        out.write(chunk)
+            break
+        except urllib.error.HTTPError as exc:
+            if exc.code == 416 and total:
+                # The part may already be complete; hash verification decides below.
+                digest = _digest_file(part)
+                break
             # Keep the part and its descriptor so the next click can resume.
             raise DownloadError(f"下载中断（HTTP {exc.code}），已保留进度，可重试续传。") from exc
-    except urllib.error.URLError as exc:
-        raise DownloadError("下载中断（网络不可用），已保留进度，可重试续传。") from exc
-    except TimeoutError as exc:
-        raise DownloadError("下载超时，已保留进度，可重试续传。") from exc
+        except (TimeoutError, urllib.error.URLError, OSError) as exc:
+            # RemoteDisconnected and friends are OSErrors that urllib does not
+            # always wrap into URLError.
+            last_error = exc
+            total = part.stat().st_size if part.is_file() else 0
+            digest = _digest_file(part) if total else hashlib.sha256()
+    else:
+        raise DownloadError("下载中断（网络超时或不稳定），已保留进度，可重试续传。") from last_error
 
     if digest.hexdigest().lower() != expected:
         part.unlink(missing_ok=True)

@@ -24,7 +24,7 @@ from core.database import get_setting, now_iso, set_setting
 from core.runtime_paths import STORAGE_ROOT
 from core.version import APP_VERSION, is_newer_version
 from services.backups import backup_local_db
-from services.download import DownloadError, fetch_resumable
+from services.download import DownloadError, file_sha256, fetch_resumable
 from services.team_update import APP_EXE_NAME, MAX_UPDATE_BYTES
 
 GITHUB_REPO = "yanjj5521/wendao-research-os"
@@ -45,30 +45,52 @@ class GithubUpdateError(RuntimeError):
 
 
 def _open(url: str, *, timeout: int, accept: str = "") -> object:
+    """GET with one retry; converts every network failure into a user-facing error.
+
+    ``TimeoutError`` raised mid-read is an ``OSError`` but NOT a ``URLError``, so
+    it used to escape this helper raw and turned "检查新版本/应用更新" into a 500
+    or a scary raw errno message.
+    """
     headers = {"User-Agent": USER_AGENT}
     if accept:
         headers["Accept"] = accept
-    request = urllib.request.Request(url, headers=headers)
-    try:
-        return urllib.request.urlopen(request, timeout=timeout)
-    except urllib.error.HTTPError as exc:
-        if exc.code == 403:
-            raise GithubUpdateError(
-                "GitHub 暂时限制了本次查询（每小时 60 次）。请稍后再试，或改用同行会更新。"
-            ) from exc
-        if exc.code == 404:
-            raise GithubUpdateError("GitHub 上还没有正式发布版本。") from exc
-        raise GithubUpdateError(f"GitHub 返回 HTTP {exc.code}。") from exc
-    except urllib.error.URLError as exc:
-        raise GithubUpdateError(
-            "无法连接 GitHub。请检查网络或代理设置；不影响本地使用。"
-        ) from exc
+    last: Exception | None = None
+    for attempt in range(2):
+        request = urllib.request.Request(url, headers=headers)
+        try:
+            return urllib.request.urlopen(request, timeout=timeout)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 403:
+                raise GithubUpdateError(
+                    "GitHub 暂时限制了本次查询（每小时 60 次）。请稍后再试，或改用同行会更新。"
+                ) from exc
+            if exc.code == 404:
+                raise GithubUpdateError("GitHub 上还没有正式发布版本。") from exc
+            raise GithubUpdateError(f"GitHub 返回 HTTP {exc.code}。") from exc
+        except TimeoutError as exc:
+            last = exc
+        except urllib.error.URLError as exc:
+            last = exc
+        except OSError as exc:
+            last = exc
+        if attempt == 0:
+            time.sleep(1.0)
+    raise GithubUpdateError(
+        "无法连接 GitHub（网络超时或不稳定）。请检查网络或代理后重试；不影响本地使用。"
+    ) from last
 
 
 def latest_release() -> dict[str, object] | None:
     """Return the newest non-prerelease release, or None if it is unusable."""
-    with _open(API_LATEST, timeout=API_TIMEOUT, accept="application/vnd.github+json") as response:
-        payload = json.load(response)
+    try:
+        with _open(API_LATEST, timeout=API_TIMEOUT, accept="application/vnd.github+json") as response:
+            payload = json.load(response)
+    except GithubUpdateError:
+        raise
+    except OSError as exc:
+        raise GithubUpdateError("GitHub 连接中断（读取响应超时）。请稍后重试。") from exc
+    except json.JSONDecodeError as exc:
+        raise GithubUpdateError("GitHub 返回了无法解析的数据，请稍后重试。") from exc
     if payload.get("draft") or payload.get("prerelease"):
         return None
     tag = str(payload.get("tag_name", "")).strip()
@@ -104,8 +126,13 @@ def latest_release() -> dict[str, object] | None:
 
 
 def _checksums(url: str) -> dict[str, str]:
-    with _open(url, timeout=API_TIMEOUT) as response:
-        text = response.read().decode("utf-8", errors="replace")
+    try:
+        with _open(url, timeout=API_TIMEOUT) as response:
+            text = response.read().decode("utf-8", errors="replace")
+    except GithubUpdateError:
+        raise
+    except OSError as exc:
+        raise GithubUpdateError("校验文件下载中断（网络超时）。请稍后重试，进度会保留。") from exc
     result: dict[str, str] = {}
     for line in text.splitlines():
         parts = line.strip().split(None, 1)
@@ -133,6 +160,29 @@ def _validate_user_package(path: Path) -> None:
             raise GithubUpdateError("下载的包不是有效的用户发布包，已拒绝安装。")
 
 
+def resolve_apply_release() -> dict[str, object] | None:
+    """Prefer the already-verified badge over a fresh API query.
+
+    "检查新版本" already talked to GitHub; asking again right before applying
+    turns a transient timeout/403 into a scary "更新失败" even though the user
+    is holding a perfectly good, hash-verifiable release descriptor.
+    """
+    raw = get_setting(BADGE_SETTING, "").strip()
+    if raw:
+        try:
+            cached = json.loads(raw)
+        except json.JSONDecodeError:
+            cached = None
+        if (
+            isinstance(cached, dict)
+            and cached.get("newer")
+            and str(cached.get("package_url", "")).startswith(DOWNLOAD_PREFIX)
+            and cached.get("version")
+        ):
+            return cached
+    return latest_release()
+
+
 def prepare_github_update(release: dict[str, object]) -> Path:
     """Download, verify and snapshot; the caller schedules the replacement."""
     version = str(release.get("version", "")).strip()
@@ -147,16 +197,21 @@ def prepare_github_update(release: dict[str, object]) -> Path:
 
     update_dir = STORAGE_ROOT / "team_updates"
     target = update_dir / f"github_update_{version}.zip"
-    try:
-        fetch_resumable(
-            package_url,
-            target,
-            expected_sha256=expected_hash,
-            max_bytes=MAX_UPDATE_BYTES,
-            timeout=DOWNLOAD_TIMEOUT,
-        )
-    except DownloadError as exc:
-        raise GithubUpdateError(str(exc)) from exc
+    if target.is_file() and file_sha256(target) == expected_hash:
+        # A previous attempt already verified this package (e.g. the replace
+        # script failed afterwards); reuse it instead of re-downloading 60 MB.
+        pass
+    else:
+        try:
+            fetch_resumable(
+                package_url,
+                target,
+                expected_sha256=expected_hash,
+                max_bytes=MAX_UPDATE_BYTES,
+                timeout=DOWNLOAD_TIMEOUT,
+            )
+        except DownloadError as exc:
+            raise GithubUpdateError(str(exc)) from exc
     try:
         _validate_user_package(target)
     except Exception:
