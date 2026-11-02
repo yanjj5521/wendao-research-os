@@ -31,7 +31,39 @@ def build_executable() -> Path:
     )
     if not executable.exists():
         raise FileNotFoundError(executable)
+    verify_executable(executable)
     return executable
+
+
+def verify_executable(executable: Path) -> None:
+    """构建后自检：冷启动必须能 import 全部依赖并报出版本。
+
+    防止"pydantic_core._pydantic_core 缺失"这类只会在用户机器上暴露的
+    打包缺件问题流出发布包。
+    """
+    try:
+        result = subprocess.run(
+            [str(executable), "version"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise SystemExit(f"构建自检失败：{executable.name} 启动超时。") from exc
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode != 0 or "ModuleNotFoundError" in output or VERSION not in output:
+        tail = chr(10).join(output.splitlines()[-12:])
+        message = chr(10).join(
+            [
+                "构建自检失败：打包后的 EXE 无法正常启动（依赖可能缺失）。",
+                f"退出码：{result.returncode}",
+                tail,
+                "提示：检查 spec 是否 collect 了 pydantic_core 等编译依赖。",
+            ]
+        )
+        raise SystemExit(message)
+    print(f"构建自检通过：{executable.name} -> {VERSION}")
 
 
 def assemble_windows(executable: Path, output_dir: Path) -> list[Path]:
