@@ -6,9 +6,10 @@ import re
 import urllib.error
 import urllib.request
 from typing import Any
+from uuid import uuid4
 from urllib.parse import urlparse
 
-from core.database import get_setting
+from core.database import get_setting, now_iso, set_setting
 from core.version import APP_VERSION
 
 
@@ -72,7 +73,7 @@ def provider_status() -> dict[str, Any]:
             "detail": "调用失败时会自动退回离线模式。",
         }
     if mode == "openai":
-        configured = bool(os.environ.get("OPENAI_API_KEY") or os.environ.get("RESEARCH_OS_AI_KEY"))
+        configured = bool(get_setting("ai_api_key", "") or os.environ.get("OPENAI_API_KEY") or os.environ.get("RESEARCH_OS_AI_KEY"))
         return {
             "mode": mode,
             "model": model,
@@ -121,9 +122,9 @@ def generate_structured(
         label = f"本地 Ollama · {model}"
     elif mode == "openai":
         endpoint = _endpoint(get_setting("ai_endpoint", "https://api.openai.com/v1/responses"))
-        api_key = os.environ.get("OPENAI_API_KEY") or os.environ.get("RESEARCH_OS_AI_KEY")
+        api_key = get_setting("ai_api_key", "") or os.environ.get("OPENAI_API_KEY") or os.environ.get("RESEARCH_OS_AI_KEY")
         if not api_key:
-            raise AIProviderError("未设置 OPENAI_API_KEY 环境变量")
+            raise AIProviderError("缺少模型访问密钥：请在设置中填写，或设置 OPENAI_API_KEY 环境变量")
         body = {
             "model": model,
             "input": [
@@ -170,3 +171,124 @@ def generate_structured(
     else:
         raw = _openai_text(payload)
     return _json_from_text(raw), label
+
+
+SHARED_PROFILES_SETTING = "ai_shared_profiles"
+
+
+def _load_profiles() -> list[dict[str, Any]]:
+    try:
+        data = json.loads(get_setting(SHARED_PROFILES_SETTING, "[]"))
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(data, list):
+        return []
+    return [item for item in data if isinstance(item, dict)]
+
+
+def list_profiles() -> list[dict[str, Any]]:
+    active = (
+        get_setting("ai_mode", "offline"),
+        get_setting("ai_endpoint", ""),
+        get_setting("ai_model", ""),
+    )
+    result = []
+    for item in _load_profiles():
+        row = dict(item)
+        row["active"] = (
+            item.get("mode") in {"ollama", "openai"}
+            and (item.get("mode"), item.get("endpoint"), item.get("model")) == active
+        )
+        result.append(row)
+    return result
+
+
+def add_profile(
+    *,
+    name: str,
+    mode: str,
+    endpoint: str,
+    model: str,
+    api_key: str = "",
+    note: str = "",
+    origin: str = "imported",
+) -> dict[str, Any]:
+    name = (name or "").strip()[:40]
+    if mode not in {"ollama", "openai"}:
+        raise ValueError("共享模型仅支持本地 Ollama 或 OpenAI 兼容接口。")
+    endpoint = _endpoint(endpoint)
+    model = (model or "").strip()[:80]
+    if not model:
+        raise ValueError("模型名称不能为空。")
+    profile = {
+        "id": uuid4().hex[:8],
+        "name": name or f"{mode} · {model}",
+        "mode": mode,
+        "endpoint": endpoint,
+        "model": model,
+        "api_key": (api_key or "").strip()[:200],
+        "note": (note or "").strip()[:160],
+        "origin": origin,
+        "created_at": now_iso(),
+    }
+    profiles = _load_profiles()
+    profiles.append(profile)
+    set_setting(SHARED_PROFILES_SETTING, json.dumps(profiles, ensure_ascii=False))
+    return profile
+
+
+def delete_profile(profile_id: str) -> None:
+    profiles = [p for p in _load_profiles() if p.get("id") != profile_id]
+    set_setting(SHARED_PROFILES_SETTING, json.dumps(profiles, ensure_ascii=False))
+
+
+def activate_profile(profile_id: str) -> dict[str, Any]:
+    for profile in _load_profiles():
+        if profile.get("id") == profile_id:
+            set_setting("ai_mode", profile["mode"])
+            set_setting("ai_endpoint", profile["endpoint"])
+            set_setting("ai_model", profile["model"])
+            if profile["mode"] == "openai":
+                set_setting("ai_api_key", profile.get("api_key", ""))
+            return profile
+    raise ValueError("找不到这条共享模型记录，可能已被删除。")
+
+
+def export_share_code(include_key: bool = False) -> str:
+    mode = get_setting("ai_mode", "offline")
+    if mode not in {"ollama", "openai"}:
+        raise ValueError("当前是离线模式，没有可共享的模型配置。")
+    payload: dict[str, Any] = {
+        "v": 1,
+        "kind": "research-os-model-share",
+        "name": f"来自 {get_setting('researcher_name', '修士')} 的模型",
+        "mode": mode,
+        "endpoint": get_setting("ai_endpoint", ""),
+        "model": get_setting("ai_model", ""),
+        "note": "对方导入后即可调用该接口；使用局域网地址时请确保本机服务已允许外部访问。",
+        "created_at": now_iso(),
+    }
+    if include_key and mode == "openai":
+        key = get_setting("ai_api_key", "") or os.environ.get("OPENAI_API_KEY", "") or os.environ.get("RESEARCH_OS_AI_KEY", "")
+        if key:
+            payload["api_key"] = key
+            payload["note"] = "⚠ 此共享码包含访问口令，请仅发给可信同行，泄露后请尽快更换密钥。"
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
+def import_share_code(code: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(code or "")
+    except json.JSONDecodeError as exc:
+        raise ValueError("共享码不是有效的 JSON 文本。") from exc
+    if not isinstance(payload, dict) or payload.get("kind") != "research-os-model-share" or payload.get("v") != 1:
+        raise ValueError("共享码格式不正确，请确认复制完整。")
+    return add_profile(
+        name=str(payload.get("name", "")),
+        mode=str(payload.get("mode", "")),
+        endpoint=str(payload.get("endpoint", "")),
+        model=str(payload.get("model", "")),
+        api_key=str(payload.get("api_key", "")),
+        note=str(payload.get("note", "")),
+        origin="imported",
+    )

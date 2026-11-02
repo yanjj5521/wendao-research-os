@@ -69,18 +69,8 @@
   </section>
 </div>
 
-<section class="content-grid equal online-control-grid">
-  <article class="panel admin-explainer">
-    <div class="panel-head simple"><div><span class="eyebrow">管理员托管</span><h2>同行会直接运行在科研系统里</h2></div><span class="control-seal">主</span></div>
-    <p>同行会不是另开的网页或第二个程序。管理员点击一次后，中心作为当前 EXE 的后台能力运行；关闭问道科研时中心安全停止，重新打开后再按需启动。</p>
-    {% if hub_host.running %}
-      <div class="privacy-note"><b>本机中心正在运行</b><p>成员地址：<code>{{ hub_host.lan_url }}</code></p></div>
-      <div class="button-row"><a class="primary-button" href="/team/">进入同行会</a><form method="post" action="{{ url_for('online_hub_host_stop') }}"><button class="soft-button">停止本机中心</button></form></div>
-    {% else %}
-      <form method="post" action="{{ url_for('online_hub_host_start') }}" class="button-row"><input type="hidden" name="port" value="5050"><button class="primary-button">启动本机同行会中心</button><a class="soft-button" href="/team/">先打开内嵌同行会</a></form>
-    {% endif %}
-    <small class="form-help">管理员与普通成员的差别只来自登录身份，不来自另一套程序。中心不会读取成员本地论文、附件或笔记。</small>
-  </article>
+<section class="online-control-grid">
+  
   <article class="panel">
     <div class="panel-head simple"><div><span class="eyebrow">内嵌同行会</span><h2>同一个窗口，按身份显示界面</h2></div></div>
     <p>管理员登录后自动出现成员、邀请、福利、版本和审计控制台；成员只看到个人联机主页、资料驿站、更新与领取福利。所有页面始终留在问道科研桌面窗口内。</p>
@@ -88,16 +78,8 @@
   </article>
 </section>
 
-<section class="content-grid equal online-control-grid">
-  <article class="panel admin-explainer">
-    <div class="panel-head simple"><div><span class="eyebrow">Administrator</span><h2>管理员是怎样建立的</h2></div><span class="control-seal">主</span></div>
-    <ol class="admin-setup-steps">
-      <li><b>1</b><span><strong>首次启动自动建立</strong><small>中心数据库中没有管理员时，系统只创建一个 <code>admin</code> 角色。</small></span></li>
-      <li><b>2</b><span><strong>一次性凭据留在主机</strong><small>用户名、随机密码和 Token 写入 <code>instance/HUB_ADMIN_CREDENTIALS.txt</code>，不会进入 Git 或便携包。</small></span></li>
-      <li><b>3</b><span><strong>登录后立即换密码</strong><small>管理员生成邀请码、停用成员、发布版本和备份中心；普通成员不能把自己升为管理员。</small></span></li>
-    </ol>
-    <p class="privacy-boundary"><b>权限边界：</b>管理员只能看中心里的公开主页、资料卡、资产和同步审计，不能读取成员电脑上的论文、实验、数据集或附件。</p>
-  </article>
+<section class="online-control-grid">
+  
 
   <article class="panel reliability-guard">
     <div class="panel-head simple"><div><span class="eyebrow">Offline-first guard</span><h2>联机不稳定保护</h2></div><span class="control-seal">稳</span></div>

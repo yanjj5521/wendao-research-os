@@ -53,6 +53,14 @@ from web.runtime import (
     templates,
     zipfile,
 )
+from services.ai_provider import (
+    activate_profile,
+    add_profile,
+    delete_profile,
+    export_share_code,
+    import_share_code,
+    list_profiles,
+)
 
 app = APIRouter()
 
@@ -72,6 +80,8 @@ def settings_get(request: Request):
             ai_endpoint=get_setting("ai_endpoint", "http://127.0.0.1:11434/api/generate"),
             ai_model=get_setting("ai_model", "qwen2.5:7b"),
             ai_status=provider_status(),
+            ai_api_key_present=bool(get_setting("ai_api_key", "")),
+            ai_profiles=list_profiles(),
             realm_names_text="\n".join(
                 f"{stage.key}={realm_labels[stage.key]}" for stage in REALM_STAGES
             ),
@@ -107,6 +117,7 @@ def settings_post(
     ai_mode: str = Form("offline"),
     ai_endpoint: str = Form("http://127.0.0.1:11434/api/generate"),
     ai_model: str = Form("qwen2.5:7b"),
+    ai_api_key: str = Form(""),
     realm_names: str = Form(""),
     nav_labels: str = Form(""),
     nav_layout: str = Form(""),
@@ -133,6 +144,8 @@ def settings_post(
     set_setting("ai_mode", ai_mode if ai_mode in {"offline", "ollama", "openai"} else "offline")
     set_setting("ai_endpoint", ai_endpoint.strip() or "http://127.0.0.1:11434/api/generate")
     set_setting("ai_model", ai_model.strip() or "qwen2.5:7b")
+    if ai_api_key.strip():
+        set_setting("ai_api_key", ai_api_key.strip()[:200])
     realm_lines = [line.strip() for line in realm_names.splitlines() if line.strip()]
     if any("=" in line for line in realm_lines):
         merged_realms = default_realm_labels()
@@ -604,4 +617,82 @@ def feedback_save(request: Request, kind: str = Form("bug"), content: str = Form
         )
         conn.commit()
     flash(request, note, "success" if synced else "info")
+    return redirect("settings_page", request)
+
+
+@app.post("/settings/ai/key", name="settings_ai_key")
+def settings_ai_key(request: Request, ai_api_key: str = Form(""), clear: str = Form("")):
+    if clear == "1":
+        set_setting("ai_api_key", "")
+        flash(request, "已清除本机保存的模型访问密钥。", "success")
+    else:
+        key = ai_api_key.strip()
+        if not key:
+            flash(request, "请填写要保存的访问密钥，或使用“清除”。", "error")
+        else:
+            set_setting("ai_api_key", key[:200])
+            flash(request, "模型访问密钥已保存到本机数据库；不会进入个性化包或 GitHub。", "success")
+    return redirect("settings_page", request)
+
+
+@app.post("/settings/ai/profiles/add", name="settings_ai_profile_add")
+def settings_ai_profile_add(
+    request: Request,
+    name: str = Form(""),
+    mode: str = Form("ollama"),
+    endpoint: str = Form(""),
+    model: str = Form(""),
+    api_key: str = Form(""),
+    note: str = Form(""),
+):
+    try:
+        profile = add_profile(name=name, mode=mode, endpoint=endpoint, model=model, api_key=api_key, note=note)
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+    else:
+        flash(request, f"已添加共享模型“{profile['name']}”；点击该条目的“启用”即可用于论文摘要。", "success")
+    return redirect("settings_page", request)
+
+
+@app.post("/settings/ai/profiles/{profile_id}/activate", name="settings_ai_profile_activate")
+def settings_ai_profile_activate(request: Request, profile_id: str):
+    try:
+        profile = activate_profile(profile_id)
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+    else:
+        flash(request, f"已启用共享模型“{profile['name']}”，论文摘要将调用该接口。", "success")
+    return redirect("settings_page", request)
+
+
+@app.post("/settings/ai/profiles/{profile_id}/delete", name="settings_ai_profile_delete")
+def settings_ai_profile_delete(request: Request, profile_id: str):
+    delete_profile(profile_id)
+    flash(request, "已删除这条共享模型记录。", "success")
+    return redirect("settings_page", request)
+
+
+@app.post("/settings/ai/share", name="settings_ai_share")
+def settings_ai_share(request: Request, include_key: str = Form("")):
+    want_key = include_key == "1"
+    try:
+        code = export_share_code(include_key=want_key)
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+        return redirect("settings_page", request)
+    return templates.TemplateResponse(
+        request=request,
+        name="ai_share.html",
+        context=context(request, "settings", share_code=code, include_key=want_key),
+    )
+
+
+@app.post("/settings/ai/share/import", name="settings_ai_share_import")
+def settings_ai_share_import(request: Request, share_code: str = Form("")):
+    try:
+        profile = import_share_code(share_code)
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+    else:
+        flash(request, f"已导入共享模型“{profile['name']}”。点击“启用”即可用于论文摘要。", "success")
     return redirect("settings_page", request)

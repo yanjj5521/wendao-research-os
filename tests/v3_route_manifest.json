@@ -640,6 +640,36 @@
     "name": "settings_post"
   },
   {
+    "method": "POST",
+    "path": "/settings/ai/key",
+    "name": "settings_ai_key"
+  },
+  {
+    "method": "POST",
+    "path": "/settings/ai/profiles/add",
+    "name": "settings_ai_profile_add"
+  },
+  {
+    "method": "POST",
+    "path": "/settings/ai/profiles/{profile_id}/activate",
+    "name": "settings_ai_profile_activate"
+  },
+  {
+    "method": "POST",
+    "path": "/settings/ai/profiles/{profile_id}/delete",
+    "name": "settings_ai_profile_delete"
+  },
+  {
+    "method": "POST",
+    "path": "/settings/ai/share",
+    "name": "settings_ai_share"
+  },
+  {
+    "method": "POST",
+    "path": "/settings/ai/share/import",
+    "name": "settings_ai_share_import"
+  },
+  {
     "method": "GET",
     "path": "/simulations",
     "name": "simulations_page"

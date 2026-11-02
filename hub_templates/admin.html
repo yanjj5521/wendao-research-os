@@ -28,18 +28,6 @@
   </div>
 </section>
 
-<section class="panel admin-origin">
-  <div>
-    <small>管理员来源</small>
-    <h2>第一次启动中心时自动创建一次</h2>
-    <p>当数据库中没有管理员时，系统建立唯一的 <code>admin</code> 账户，生成随机密码与 API Token；普通注册只能得到 member 角色，不能自行提权。</p>
-  </div>
-  <div class="admin-origin-status {% if admin_credentials_exists %}warning{% else %}safe{% endif %}">
-    <span>{{ '待处理' if admin_credentials_exists else '已完成' }}</span>
-    <strong>{{ '一次性凭据文件仍在主机' if admin_credentials_exists else '一次性凭据文件已退役' }}</strong>
-    <small>{% if admin_credentials_exists %}请用它首次登录并立即修改密码；修改成功后文件会自动销毁。{% else %}以后从“我的联机主页”管理密码与 Token。{% endif %}</small>
-  </div>
-</section>
 
 <section class="grid three">
   <form class="panel form-grid" method="post" action="{{ url_for('hub_invite_create') }}">

@@ -324,14 +324,7 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
         url = hub_url.strip().rstrip("/")
         existing_token = get_setting("hub_api_token", "").strip()
         token = hub_api_token.strip() or existing_token
-        if sync_provider == "legacy_hub":
-            url_ok, url_message = validate_hub_url(url)
-            if not url_ok:
-                flash(request, url_message, "error")
-                return RedirectResponse(request.url_for("online_page"), status_code=303)
-            if not token:
-                flash(request, "启用轻量同行会前必须填写 Token。", "error")
-                return RedirectResponse(request.url_for("online_page"), status_code=303)
+        # 非敏感输入先落库：即使校验失败，用户也不必重新填写地址/模式。
         set_setting("sync_provider", sync_provider)
         set_setting("hub_url", url)
         if hub_api_token.strip():
@@ -340,6 +333,22 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
             "hub_auto_sync",
             "1" if sync_provider == "legacy_hub" and auto_sync == "1" else "0",
         )
+        if sync_provider == "legacy_hub":
+            url_ok, url_message = validate_hub_url(url)
+            if not url_ok:
+                flash(
+                    request,
+                    f"{url_message} 已暂存你填写的地址与模式（Token 不会明文回显），修正后重新保存即可。",
+                    "error",
+                )
+                return RedirectResponse(request.url_for("online_page"), status_code=303)
+            if not token:
+                flash(
+                    request,
+                    "启用轻量同行会前必须填写 Token（从“我的联机主页”复制）。地址与模式已暂存。",
+                    "error",
+                )
+                return RedirectResponse(request.url_for("online_page"), status_code=303)
         if sync_provider == "legacy_hub" and connect_now == "1":
             enqueue_initial_state()
             result = sync_now(force=True)
@@ -352,12 +361,15 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 "success" if result["ok"] else "error",
             )
             return RedirectResponse(request.url_for("online_page"), status_code=303)
-        flash(
-            request,
-            "联机扩展保持关闭，本机不会上传数据。"
-            if sync_provider == "disabled"
-            else "ResearchHub 设置已保存；点击“保存并联机”即可完成首次合并。",
-        )
+        if sync_provider == "disabled":
+            flash(request, "已保存：联机保持关闭，本机不会上传数据；中心地址与 Token 已留在本机备用。", "success")
+        else:
+            flash(
+                request,
+                "已保存（未联机）：中心地址与 Token 已写入本机数据库；"
+                "需要同步时点击“保存并联机”或“立即同步”。",
+                "success",
+            )
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/connect", name="online_connect")

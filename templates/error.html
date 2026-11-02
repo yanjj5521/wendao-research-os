@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title }} · 问道科研</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px;
+           background:linear-gradient(150deg,#f8ead8,#cfdcc4 60%,#7f9b90); font-family:"Segoe UI","Microsoft YaHei",sans-serif; }
+    .card { max-width:560px; width:100%; background:rgba(255,252,244,.94); border:1px solid rgba(255,255,255,.6);
+            border-radius:22px; padding:34px 38px; box-shadow:0 24px 60px rgba(20,47,48,.22); }
+    .eyebrow { letter-spacing:.18em; font-size:11px; color:#a45f3f; font-weight:700; }
+    h1 { margin:8px 0 10px; font-size:30px; color:#223b3b; }
+    p { margin:0 0 8px; color:#5c716d; font-size:14px; line-height:1.8; }
+    code { background:#f4e5d4; border-radius:6px; padding:2px 6px; font-size:12px; }
+    .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; }
+    .btn { text-decoration:none; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; cursor:pointer; border:0; }
+    .btn-primary { background:#b66542; color:#fff7e9; }
+    .btn-soft { background:rgba(255,255,255,.8); color:#405b58; border:1px solid rgba(255,255,255,.6); }
+    .hint { margin-top:16px; font-size:12px; color:#8a9a95; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <span class="eyebrow">ERROR {{ status_code }}</span>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    {% if retry_path %}<p>出错地址：<code>{{ retry_path }}</code></p>{% endif %}
+    <div class="actions">
+      <a class="btn btn-primary" href="/">🏠 返回主界面</a>
+      {% if retry_path %}<a class="btn btn-soft" href="{{ retry_path }}">重试当前页面</a>{% endif %}
+      <a class="btn btn-soft" href="javascript:history.back()">← 返回上一页</a>
+    </div>
+    <p class="hint">你的论文、实验与数据库都保存在本机数据目录，页面错误不会影响它们。</p>
+  </main>
+</body>
+</html>

@@ -760,3 +760,54 @@ def _number(value: str | None) -> float | None:
         return float(value)
     except ValueError:
         return None
+
+
+# ---- 全局异常兜底：任何错误页都提供“返回主界面”，避免必须重启程序 ----
+import traceback as _traceback  # noqa: E402
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
+
+_ERROR_TITLES = {
+    400: "请求无效",
+    403: "没有访问权限",
+    404: "页面不存在",
+    405: "请求方式不支持",
+}
+
+
+def _wants_json(path: str) -> bool:
+    return path.startswith(("/api/", "/static/", "/media/"))
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if _wants_json(request.url.path):
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    return templates.TemplateResponse(
+        request=request,
+        name="error.html",
+        context={
+            "status_code": exc.status_code,
+            "title": _ERROR_TITLES.get(exc.status_code, "页面出错了"),
+            "message": str(exc.detail) if exc.detail else "请返回主界面继续工作。",
+            "retry_path": request.url.path,
+        },
+        status_code=exc.status_code,
+    )
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exception_handler(request: Request, exc: Exception):
+    _traceback.print_exception(type(exc), exc, exc.__traceback__)
+    if _wants_json(request.url.path):
+        return JSONResponse({"detail": "服务器内部错误"}, status_code=500)
+    return templates.TemplateResponse(
+        request=request,
+        name="error.html",
+        context={
+            "status_code": 500,
+            "title": "程序遇到内部错误",
+            "message": "已记录错误；你的资料不受影响。可返回主界面继续工作，或重试当前页面。",
+            "retry_path": request.url.path,
+        },
+        status_code=500,
+    )

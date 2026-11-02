@@ -4,32 +4,44 @@
 <div class="page-head">
   <div><span class="eyebrow">Local System</span><h1>系统设置与备份</h1><p>自定义研究领域，并定期导出。数据库和附件都保存在当前项目文件夹。</p></div>
 </div>
-<div class="content-grid equal">
-  <form class="panel settings-form" method="post">
-    <div class="panel-head"><div><span class="eyebrow">Identity</span><h2>洞府信息</h2></div></div>
+<div class="settings-page">
+  <form class="settings-form" method="post">
+    <div class="settings-grid">
+    <div class="settings-card-head"><span class="settings-icon">🪪</span><div><span class="eyebrow">Identity</span><h2>洞府信息</h2></div></div>
     <label><span>网站名称</span><input name="site_name" value="{{ current_site_name }}"></label>
     <label><span>研究者称号</span><input name="researcher_name" value="{{ current_researcher_name }}"></label>
     <label><span>研究领域（每行一个）</span><textarea name="domains" rows="12">{{ domain_text }}</textarea></label>
-    <div class="settings-divider"></div>
-    <div><span class="eyebrow">Paper Assistant</span><h2>论文摘要方式</h2></div>
+    </section>
+
+    <section class="settings-card">
+    <div class="settings-card-head"><span class="settings-icon">🤖</span><div><span class="eyebrow">Paper Assistant</span><h2>论文摘要模型</h2></div></div>
     <label><span>模式</span><select name="ai_mode"><option value="offline" {% if ai_mode=='offline' %}selected{% endif %}>纯本地规则（零配置）</option><option value="ollama" {% if ai_mode=='ollama' %}selected{% endif %}>本地 Ollama 模型</option><option value="openai" {% if ai_mode=='openai' %}selected{% endif %}>外部 OpenAI / 兼容接口</option></select></label>
     <label><span>AI 接口</span><input name="ai_endpoint" value="{{ai_endpoint}}" placeholder="Ollama: http://127.0.0.1:11434/api/generate；OpenAI: https://api.openai.com/v1/responses"></label>
     <label><span>模型名称</span><input name="ai_model" value="{{ai_model}}"></label>
-    <small class="form-help">{{ ai_status.label }}：{{ ai_status.detail }} 外部密钥只从 <code>OPENAI_API_KEY</code> 环境变量读取，不保存到数据库，也不会进入个性化包或 GitHub。</small>
-    <div class="settings-divider"></div>
-    <div><span class="eyebrow">Review</span><h2>昨日复盘</h2></div>
+    <label><span>访问密钥（外部接口；仅保存在本机）</span><input type="password" name="ai_api_key" placeholder="{% if ai_api_key_present %}已保存在本机；留空保持不变{% else %}sk-…（本地 Ollama 可留空）{% endif %}"></label>
+    <small class="form-help">{{ ai_status.label }}：{{ ai_status.detail }} 外部接口可填写访问密钥（仅保存在本机数据库，不进入个性化包或 GitHub）；也可在下方“模型共享与导入”导入他人局域网模型或自己的 API。</small>
+    </section>
+
+    <section class="settings-card">
+    <div class="settings-card-head"><span class="settings-icon">🕘</span><div><span class="eyebrow">Review</span><h2>昨日复盘</h2></div></div>
     <label class="check-label"><input type="checkbox" name="review_popup" value="1" {% if review_popup %}checked{% endif %}>打开主页时弹出尚未复盘的最近交付</label>
     <small class="form-help">系统只使用交付文件夹里的“复盘关键文本.txt”，不会悄悄扫描你的全部论文和私人资料。</small>
-    <div class="settings-divider"></div>
-    <div><span class="eyebrow">Workflow First</span><h2>趣味层</h2></div>
+    </section>
+
+    <section class="settings-card">
+    <div class="settings-card-head"><span class="settings-icon">🎮</span><div><span class="eyebrow">Workflow First</span><h2>趣味层</h2></div></div>
     <label class="check-label"><input type="checkbox" name="gamification" value="1" {% if gamification %}checked{% endif %}>显示炼丹炉、洞府、成就图鉴与挂机静修</label>
     <small class="form-help">关闭时只隐藏这些入口与灵石，修为和境界照常累计；秘境试炼属于练习，始终保留在“温故知新”里。</small>
-    <div class="settings-divider"></div>
-    <div><span class="eyebrow">Updates</span><h2>版本更新</h2></div>
+    </section>
+
+    <section class="settings-card">
+    <div class="settings-card-head"><span class="settings-icon">🛰️</span><div><span class="eyebrow">Updates</span><h2>版本更新</h2></div></div>
     <label class="check-label"><input type="checkbox" name="github_auto_check" value="1" {% if github_auto_check %}checked{% endif %}>启动时静默检查新版本（只查版本号，不下载）</label>
     <small class="form-help">只访问公开的 GitHub 发布页，不上传任何本地资料；发现新版本时在侧栏“同行会”旁显示红点，安装仍需你手动确认。</small>
-    <div class="settings-divider"></div>
-    <div id="visual-personalization"><span class="eyebrow">Local Appearance</span><h2>本地外观与动态</h2></div>
+    </section>
+
+    <section class="settings-card settings-card--wide">
+    <div class="settings-card-head"><span class="settings-icon">🎨</span><div><span class="eyebrow">Local Appearance</span><h2>本地外观与动态</h2></div></div>
     <p class="form-help">所有选择只保存在本机；可以丰富，也可以一键保持安静。系统会尊重操作系统的“减少动态效果”设置。</p>
     <div class="form-grid two">
       <label><span>主色</span><select name="ui_accent">
@@ -79,8 +91,10 @@
       </select></label>
       <label><span>主页短句</span><input name="ui_home_motto" value="{{ current_ui_home_motto }}" maxlength="80"></label>
     </div>
-    <div class="settings-divider"></div>
-    <div id="personalization"><span class="eyebrow">Personalization</span><h2>诗句、境界与导航</h2></div>
+    </section>
+
+    <section class="settings-card settings-card--wide">
+    <div class="settings-card-head"><span class="settings-icon">✍️</span><div><span class="eyebrow">Personalization</span><h2>诗句、境界与导航</h2></div></div>
     <label><span>山门每日诗句池（每行一句）</span><textarea name="poem_pool" rows="10">{{ poem_pool_text }}</textarea></label>
     <small class="form-help">系统按日期轮换，同一天刷新不乱跳；留空则使用内置古诗池，完全离线也能每日更换。</small>
     <label><span>境界名称（只修改等号右边，共{{ realm_names_text.splitlines()|length }}阶）</span><textarea name="realm_names" rows="18">{{ realm_names_text }}</textarea></label>
@@ -126,8 +140,49 @@
       <small class="nav-layout-status" id="navLayoutStatus">当前布局会随“保存设置”一起生效。完整功能目录始终可在这里找回；即使隐藏“设置与备份”，侧栏底部仍保留“调整导航”安全入口。</small>
     </section>
     <small class="form-help">稳定键和网页路由不会随显示名称改变。外观动效、诗句、39阶境界、全部导航标签与布局，以及领域目标、流程、组件与首页固定都会进入 v8 个性化包；旧版个性化包仍可导入。</small>
-    <button class="primary-button">保存设置</button>
+    </section>
+    </div>
+    <div class="settings-savebar">
+      <button class="primary-button">保存设置</button>
+      <small class="form-help">以上所有卡片随“保存设置”一起生效；模型共享档案在下方单独管理。</small>
+    </div>
   </form>
+
+  <section class="settings-card settings-card--wide ai-share-card">
+    <div class="settings-card-head"><span class="settings-icon">🤝</span><div><span class="eyebrow">Model Sharing</span><h2>模型共享与导入</h2><p>把本机模型以“共享码”发给同行（对方导入即可调用你的局域网接口）；也可导入他人的模型或自己的 API。导入的 API 仅保存在本机、仅本人使用。</p></div></div>
+    {% if ai_profiles %}
+    <div class="ai-profile-list">
+      {% for item in ai_profiles %}
+      <article class="ai-profile {% if item.active %}active{% endif %}">
+        <b>{{ item.name }}{% if item.active %} · 当前使用{% endif %}</b>
+        <small>{{ '本地 Ollama' if item.mode=='ollama' else 'OpenAI 兼容' }} · {{ item.model }}<br>{{ item.endpoint }}{% if item.note %}<br>{{ item.note }}{% endif %}</small>
+        <div class="ai-profile-actions">
+          <form method="post" action="{{ url_for('settings_ai_profile_activate', profile_id=item.id) }}"><button class="soft-button" {% if item.active %}disabled{% endif %}>启用</button></form>
+          <form method="post" action="{{ url_for('settings_ai_profile_delete', profile_id=item.id) }}"><button class="quiet-danger">删除</button></form>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="form-help">还没有共享模型档案。导入他人的共享码，或先在上方填写并保存自己的模型配置后导出。</p>
+    {% endif %}
+    <div class="share-forms">
+      <form method="post" action="{{ url_for('settings_ai_share_import') }}" class="share-import">
+        <label><span>导入共享码 / API 配置</span><textarea name="share_code" rows="5" placeholder='{"v":1,"kind":"research-os-model-share",…}' required></textarea></label>
+        <button class="soft-button">导入到本机档案</button>
+      </form>
+      <form method="post" action="{{ url_for('settings_ai_share') }}" class="share-export">
+        <label class="check-label"><input type="checkbox" name="include_key" value="1">包含访问密钥（仅外部接口；请仅发给可信同行）</label>
+        <button class="soft-button">生成我的共享码</button>
+      </form>
+      <form method="post" action="{{ url_for('settings_ai_key') }}" class="share-clear">
+        <input type="hidden" name="clear" value="1">
+        <button class="quiet-danger">清除本机保存的访问密钥</button>
+      </form>
+    </div>
+    <small class="form-help">边界：共享码默认不包含任何密钥；导入的 API 配置只保存在你自己的数据库里，仅供本人调用，不会同步给同行会。</small>
+  </section>
+
   <section class="panel backup-panel">
     <div class="panel-head"><div><span class="eyebrow">Backup</span><h2>数据安全</h2></div></div>
     <div class="backup-card featured-backup"><span>📚</span><div><h3>统一数据中心</h3><p>从这里统一处理个人知识库、完整备份与结构化数据。同行会不再重复提供个人导出；管理员的团队备份仅在同行会管理控制台显示。</p><a class="primary-button" href="{{ url_for('knowledge_export') }}">导出我的知识库</a></div></div>

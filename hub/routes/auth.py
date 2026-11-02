@@ -57,13 +57,39 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
 
 
 @router.get("/register", response_class=HTMLResponse, name="hub_register")
-def register_page(request: Request, invite: str = ""):
+def register_page(
+    request: Request,
+    invite: str = "",
+    u: str = "",
+    d: str = "",
+    e: str = "",
+):
     return templates.TemplateResponse(
         request=request,
         name="register.html",
-        context=hub_context(request, "register", invite=normalize_code(invite)),
+        context=hub_context(
+            request,
+            "register",
+            invite=normalize_code(invite),
+            username_draft=u[:32],
+            display_draft=d[:40],
+            email_draft=e[:120],
+        ),
     )
 
+
+
+def _draft_query(username: str, display_name: str, email: str) -> str:
+    from urllib.parse import quote as _q
+
+    parts = []
+    if username.strip():
+        parts.append(f"u={_q(username.strip()[:32])}")
+    if display_name.strip():
+        parts.append(f"d={_q(display_name.strip()[:40])}")
+    if email.strip():
+        parts.append(f"e={_q(email.strip()[:120])}")
+    return ("&" + "&".join(parts)) if parts else ""
 
 @router.post("/register", name="hub_register_submit")
 def register_submit(
@@ -79,12 +105,12 @@ def register_submit(
     verify_csrf(request, csrf_value)
     if password != password_confirm:
         flash(request, "两次密码不一致。", "error")
-        return RedirectResponse(f"/register?invite={invite}", status_code=303)
+        return RedirectResponse(f"/register?invite={quote(invite)}{_draft_query(username, display_name, email)}", status_code=303)
     with hub_transaction(immediate=True) as conn:
         max_members = int(get_hub_setting(conn, "max_members", "10"))
         if conn.execute("SELECT COUNT(*) n FROM accounts WHERE active=1").fetchone()["n"] >= max_members:
             flash(request, "同行会成员已达到当前上限。", "error")
-            return RedirectResponse("/register", status_code=303)
+            return RedirectResponse(f"/register{_draft_query(username, display_name, email)}", status_code=303)
         row, reason = find_invite(conn, invite)
         if not row:
             instance = ensure_instance_id(conn)
@@ -100,11 +126,11 @@ def register_submit(
             }
             flash(request, messages.get(reason, "邀请码无效。"), "error")
             preserved = normalize_code(invite)
-            target = (
-                "/register"
-                if reason in {"empty", "format"} or not preserved
-                else f"/register?invite={quote(preserved)}"
-            )
+            drafts = _draft_query(username, display_name, email)
+            if reason in {"empty", "format"} or not preserved:
+                target = "/register" + (drafts.replace("&", "?", 1) if drafts else "")
+            else:
+                target = f"/register?invite={quote(preserved)}{drafts}"
             return RedirectResponse(target, status_code=303)
         # 建号冲突先于扣次检测：避免先消耗邀请码再回滚，也避免把邮箱冲突误报成用户名冲突。
         uname = username.strip().lower()
@@ -127,7 +153,7 @@ def register_submit(
                 )
             else:
                 flash(request, f"用户名 {existing['username']} 已被使用，请换一个。", "error")
-            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
+            return RedirectResponse(f"/register?invite={quote(row['code'])}{_draft_query(username, display_name, email)}", status_code=303)
         clean_email = email.strip()
         if clean_email:
             taken = conn.execute(
@@ -142,21 +168,24 @@ def register_submit(
                 return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
         if not consume_invite(conn, row["code"]):
             flash(request, "邀请码已用完。", "error")
-            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
+            return RedirectResponse(
+                f"/register?invite={quote(row['code'])}{_draft_query(username, display_name, email)}",
+                status_code=303,
+            )
         try:
             user_id, _ = create_user(conn, username, password, display_name, email=email.strip() or None)
         except sqlite3.IntegrityError:
             conn.rollback()
             flash(request, "创建账户失败：账号信息冲突，请更换用户名或邮箱后重试。", "error")
-            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
+            return RedirectResponse(f"/register?invite={quote(row['code'])}{_draft_query(username, display_name, email)}", status_code=303)
         except ValueError as exc:
             conn.rollback()
             flash(request, str(exc), "error")
-            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
+            return RedirectResponse(f"/register?invite={quote(row['code'])}{_draft_query(username, display_name, email)}", status_code=303)
         except sqlite3.Error:
             conn.rollback()
             flash(request, "创建账户失败，请稍后重试。", "error")
-            return RedirectResponse(f"/register?invite={quote(row['code'])}", status_code=303)
+            return RedirectResponse(f"/register?invite={quote(row['code'])}{_draft_query(username, display_name, email)}", status_code=303)
         audit(conn, user_id, "register", "邀请码注册", request)
         request.session.clear()
         request.session["hub_user_id"] = user_id

@@ -99,7 +99,6 @@ def admin_page(request: Request):
             releases=releases,
             audits=audits,
             admin_credentials_path=str(HUB_ADMIN_PATH),
-            admin_credentials_exists=HUB_ADMIN_PATH.exists(),
             stats=stats,
             backup_count=len(backup_files),
             last_backup=backup_files[0].name if backup_files else "尚无",

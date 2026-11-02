@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if include_key %}共享码（含密钥）{% else %}模型共享码{% endif %} · 问道科研</title>
+  <style>
+    :root { color-scheme: light; }
+    body { margin:0; min-height:100vh; display:grid; place-items:center; padding:24px;
+           background:linear-gradient(150deg,#f8ead8,#cfdcc4 60%,#7f9b90); font-family:"Segoe UI","Microsoft YaHei",sans-serif; }
+    .card { max-width:680px; width:100%; background:rgba(255,252,244,.95); border:1px solid rgba(255,255,255,.6);
+            border-radius:22px; padding:32px 36px; box-shadow:0 24px 60px rgba(20,47,48,.22); }
+    .eyebrow { letter-spacing:.18em; font-size:11px; color:#a45f3f; font-weight:700; }
+    h1 { margin:8px 0 10px; font-size:26px; color:#223b3b; }
+    p { color:#5c716d; font-size:13px; line-height:1.8; }
+    .warn { color:#b3543c; font-weight:700; }
+    textarea { width:100%; min-height:230px; margin:12px 0; padding:14px; border-radius:14px;
+               border:1px solid #d9c6ad; background:#fffdf7; font-family:ui-monospace,Consolas,monospace; font-size:11px; color:#4a3a2c; }
+    .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    .btn { text-decoration:none; border-radius:12px; padding:10px 16px; font-size:14px; font-weight:700; }
+    .btn-primary { background:#b66542; color:#fff7e9; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <span class="eyebrow">Model Share Code</span>
+    <h1>{% if include_key %}共享码（含访问密钥）{% else %}模型共享码{% endif %}</h1>
+    {% if include_key %}
+    <p class="warn">⚠ 此共享码包含访问密钥：请仅发给可信同行；泄露后请尽快更换密钥。</p>
+    {% else %}
+    <p class="warn" style="font-weight:400">导入的模型配置只保存在导入者本机，<b>仅限其个人使用</b>；请勿二次分发或用于对外提供服务。</p>
+    <p>把下面的共享码发给同行。对方在“设置 → 模型共享与导入”粘贴导入后，即可调用你的模型接口（使用局域网地址时请确保本机服务已允许外部访问）。</p>
+    {% endif %}
+    <textarea readonly onclick="this.select()">{{ share_code }}</textarea>
+    <div class="actions">
+      <a class="btn btn-primary" href="/settings">← 返回设置</a>
+      <p>导入方只把配置保存到其本机；你的论文与科研资料不会因此暴露。</p>
+    </div>
+  </main>
+</body>
+</html>
