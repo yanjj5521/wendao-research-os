@@ -461,6 +461,36 @@
   },
   {
     "method": "GET",
+    "path": "/pets",
+    "name": "roam_page"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/active",
+    "name": "roam_set_active"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/adopt",
+    "name": "roam_adopt"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/feed",
+    "name": "roam_feed"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/launch",
+    "name": "roam_launch"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/play",
+    "name": "roam_play"
+  },
+  {
+    "method": "GET",
     "path": "/plans",
     "name": "plans_page"
   },

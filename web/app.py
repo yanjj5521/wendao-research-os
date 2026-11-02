@@ -18,7 +18,7 @@ from services.backups import register_backup_jobs
 from hub.app import app as hub_app
 from hub.db import init_hub_db
 from web.gate import install_access_gate
-from web.routes import analysis, foundation, home, integral, library, research_tools, settings
+from web.routes import analysis, foundation, home, integral, library, research_tools, roam, settings
 from web.runtime import app, context, current_realm, entry_dict, flash, templates
 
 
@@ -36,6 +36,7 @@ def register_routes() -> None:
         research_tools,
         foundation,
         integral,
+        roam,
     ):
         app.include_router(route_module.app)
 

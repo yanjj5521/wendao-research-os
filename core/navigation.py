@@ -23,6 +23,7 @@ DEFAULT_NAV_LABELS = {
     "achievements": "成就图鉴",
     "alchemy": "炼丹炉",
     "world": "我的洞府",
+    "roam": "宠物乐园",
     "profile": "个人主页",
     "assistant": "AI 协作",
     "online": "同行会",
@@ -58,7 +59,7 @@ NAV_GROUP_DEFAULT_ITEMS = {
     ),
     "workspaces": ("workspace_shortcuts", "workspaces"),
     "growth": (
-        "career", "profile", "trials", "achievements", "alchemy", "world",
+        "career", "profile", "trials", "achievements", "alchemy", "world", "roam",
     ),
     "system": ("assistant", "online", "settings"),
 }
@@ -94,6 +95,7 @@ NAV_ITEM_DEFAULT_VISIBLE = {
         "achievements",
         "alchemy",
         "world",
+        "roam",
         "assistant",
         "online",
         "settings",

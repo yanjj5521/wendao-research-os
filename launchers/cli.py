@@ -27,7 +27,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-COMMANDS = ("install", "shortcut", "diagnose", "version", "admin-path", "reset-env", "help")
+COMMANDS = ("install", "shortcut", "diagnose", "version", "admin-path", "reset-env", "run-roam-pet", "help")
 
 
 def _repo_root() -> Path:
@@ -223,6 +223,17 @@ def _command_admin_path(argv: list[str]) -> int:
     return 0
 
 
+
+
+def _command_run_roam_pet(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="run-roam-pet", description="唤出漫游桌宠窗口")
+    parser.add_argument("--species", default="", help="物种 id（默认跟随当前宠物）")
+    args = parser.parse_args(argv)
+    from services.roam_pets.window import main as roam_main
+
+    return roam_main(["--species", args.species] if args.species else [])
+
+
 def _command_help(argv: list[str]) -> int:
     print(__doc__)
     return 0
@@ -235,6 +246,7 @@ _HANDLERS = {
     "version": _command_version,
     "admin-path": _command_admin_path,
     "reset-env": _command_reset_env,
+    "run-roam-pet": _command_run_roam_pet,
     "help": _command_help,
 }
 

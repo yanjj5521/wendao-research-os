@@ -1,0 +1,41 @@
+/* 宠物乐园（roam pets）样式，与设置页卡片体系一致 */
+.roam-head-actions{display:flex;gap:8px}
+.roam-starter-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.roam-card{padding:16px;border:1px solid var(--line);border-radius:18px;background:var(--panel);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.roam-card:hover{transform:translateY(-2px);box-shadow:0 14px 30px rgba(122,84,55,.12);border-color:#d9b98f}
+.roam-card.starter form{display:grid;gap:8px;margin-top:10px}
+.roam-card h3{margin:6px 0 2px;font-size:16px}
+.roam-card p{margin:4px 0 0;color:var(--muted);font-size:11px;line-height:1.6}
+.roam-element{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:12px;background:var(--accent-soft);font-size:17px}
+.el-火{background:#fde3d3}.el-水{background:#d9ecfb}.el-草{background:#e2f2d9}.el-雷{background:#fdf3cf}.el-光{background:#f1ecfb}.el-暗{background:#e4e2ee}
+.roam-big-element{display:grid;place-items:center;width:96px;height:96px;border-radius:28px;font-size:44px;background:linear-gradient(145deg,#fffaf2,#f4e6d2);box-shadow:0 14px 30px rgba(122,84,55,.14)}
+.roam-hero{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center}
+.roam-hero-copy h2{margin:4px 0;font-size:26px}
+.roam-lv{font-size:13px;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:3px 9px;vertical-align:middle}
+.roam-mood{margin:2px 0 10px;color:var(--muted);font-size:12px}
+.roam-bars{display:grid;gap:7px;max-width:420px}
+.roam-bar{display:grid;grid-template-columns:44px 1fr 34px;gap:10px;align-items:center;font-size:11px}
+.roam-bar b{font-size:11px;color:var(--text)}
+.roam-actions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.roam-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.roam-card.current{border:2px solid var(--accent)}
+.roam-mini-actions{display:flex;gap:6px;margin-top:10px;align-items:center}
+.roam-following{font-size:11px;color:var(--accent)}
+.roam-dex-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.roam-dex-card{padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--panel-2)}
+.roam-dex-card.status-unknown{background:#f0ede6;color:#8b857a}
+.roam-dex-card h3{margin:6px 0 2px;font-size:15px}
+.roam-dex-card small{color:var(--muted)}
+.roam-dex-card p{margin:6px 0 0;font-size:11px;color:var(--muted);line-height:1.6}
+.roam-silhouette{width:64px;height:64px;display:grid;place-items:center;border-radius:20px;background:#223b3b;color:#f8ede0;font-size:26px;font-weight:800}
+.roam-seen-tag{color:var(--muted);font-weight:400}
+.roam-map-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.roam-card.map.locked{opacity:.72}
+.roam-lock{color:#a45f3f;background:#f6e6c4;border-radius:99px;padding:2px 8px;font-size:10px}
+.roam-soon{font-size:12px;color:#a45f3f;background:#f6e6c4;border-radius:99px;padding:3px 10px;vertical-align:middle}
+.roam-balls{display:flex;gap:10px;flex-wrap:wrap}
+.roam-ball{padding:10px 14px;border:1px dashed #d9b98f;border-radius:14px;background:#fffaf4}
+.roam-ball b{display:block;font-size:12px}
+.roam-ball small{color:var(--muted)}
+@media(max-width:900px){.roam-starter-grid,.roam-dex-grid,.roam-map-grid,.roam-roster{grid-template-columns:1fr 1fr}.roam-hero{grid-template-columns:1fr}}
+@media(max-width:560px){.roam-starter-grid,.roam-dex-grid,.roam-map-grid,.roam-roster{grid-template-columns:1fr}}

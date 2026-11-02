@@ -464,7 +464,7 @@ else:
         self.assertIn("motion-vnext.css", workflow)
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.5.1")
+        self.assertEqual(version, "1.6.0")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",
@@ -563,7 +563,7 @@ else:
         spec = (ROOT / "packaging" / "WendaoResearchV3.spec").read_text(encoding="utf-8")
         self.assertEqual(
             set(COMMANDS),
-            {"install", "shortcut", "diagnose", "version", "admin-path", "reset-env", "help"},
+            {"install", "shortcut", "diagnose", "version", "admin-path", "reset-env", "run-roam-pet", "help"},
         )
         for command in ("install", "shortcut", "diagnose", "version", "reset-env"):
             self.assertIn(f'"{command}"', cli, f"{command} must be a subcommand")

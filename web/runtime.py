@@ -120,7 +120,7 @@ NAV_GROUP_LABEL_KEYS = {
 # Decorative surfaces can be hidden by the user, but they are part of the full
 # feature catalog by default. Practice (trials) is not in this set because it
 # drives spaced review and remains independent of the gamification switch.
-GAMIFICATION_ITEMS = {"achievements", "alchemy", "world", "idle"}
+GAMIFICATION_ITEMS = {"achievements", "alchemy", "world", "idle", "roam"}
 
 
 def gamification_enabled() -> bool:
@@ -159,6 +159,7 @@ NAV_ITEM_DEFINITIONS = {
     "achievements": {"endpoint": "achievements_page", "icon": "章"},
     "alchemy": {"endpoint": "alchemy_page", "icon": "丹"},
     "world": {"endpoint": "world_page", "icon": "府"},
+    "roam": {"endpoint": "roam_page", "icon": "宠"},
     "profile": {"endpoint": "profile_page", "icon": "我"},
     "assistant": {"endpoint": "assistant_page", "icon": "问"},
     "online": {"endpoint": "online_page", "icon": "联"},

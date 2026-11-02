@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}宠物乐园 · {{ site_name }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/roam.css') }}">{% endblock %}
+{% block content %}
+<div class="page-head minimal-head roam-head">
+  <div>
+    <span class="eyebrow">Roam Pets</span>
+    <h1>宠物乐园</h1>
+    <p>洛克王国风格的桌面小伙伴：领养一只，让它在桌面上陪你工作；捕捉与地图玩法正在建设中。</p>
+  </div>
+  <div class="world-head-actions">
+    <form method="post" action="{{ url_for('roam_launch') }}">
+      <input type="hidden" name="species_id" value="{{ active_state.species_id if active_state else '' }}">
+      <button class="soft-button" {% if not active_state %}disabled title="先领养一只宠物"{% endif %}>🖥 唤出桌宠</button>
+    </form>
+  </div>
+</div>
+
+{% if not owned %}
+<section class="panel roam-adopt">
+  <div class="panel-head simple"><div><span class="eyebrow">Choose Partner</span><h2>初始三选一</h2><p>和洛克王国一样，从三只初始伙伴里选一只开始旅程；其余伙伴等捕捉系统开放。</p></div></div>
+  <div class="roam-starter-grid">
+    {% for species in starters %}
+    <article class="roam-card starter">
+      <span class="roam-element el-{{ species.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[species.element] }}</span>
+      <h3>{{ species.name }}</h3>
+      <small>{{ species.element }} · {{ species.rarity }}</small>
+      <p>{{ species.title }}</p>
+      <form method="post" action="{{ url_for('roam_adopt') }}">
+        <input type="hidden" name="species_id" value="{{ species.id }}">
+        <input name="nickname" placeholder="给它起个昵称（可留空）" maxlength="12">
+        <button class="primary-button">领养它</button>
+      </form>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if active_state and active_species %}
+<section class="panel roam-hero">
+  <div class="roam-hero-visual">
+    <span class="roam-big-element el-{{ active_species.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[active_species.element] }}</span>
+  </div>
+  <div class="roam-hero-copy">
+    <span class="eyebrow">{{ active_species.element }} · {{ active_species.rarity }} · {{ active_species.title }}</span>
+    <h2>{{ active_state.nickname }} <small class="roam-lv">Lv.{{ active_state.level }}</small></h2>
+    <p class="roam-mood">当前状态：<b>{{ active_mood }}</b> —— {{ active_species.flavor }}</p>
+    <div class="roam-bars">
+      {% for label, value in [("饥饿", active_state.hunger), ("体力", active_state.energy), ("心情", active_state.mood), ("默契", active_state.bond)] %}
+      <div class="roam-bar"><span>{{ label }}</span><div class="mini-progress"><i style="width:{{ [value, 100]|min }}%"></i></div><b>{{ value }}</b></div>
+      {% endfor %}
+    </div>
+    <div class="roam-actions">
+      <form method="post" action="{{ url_for('roam_feed') }}"><input type="hidden" name="species_id" value="{{ active_state.species_id }}"><button class="primary-button">🍖 喂食</button></form>
+      <form method="post" action="{{ url_for('roam_play') }}"><input type="hidden" name="species_id" value="{{ active_state.species_id }}"><button class="soft-button">🎾 玩耍</button></form>
+      <form method="post" action="{{ url_for('roam_launch') }}"><input type="hidden" name="species_id" value="{{ active_state.species_id }}"><button class="soft-button">🖥 唤出桌宠</button></form>
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{% if owned|length > 1 %}
+<section class="panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Roster</span><h2>我的队伍</h2></div></div>
+  <div class="roam-roster">
+    {% for sid, state, species in owned %}
+    <article class="roam-card {% if sid == active_state.species_id %}current{% endif %}">
+      <span class="roam-element el-{{ species.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[species.element] }}</span>
+      <div><strong>{{ state.nickname }}</strong><small>Lv.{{ state.level }} · {{ species.name }}</small></div>
+      <div class="roam-mini-actions">
+        {% if sid != active_state.species_id %}
+        <form method="post" action="{{ url_for('roam_set_active') }}"><input type="hidden" name="species_id" value="{{ sid }}"><button class="soft-button">跟随我</button></form>
+        {% else %}<b class="roam-following">跟随中</b>{% endif %}
+        <form method="post" action="{{ url_for('roam_feed') }}"><input type="hidden" name="species_id" value="{{ sid }}"><button class="button">喂食</button></form>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head simple"><div><span class="eyebrow">Dex</span><h2>宠物图鉴</h2><p>已捕获 {{ dex | selectattr('status','equalto','caught') | list | length }} / {{ species_count }}；遇见但未捕获的会显示名字，从未遇见的只有剪影。</p></div></div>
+  <div class="roam-dex-grid">
+    {% for row in dex %}
+    <article class="roam-dex-card status-{{ row.status }}">
+      {% if row.status == 'unknown' %}
+      <div class="roam-silhouette">?</div>
+      <h3>？？？</h3>
+      <small>{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[row.element] }} {{ row.element }} · {{ row.rarity }} · 栖息地待探索</small>
+      {% else %}
+      <span class="roam-element el-{{ row.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[row.element] }}</span>
+      <h3>{{ row.name }}{% if row.status == 'seen' %} <small class="roam-seen-tag">已遇见</small>{% endif %}</h3>
+      <small>{{ row.element }} · {{ row.rarity }} · {{ row.title }}</small>
+      <p>{{ row.flavor }}</p>
+      {% endif %}
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel roam-capture">
+  <div class="panel-head simple"><div><span class="eyebrow">Coming Soon</span><h2>捕捉与地图 <span class="roam-soon">开发中</span></h2><p>精灵球捕捉、地图遭遇与建模已预留数据结构；下面是即将开放的地图与球种。</p></div></div>
+  <div class="roam-map-grid">
+    {% for scene in maps %}
+    <article class="roam-card map {% if scene.unlock_level > 1 %}locked{% endif %}">
+      <span class="roam-element">{{ scene.element_hint }}</span>
+      <h3>{{ scene.name }}{% if scene.unlock_level > 1 %} <small class="roam-lock">Lv.{{ scene.unlock_level }} 解锁</small>{% endif %}</h3>
+      <p>{{ scene.desc }}</p>
+      <small>可遭遇物种：{{ scene.encounters | map(attribute='0') | join('、') }}</small>
+    </article>
+    {% endfor %}
+  </div>
+  <div class="roam-balls">
+    {% for ball_id, ball in balls.items() %}
+    <div class="roam-ball"><b>{{ ball.name }}</b><small>捕捉加成 ×{{ ball.bonus }}</small></div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
