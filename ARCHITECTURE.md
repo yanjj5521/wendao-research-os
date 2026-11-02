@@ -1,4 +1,4 @@
-# 问道科研 1.6.1 架构
+# 问道科研 1.7.0 架构
 
 ## 0. 产品定位：1.0 收敛
 
@@ -150,7 +150,9 @@ WendaoResearchV3.exe
 
 安装版程序位于 `%LOCALAPPDATA%\Programs\WendaoResearchV3`，数据永远放在 `%LOCALAPPDATA%\WendaoResearchV3`。便携包使用 `portable.flag` 把数据限定在 `user_data/`，两种模式都遵守“程序目录与数据目录分离”。
 
-同行会路由通过 `app.mount("/team", hub_app)` 挂载；它保留自己的中心数据库和会话，但不另起前端进程。页面链接由 `hub_url_for()` 在挂载根路径下生成，绝对重定向由安全中间件校正。
+同行会路由通过 `app.mount("/team", preserve_outer_session(hub_app))` 挂载；它保留自己的中心数据库和 `hub_session` 会话，但不另起前端进程。挂载适配层在内层 SessionMiddleware 发完响应头后恢复外层个人 session，避免 `/team` 覆盖个人端 flash/会话。页面链接由 `hub_url_for()` 在挂载根路径下生成，绝对重定向由安全中间件校正。
+
+多账号保存在 Hub session 的 `hub_account_ids` 列表中，`hub_user_id` 指向当前账号。登录新账号只追加列表，不清理旧账号；切换、退出当前、退出全部都由 CSRF 保护的 POST 完成。管理员在登录态代注册成员时保持当前管理员为活动账号，新成员加入切换列表。
 
 桌面启动通过 `/api/app-identity` 比较数据目录哈希，只复用同一数据目录的本程序实例。5000 端口被旧版进程或其他服务占用时，新版会自动选择 5001–5019 中的空闲端口，避免误连到旧数据。早期 `wendao-v3-clean.db` 会在首次启动时以 SQLite 一致性备份方式迁移为 `wendao.db`，并通过兼容账本执行版本化迁移；原文件保留。
 

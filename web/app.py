@@ -17,6 +17,7 @@ from features.workspaces import register_workspace_routes
 from services.backups import register_backup_jobs
 from hub.app import app as hub_app
 from hub.db import init_hub_db
+from hub.session_isolation import preserve_outer_session
 from web.gate import install_access_gate
 from web.routes import analysis, foundation, home, integral, library, research_tools, roam, settings
 from web.runtime import app, context, current_realm, entry_dict, flash, templates
@@ -27,7 +28,7 @@ def register_routes() -> None:
     # keeps its own central database (multiple people must never write the
     # personal SQLite database), but no longer needs a second executable.
     init_hub_db()
-    app.mount("/team", hub_app, name="team")
+    app.mount("/team", preserve_outer_session(hub_app), name="team")
     for route_module in (
         home,
         library,

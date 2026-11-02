@@ -3,7 +3,7 @@
   <div class="panel">
     <div class="section-head"><div><small>邀请制 · 每码限用次数与有效期</small><h1>加入同行会</h1></div></div>
     <p class="form-help">管理员账号（admin）已在首次启动时自动创建，无需在此注册；忘记密码时使用 WendaoResearchV3.exe admin-path 查看凭据文件。</p>
-    {% if user %}<p class="form-help" style="color:#b3543c;font-weight:700">⚠ 当前已登录 {{ user.display_name }}（{{ '管理员' if user.role=='admin' else '成员' }}）。提交注册将创建新账号并自动切换到该账号；为他人代注册后请退出并重新登录你的账号。</p>{% endif %}
+    {% if user %}<p class="form-help" style="color:#b3543c;font-weight:700">当前已登录 {{ user.display_name }}（{{ '管理员' if user.role=='admin' else '成员' }}）。提交后会创建新账号并加入右上角账号切换列表，<b>当前账号不会退出</b>。</p>{% endif %}
     <p class="form-help">同行会是邀请制的小圈子：资料卡与论坛对成员公开；科研原文件永远留在各自电脑，中心只沉淀名片、讨论与虚拟资产。</p>
     <form class="form-grid" method="post" action="{{ url_for('hub_register_submit') }}">
       <input type="hidden" name="_csrf" value="{{ csrf }}">

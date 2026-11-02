@@ -24,6 +24,12 @@ PASSWORD_ALGO = "pbkdf2_sha256"
 DEFAULT_ITERATIONS = 310_000
 MIN_PASSWORD_LENGTH = 8
 USERNAME_RE = re.compile(r"^[a-z0-9_-]{3,32}$")
+EMAIL_RE = re.compile(
+    r"^[^@\s]+@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,63}$"
+)
+MAX_DISPLAY_NAME_LENGTH = 40
+MAX_EMAIL_LENGTH = 254
+MAX_PASSWORD_LENGTH = 128
 
 
 class AccountError(ValueError):
@@ -67,6 +73,36 @@ def normalize_username(value: str) -> str:
 def _check_password(password: str) -> None:
     if len(password or "") < MIN_PASSWORD_LENGTH:
         raise AccountError(f"密码至少{MIN_PASSWORD_LENGTH}位。")
+    if len(password or "") > MAX_PASSWORD_LENGTH:
+        raise AccountError(f"密码不能超过{MAX_PASSWORD_LENGTH}位。")
+
+
+def validate_password(password: str) -> str:
+    _check_password(password)
+    return password
+
+
+def normalize_display_name(value: str, username: str = "") -> str:
+    display = " ".join(str(value or "").split())
+    if not display:
+        display = username.strip()
+    if not display:
+        raise AccountError("显示名称不能为空。")
+    if len(display) > MAX_DISPLAY_NAME_LENGTH:
+        raise AccountError(f"显示名称不能超过{MAX_DISPLAY_NAME_LENGTH}个字符。")
+    return display
+
+
+def normalize_email(value: str | None) -> str | None:
+    email = str(value or "").strip()
+    if not email:
+        return None
+    if len(email) > MAX_EMAIL_LENGTH:
+        raise AccountError(f"邮箱不能超过{MAX_EMAIL_LENGTH}个字符。")
+    local, _separator, _domain = email.rpartition("@")
+    if len(local) > 64 or not EMAIL_RE.fullmatch(email):
+        raise AccountError("邮箱格式不正确，请填写如 name@example.com 的地址，或留空。")
+    return email
 
 
 def create_account(
@@ -79,7 +115,9 @@ def create_account(
 ) -> tuple[int, str]:
     """创建一个账号，返回 (account_id, api_token)。"""
     username = normalize_username(username)
-    _check_password(password)
+    validate_password(password)
+    display_name = normalize_display_name(display_name, username)
+    email = normalize_email(email)
     if role not in {"admin", "member"}:
         raise AccountError("角色只能是 admin 或 member。")
     salt, digest = hash_password(password)
@@ -90,7 +128,7 @@ def create_account(
         INSERT INTO accounts(username,display_name,email,role,status,created_at,updated_at)
         VALUES (?,?,?,?,'active',?,?)
         """,
-        (username, (display_name or "").strip() or username, (email or "").strip() or None, role, ts, ts),
+        (username, display_name, email, role, ts, ts),
     )
     account_id = int(cursor.lastrowid)
     conn.execute(
@@ -176,7 +214,7 @@ def credentials_for(conn: sqlite3.Connection, account_id: int) -> sqlite3.Row | 
 
 
 def set_password(conn: sqlite3.Connection, account_id: int, password: str) -> None:
-    _check_password(password)
+    validate_password(password)
     salt, digest = hash_password(password)
     conn.execute(
         """

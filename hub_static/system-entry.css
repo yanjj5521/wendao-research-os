@@ -31,3 +31,26 @@
 .chat-emoji-palette button{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:#fffaf4;font-size:18px;line-height:1;cursor:pointer;transition:transform .12s ease,background .12s ease}
 .chat-emoji-palette button:hover{transform:translateY(-1px);background:#fff0d8}
 @media(max-width:900px){.group-packets{grid-template-columns:1fr}.grid.three.market-forms{grid-template-columns:1fr}}
+
+/* Multi-account switcher */
+.account-switcher{position:relative}
+.account-switcher>summary{list-style:none;display:inline-flex;align-items:center;gap:6px;padding:9px 12px;border:1px solid var(--line);border-radius:11px;background:#fffaf4;color:var(--text);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
+.account-switcher>summary::-webkit-details-marker{display:none}
+.account-switcher>summary:after{content:"▾";color:var(--muted);font-size:10px}
+.account-switcher[open]>summary{background:var(--soft);color:#8d4c36}
+.account-switcher-panel{position:absolute;right:0;top:calc(100% + 8px);z-index:40;width:min(310px,88vw);display:grid;gap:6px;padding:10px;border:1px solid var(--line);border-radius:16px;background:#fffaf3;box-shadow:0 18px 48px rgba(75,50,34,.18)}
+.account-switcher-panel>small{padding:3px 7px 6px;color:var(--muted);font-size:10px}
+.account-choice{display:grid;gap:2px;width:100%;padding:9px 10px;border:1px solid transparent;border-radius:11px;background:#fff;text-align:left}
+.account-choice.current{border-color:#d8bca4;background:#fff4e7}
+.account-choice b{font-size:12px;color:var(--text)}
+.account-choice span{font-size:10px;color:var(--muted)}
+.switch-form{margin:0;padding:0}
+.switch-form button{display:grid;gap:2px;width:100%;padding:9px 10px;border:0;border-radius:11px;background:transparent;text-align:left;cursor:pointer}
+.switch-form button:hover{background:var(--soft)}
+.account-add{padding:8px 10px;border-radius:10px;color:var(--accent);font-size:12px;font-weight:700}
+.account-add:hover{background:var(--soft)}
+.account-exit-actions{display:flex;gap:6px;padding-top:7px;border-top:1px solid var(--line)}
+.account-exit-actions form{flex:1;margin:0}
+.account-exit-actions button{width:100%;padding:8px 9px;border:1px solid var(--line);border-radius:10px;background:#fffaf4;color:var(--text);font-size:11px;cursor:pointer}
+.account-exit-actions button:hover{background:var(--soft)}
+@media(max-width:600px){.account-switcher-panel{position:fixed;left:14px;right:14px;top:68px;width:auto;max-height:72vh;overflow:auto}.hub-account .account-switcher>summary{padding:7px 9px;font-size:11px}}

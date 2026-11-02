@@ -49,7 +49,7 @@ with connect_hub() as conn:
 assert len(code) == 10, code
 assert not set(code) & set("IO01"), code
 
-def register(username: str, invite_value: str, email: str = ""):
+def register(username: str, invite_value: str, email: str = "", display: str = "", password: str = "Passw0rd!"):
     client = TestClient(app)
     page = client.get("/register?invite=" + quote(code))
     token = re.search(r'name="_csrf" value="([^"]+)"', page.text).group(1)
@@ -58,10 +58,10 @@ def register(username: str, invite_value: str, email: str = ""):
         data={
             "invite": invite_value,
             "username": username,
-            "display_name": username.title(),
+            "display_name": display or username.title(),
             "email": email,
-            "password": "Passw0rd!",
-            "password_confirm": "Passw0rd!",
+            "password": password,
+            "password_confirm": password,
             "_csrf": token,
         },
     )
@@ -80,6 +80,20 @@ admin_try = register("admin", code)
 assert admin_try.status_code == 200, admin_try.text[:500]
 assert "首次启动时自动创建的管理员账号" in admin_try.text, admin_try.text[:500]
 assert uses() == 6, uses()
+
+# Server-side validation rejects malformed or oversized fields before consuming the invite.
+bad_email = register("badmailuser", code, email="not-an-email")
+assert "邮箱格式不正确" in bad_email.text, bad_email.text[:500]
+long_display = register("longdisplay", code, display="名" * 41)
+assert "显示名称不能超过40" in long_display.text, long_display.text[:500]
+long_password = register("longpassword", code, password="x" * 129)
+assert "密码不能超过128" in long_password.text, long_password.text[:500]
+assert uses() == 6, uses()
+with connect_hub() as conn:
+    blocked = conn.execute(
+        "SELECT COUNT(*) n FROM accounts WHERE username IN ('badmailuser','longdisplay','longpassword')"
+    ).fetchone()["n"]
+assert blocked == 0, blocked
 
 # Member registration accepts bare / lowercase / full URL / labelled inputs.
 variants = (

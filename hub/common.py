@@ -36,6 +36,7 @@ HUB_TRUST_PROXY = os.getenv("HUB_TRUST_PROXY", "0").strip() == "1"
 templates = Jinja2Templates(directory=TEMPLATE_DIR)
 
 _LOGIN_ATTEMPTS: dict[str, deque[float]] = defaultdict(deque)
+HUB_SESSION_ACCOUNT_LIMIT = 20
 
 
 async def security_headers(request: Request, call_next):
@@ -111,13 +112,131 @@ def flash(request: Request, message: str, category: str = "success") -> None:
     request.session.setdefault("flashes", []).append({"message": message, "category": category})
 
 
-def current_user(request: Request) -> dict[str, Any] | None:
-    user_id = request.session.get("hub_user_id")
-    if not user_id:
-        return None
+def _session_account_ids(request: Request) -> list[int]:
+    raw = request.session.get("hub_account_ids", [])
+    account_ids: list[int] = []
+    for value in raw if isinstance(raw, list) else []:
+        try:
+            account_id = int(value)
+        except (TypeError, ValueError):
+            continue
+        if account_id > 0 and account_id not in account_ids:
+            account_ids.append(account_id)
+    try:
+        active_id = int(request.session.get("hub_user_id") or 0)
+    except (TypeError, ValueError):
+        active_id = 0
+    if active_id > 0 and active_id not in account_ids:
+        account_ids.insert(0, active_id)
+    account_ids = account_ids[:HUB_SESSION_ACCOUNT_LIMIT]
+    if request.session.get("hub_account_ids") != account_ids:
+        if account_ids:
+            request.session["hub_account_ids"] = account_ids
+        else:
+            request.session.pop("hub_account_ids", None)
+    return account_ids
+
+
+def _clear_session_account_cache(request: Request) -> None:
+    request.state.hub_session_accounts = None
+
+
+def can_add_session_account(request: Request, account_id: int) -> bool:
+    account_id = int(account_id)
+    account_ids = _session_account_ids(request)
+    return account_id in account_ids or len(account_ids) < HUB_SESSION_ACCOUNT_LIMIT
+
+
+def can_add_new_session_account(request: Request) -> bool:
+    return len(_session_account_ids(request)) < HUB_SESSION_ACCOUNT_LIMIT
+
+
+def add_session_account(request: Request, account_id: int, *, activate: bool = True) -> None:
+    account_id = int(account_id)
+    account_ids = _session_account_ids(request)
+    if account_id not in account_ids:
+        if len(account_ids) >= HUB_SESSION_ACCOUNT_LIMIT:
+            raise ValueError(f"同一会话最多保留{HUB_SESSION_ACCOUNT_LIMIT}个账号，请先退出一个。")
+        account_ids.append(account_id)
+    request.session["hub_account_ids"] = account_ids
+    if activate or not request.session.get("hub_user_id"):
+        request.session["hub_user_id"] = account_id
+    _clear_session_account_cache(request)
+
+
+def remove_session_account(request: Request, account_id: int) -> tuple[list[int], int | None]:
+    account_id = int(account_id)
+    account_ids = [value for value in _session_account_ids(request) if value != account_id]
+    try:
+        active_id = int(request.session.get("hub_user_id") or 0)
+    except (TypeError, ValueError):
+        active_id = 0
+    if active_id == account_id:
+        active_id = account_ids[-1] if account_ids else 0
+    if account_ids:
+        request.session["hub_account_ids"] = account_ids
+    else:
+        request.session.pop("hub_account_ids", None)
+    if active_id:
+        request.session["hub_user_id"] = active_id
+    else:
+        request.session.pop("hub_user_id", None)
+    _clear_session_account_cache(request)
+    return account_ids, active_id or None
+
+
+def session_accounts(request: Request) -> list[dict[str, Any]]:
+    cached = getattr(request.state, "hub_session_accounts", None)
+    if cached is not None:
+        return cached
+    account_ids = _session_account_ids(request)
+    if not account_ids:
+        request.state.hub_session_accounts = []
+        return []
+    placeholders = ",".join("?" for _ in account_ids)
     with connect_hub() as conn:
-        row = conn.execute("SELECT * FROM accounts WHERE id=? AND active=1", (int(user_id),)).fetchone()
-        return dict(row) if row else None
+        rows = conn.execute(
+            f"SELECT * FROM accounts WHERE id IN ({placeholders}) AND status='active'",
+            account_ids,
+        ).fetchall()
+    by_id = {int(row["id"]): dict(row) for row in rows}
+    valid = [by_id[account_id] for account_id in account_ids if account_id in by_id]
+    valid_ids = [int(row["id"]) for row in valid]
+    active_id = int(request.session.get("hub_user_id") or 0)
+    if active_id not in valid_ids:
+        active_id = valid_ids[-1] if valid_ids else 0
+    if request.session.get("hub_account_ids") != valid_ids:
+        if valid_ids:
+            request.session["hub_account_ids"] = valid_ids
+        else:
+            request.session.pop("hub_account_ids", None)
+    if request.session.get("hub_user_id") != active_id:
+        if active_id:
+            request.session["hub_user_id"] = active_id
+        else:
+            request.session.pop("hub_user_id", None)
+    request.state.hub_session_accounts = valid
+    return valid
+
+
+def switch_session_account(request: Request, account_id: int) -> bool:
+    account_id = int(account_id)
+    if account_id not in {int(row["id"]) for row in session_accounts(request)}:
+        return False
+    request.session["hub_user_id"] = account_id
+    _clear_session_account_cache(request)
+    return True
+
+
+def current_user(request: Request) -> dict[str, Any] | None:
+    accounts = session_accounts(request)
+    if not accounts:
+        return None
+    active_id = int(request.session.get("hub_user_id") or 0)
+    for account in accounts:
+        if int(account["id"]) == active_id:
+            return account
+    return accounts[-1]
 
 
 def require_user(request: Request, admin: bool = False) -> dict[str, Any]:
@@ -175,11 +294,21 @@ def hub_url_for(request: Request, name: str, **params: Any) -> str:
 
 
 def hub_context(request: Request, active: str, **extra: Any) -> dict[str, Any]:
+    signed_accounts = session_accounts(request)
     user = current_user(request)
     base = {
         "request": request,
         "url_for": lambda name, **params: hub_url_for(request, name, **params),
         "user": user,
+        "session_accounts": [
+            {
+                "id": int(account["id"]),
+                "username": account["username"],
+                "display_name": account["display_name"],
+                "role": account["role"],
+            }
+            for account in signed_accounts
+        ],
         "active": active,
         "csrf": csrf_token(request),
         "flashes": request.session.pop("flashes", []),

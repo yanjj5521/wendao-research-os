@@ -16,6 +16,7 @@ def main() -> None:
         "/health",
         "/.well-known/research-cultivation-os",
         "/api/v1/ping",
+        "/login",
         "/register",
     ):
         response = client.get(path)

@@ -21,7 +21,32 @@
       <a class="{% if active=='me' %}active{% endif %}" href="{{ url_for('hub_me') }}">我</a>
       {% if user.role=='admin' %}<a class="admin-nav {% if active=='admin' %}active{% endif %}" href="{{ url_for('hub_admin') }}">管理控制台</a>{% endif %}
     </nav>
-    <div class="hub-account"><span class="role-badge">{{ '管理员' if user.role=='admin' else '普通成员' }}</span><span>修{{ nav_balances.cultivation }} · ◆{{ nav_balances.spirit_stone }}</span><b>{{ user.display_name }}</b><form method="post" action="{{ url_for('hub_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf }}"><button>退出</button></form></div>
+    <div class="hub-account">
+      <span class="role-badge">{{ '管理员' if user.role=='admin' else '普通成员' }}</span>
+      <span>修{{ nav_balances.cultivation }} · ◆{{ nav_balances.spirit_stone }}</span>
+      <b title="{{ user.username }}">{{ user.display_name }}</b>
+      <details class="account-switcher">
+        <summary>账号 {{ session_accounts|length }}</summary>
+        <div class="account-switcher-panel">
+          <small>本机当前会话已登录 {{ session_accounts|length }} 个账号</small>
+          {% for account in session_accounts %}
+            {% if account.id == user.id %}
+              <div class="account-choice current"><b>{{ account.display_name }}</b><span>@{{ account.username }} · 当前</span></div>
+            {% else %}
+              <form method="post" action="{{ url_for('hub_session_switch') }}" class="account-choice switch-form">
+                <input type="hidden" name="_csrf" value="{{ csrf }}"><input type="hidden" name="account_id" value="{{ account.id }}">
+                <button type="submit"><b>{{ account.display_name }}</b><span>@{{ account.username }} · 切换</span></button>
+              </form>
+            {% endif %}
+          {% endfor %}
+          <a class="account-add" href="{{ url_for('hub_login_page') }}">＋ 添加另一个账号</a>
+          <div class="account-exit-actions">
+            <form method="post" action="{{ url_for('hub_logout') }}"><input type="hidden" name="_csrf" value="{{ csrf }}"><button>退出当前</button></form>
+            {% if session_accounts|length > 1 %}<form method="post" action="{{ url_for('hub_logout_all') }}"><input type="hidden" name="_csrf" value="{{ csrf }}"><button class="danger">退出全部</button></form>{% endif %}
+          </div>
+        </div>
+      </details>
+    </div>
     {% endif %}
   </header>
   <main class="hub-shell">

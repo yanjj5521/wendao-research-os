@@ -458,13 +458,16 @@ else:
         self.assertIn('Join-Path ([Environment]::GetFolderPath("Desktop")) "问道科研.lnk"', installer)
         self.assertIn('applicationId "cn.wendao.research.v3.mobile"', android)
         self.assertIn("python tools/build.py --assemble --output out", workflow)
+        self.assertIn("python self_test.py --integration", workflow)
         self.assertIn('$PSNativeCommandUseErrorActionPreference = $true', workflow)
         self.assertIn("Start-Process -FilePath $exe", workflow)
         self.assertIn('"--mode", "team"', workflow)
         self.assertIn("motion-vnext.css", workflow)
+        self.assertIn("preserve_outer_session(hub_app)", (ROOT / "web" / "app.py").read_text(encoding="utf-8"))
+        self.assertTrue((ROOT / "hub" / "session_isolation.py").is_file())
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.6.1")
+        self.assertEqual(version, "1.7.0")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",

@@ -95,7 +95,8 @@
 | 文件 | 是什么 |
 | --- | --- |
 | `app.py` | 中心应用装配 |
-| `common.py` | 会话、安全、上下文、审计 |
+| `common.py` | 会话、多账号切换、安全、上下文与审计 |
+| `session_isolation.py` | 内嵌 `/team` 时恢复个人端外层 session，避免两层 SessionMiddleware 相互覆盖 |
 | `db.py` | 中心数据库连接与辅助（原 `hub_db.py`） |
 | `invites.py` | 邀请码查询、时区兼容的到期判断与原子扣次 |
 | `red_packets.py` | 群红包份额拆分（二倍均值、最后一份兜底） |

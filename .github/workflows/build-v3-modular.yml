@@ -62,7 +62,7 @@ jobs:
           python -m compileall -q core features hub launchers services web tools tests run_local.py run_hub.py desktop_pet.py desktop_shell.py self_test.py hub_self_test.py online_integration_test.py
           python -m ruff check core features hub launchers services web tools tests run_local.py run_hub.py desktop_pet.py desktop_shell.py self_test.py hub_self_test.py online_integration_test.py
           python -m pytest -q tests
-          python self_test.py
+          python self_test.py --integration
           python hub_self_test.py
           python online_integration_test.py
       - name: Verify wheel contains hub and runtime assets

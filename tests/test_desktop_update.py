@@ -224,7 +224,7 @@ print('legacy-adopt-ok')
         installer = (ROOT / "packaging" / "windows" / "install_windows.ps1").read_text(
             encoding="utf-8"
         )
-        self.assertIn('app.mount("/team", hub_app', app)
+        self.assertIn('app.mount("/team", preserve_outer_session(hub_app), name="team")', app)
         self.assertIn("同一个窗口", template)
         self.assertIn("更新只会替换程序 EXE", template)
         self.assertIn(r'$env:LOCALAPPDATA\WendaoResearchV3', installer)
