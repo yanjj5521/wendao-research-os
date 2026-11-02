@@ -321,6 +321,14 @@ def get_hub_setting(conn: sqlite3.Connection, key: str, default: str = "") -> st
     return row["value"] if row else default
 
 
+def set_hub_setting(conn: sqlite3.Connection, key: str, value: str) -> None:
+    conn.execute(
+        "INSERT INTO hub_settings(key,value) VALUES (?,?) "
+        "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+        (key, str(value)),
+    )
+
+
 def hub_instance_id(conn: sqlite3.Connection) -> str:
     """Read-only per-database fingerprint; created at init or in write paths.
 

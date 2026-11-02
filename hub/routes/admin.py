@@ -24,11 +24,13 @@ from hub.common import (
 from hub.invites import generate_invite_code
 from hub.db import (
     ASSET_KEYS,
+    get_hub_setting,
     HUB_ADMIN_PATH,
     HUB_BACKUP_DIR,
     HUB_RELEASE_DIR,
     WELFARE_SINGLE_LIMITS,
     hub_instance_id,
+    set_hub_setting,
     backup_hub_db,
     connect_hub,
     enforce_welfare_daily_limits,
@@ -96,6 +98,8 @@ def admin_page(request: Request):
             users=users,
             invites=invites,
             instance_id=hub_instance_id(conn),
+            member_cap=int(get_hub_setting(conn, "max_members", "10")),
+            member_used=int(conn.execute("SELECT COUNT(*) n FROM accounts WHERE active=1").fetchone()["n"]),
             releases=releases,
             audits=audits,
             admin_credentials_path=str(HUB_ADMIN_PATH),
@@ -119,6 +123,18 @@ def invite_create(request:Request,uses:int=Form(1),days:int=Form(14),csrf_value:
         audit(conn,int(user["id"]),"invite_create",code,request)
     flash(request,f"邀请码已生成：{code}")
     return RedirectResponse("/admin",status_code=303)
+
+
+@router.post("/admin/settings", name="hub_admin_settings")
+def admin_settings(request:Request,max_members:int=Form(10),csrf_value:str=Form(..., alias="_csrf")):
+    user = require_user(request, admin=True)
+    verify_csrf(request, csrf_value)
+    cap = max(2, min(200, int(max_members)))
+    with hub_transaction() as conn:
+        set_hub_setting(conn, "max_members", str(cap))
+        audit(conn, int(user["id"]), "member_cap_update", f"成员上限调整为 {cap}", request)
+    flash(request, f"成员上限已更新为 {cap}。")
+    return RedirectResponse("/admin", status_code=303)
 
 
 @router.post("/admin/users/{user_id}/toggle", name="hub_user_toggle")

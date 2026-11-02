@@ -109,7 +109,12 @@ def register_submit(
     with hub_transaction(immediate=True) as conn:
         max_members = int(get_hub_setting(conn, "max_members", "10"))
         if conn.execute("SELECT COUNT(*) n FROM accounts WHERE active=1").fetchone()["n"] >= max_members:
-            flash(request, "同行会成员已达到当前上限。", "error")
+            flash(
+                request,
+                f"同行会成员已达到当前上限（{max_members}）。"
+                "请管理员在“管理控制台 → 邀请码”调整成员上限后重试。",
+                "error",
+            )
             return RedirectResponse(f"/register{_draft_query(username, display_name, email)}", status_code=303)
         row, reason = find_invite(conn, invite)
         if not row:
@@ -189,6 +194,7 @@ def register_submit(
         audit(conn, user_id, "register", "邀请码注册", request)
         request.session.clear()
         request.session["hub_user_id"] = user_id
+    flash(request, f"账号 {uname} 已创建并自动登录；如你是管理员，请退出后重新登录自己的账号。", "success")
     return RedirectResponse("/me", status_code=303)
 
 
