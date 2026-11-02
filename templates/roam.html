@@ -2,6 +2,8 @@
 {% block title %}宠物乐园 · {{ site_name }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/roam.css') }}">{% endblock %}
 {% block content %}
+{% macro element_icon(element) %}{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[element] }}{% endmacro %}
+
 <div class="page-head minimal-head roam-head">
   <div>
     <span class="eyebrow">Roam Pets</span>
@@ -23,7 +25,7 @@
   <div class="roam-starter-grid">
     {% for species in starters %}
     <article class="roam-card starter">
-      <span class="roam-element el-{{ species.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[species.element] }}</span>
+      <span class="roam-element el-{{ species.element }}">{{ element_icon(species.element) }}</span>
       <h3>{{ species.name }}</h3>
       <small>{{ species.element }} · {{ species.rarity }}</small>
       <p>{{ species.title }}</p>
@@ -41,7 +43,7 @@
 {% if active_state and active_species %}
 <section class="panel roam-hero">
   <div class="roam-hero-visual">
-    <span class="roam-big-element el-{{ active_species.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[active_species.element] }}</span>
+    <span class="roam-big-element el-{{ active_species.element }}">{{ element_icon(active_species.element) }}</span>
     <small>生命 {{ active_state.health }}%</small>
   </div>
   <div class="roam-hero-copy">
@@ -150,7 +152,7 @@
   <div class="roam-roster">
     {% for sid, state, species in owned %}
     <article class="roam-card {% if sid == active_state.species_id %}current{% endif %}">
-      <span class="roam-element el-{{ species.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[species.element] }}</span>
+      <span class="roam-element el-{{ species.element }}">{{ element_icon(species.element) }}</span>
       <div><strong>{{ state.nickname }}</strong><small>Lv.{{ state.level }} · {{ species.name }} · HP {{ state.health }}</small></div>
       <div class="roam-mini-actions">
         {% if sid != active_state.species_id %}
@@ -172,9 +174,9 @@
       {% if row.status == 'unknown' %}
       <div class="roam-silhouette">?</div>
       <h3>？？？</h3>
-      <small>{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[row.element] }} {{ row.element }} · {{ row.rarity }}</small>
+      <small>{{ element_icon(row.element) }} {{ row.element }} · {{ row.rarity }}</small>
       {% else %}
-      <span class="roam-element el-{{ row.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[row.element] }}</span>
+      <span class="roam-element el-{{ row.element }}">{{ element_icon(row.element) }}</span>
       <h3>{{ row.name }}{% if row.status == 'seen' %} <small class="roam-seen-tag">已遇见</small>{% endif %}</h3>
       <small>{{ row.element }} · {{ row.rarity }} · {{ row.title }}</small>
       <p>{{ row.flavor }}</p>

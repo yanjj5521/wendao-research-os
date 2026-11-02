@@ -467,7 +467,7 @@ else:
         self.assertTrue((ROOT / "hub" / "session_isolation.py").is_file())
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.8.3")
+        self.assertEqual(version, "1.8.4")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from datetime import datetime
 from typing import Any, Callable
@@ -399,6 +400,34 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
         else:
             set_setting("github_update", "")
             flash(request, f"GitHub 上的 {release['version']} 不高于当前 {APP_VERSION}，无需更新。")
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/verify-package", name="online_verify_package")
+    def online_verify_package(request: Request, package: UploadFile = File(...), expected: str = Form("")):
+        """手动下载的更新包先校验 SHA-256 再替换 EXE，拦截被截断的下载。"""
+        digest = hashlib.sha256()
+        total = 0
+        limit = 900 * 1024 * 1024
+        name = package.filename or "package"
+        while chunk := package.file.read(1024 * 1024):
+            total += len(chunk)
+            if total > limit:
+                flash(request, f"文件超过 900 MB，已停止校验：{name}", "error")
+                return RedirectResponse(request.url_for("online_page"), status_code=303)
+            digest.update(chunk)
+        computed = digest.hexdigest()
+        tokens = re.findall(r"[0-9a-fA-F]{64}", expected or "")
+        if tokens:
+            ok = computed == tokens[0].lower()
+            verdict = "一致，文件完整。" if ok else "不一致：文件可能损坏或下载被截断，请勿替换 EXE，重新下载后再校验。"
+            flash(request, f"{name} · SHA-256 {computed} · 与预期比对：{verdict}", "success" if ok else "error")
+        else:
+            flash(
+                request,
+                f"{name} · SHA-256：{computed}（{total} 字节）。"
+                "请与发布页 SHA256SUMS.txt 中的对应行比对；也可把该行粘贴到预期框内自动比对。",
+                "success",
+            )
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/update/github-apply", name="online_update_github_apply")

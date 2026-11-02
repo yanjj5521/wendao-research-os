@@ -480,6 +480,11 @@
     "name": "online_update_latest"
   },
   {
+    "method": "POST",
+    "path": "/online/verify-package",
+    "name": "online_verify_package"
+  },
+  {
     "method": "GET",
     "path": "/pets",
     "name": "roam_page"

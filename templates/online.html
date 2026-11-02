@@ -184,6 +184,14 @@
   <details class="privacy-note"><summary>上次自动替换日志（若更新失败，原因在这里）</summary><pre class="form-help">{{ update_log_tail }}</pre></details>
   {% endif %}
   {% if github_update_checked_at %}<small class="form-help">上次 GitHub 检查：{{ github_update_checked_at }}（当前 v{{ local_version }}）</small>{% endif %}
+  <div class="privacy-note"><b>手动下载了更新包？先校验完整性再替换</b>
+    <form method="post" action="{{ url_for('online_verify_package') }}" enctype="multipart/form-data" style="display:grid;gap:8px;margin-top:8px">
+      <input type="file" name="package" accept=".zip" required>
+      <input name="expected" placeholder="可选：粘贴 SHA-256 或 SHA256SUMS 中的整行，自动比对">
+      <button class="soft-button">校验文件完整性</button>
+      <small class="form-help">下载被截断的包会导致启动报“pydantic_core._pydantic_core 缺失”；校验一致后再覆盖 EXE。</small>
+    </form>
+  </div>
     <p>ResearchHub 服务十人以内的小团队；本地操作先完成，联机成功与否不会决定资料是否保存。</p>
   <div class="button-row">
     <form method="post" action="{{ url_for('online_connect') }}"><button class="primary-button">连接并合并状态</button></form>
