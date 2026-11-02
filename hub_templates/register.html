@@ -9,7 +9,7 @@
       <label>邀请码<small>可粘贴注册链接</small><input name="invite" value="{{ invite }}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="邀请码或注册链接" required></label>
       <label>用户名<input name="username" value="{{ username_draft }}" autocomplete="username" placeholder="英文、数字、下划线" required></label>
       <label>显示名称<input name="display_name" value="{{ display_draft }}" autocomplete="nickname" placeholder="朋友看到的名字" required></label>
-      <label>邮箱<input name="email" type="email" value="{{ email_draft }}" autocomplete="email" placeholder="you@example.com"></label>
+      <label>邮箱（可选）<small>可留空，不填也能注册</small><input name="email" type="email" value="{{ email_draft }}" autocomplete="email" placeholder="可留空，例如 you@example.com"></label>
       <label>密码<input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
       <label>确认密码<input type="password" name="password_confirm" autocomplete="new-password" minlength="8" required></label>
       <button class="primary">创建账户</button><button type="button" id="clearDraft" class="button">清空草稿</button>

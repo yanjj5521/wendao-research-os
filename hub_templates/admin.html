@@ -87,17 +87,27 @@
 
   <div class="panel">
     <div class="section-head"><div><small>邀请</small><h2>邀请码</h2></div></div>
-    <p class="form-help">实例 <b>{{ instance_id }}</b> · 注册地址须与此处同源</p>
-    <p class="form-help">成员名额：已用 <b>{{ member_used }}</b> / 上限 <b>{{ member_cap }}</b>（剩余 {{ [member_cap - member_used, 0]|max }}）。
-      <form method="post" action="{{ url_for('hub_admin_settings') }}" style="display:flex;gap:6px;align-items:center;margin-top:6px">
+    <p class="form-help">当前中心实例：<b>{{ instance_id }}</b>。邀请码只属于这个中心数据库；请从下方“打开注册页”进入，换到另一台主机或其他中心的地址会提示邀请码不存在。</p>
+    <div class="form-help invite-capacity">成员名额：已用 <b>{{ member_used }}</b> / 上限 <b>{{ member_cap }}</b>（剩余 {{ [member_cap - member_used, 0]|max }}）。
+      <form method="post" action="{{ url_for('hub_admin_settings') }}" class="invite-capacity-form">
         <input type="hidden" name="_csrf" value="{{ csrf }}">
-        <input type="number" name="max_members" value="{{ member_cap }}" min="2" max="200" style="width:84px">
+        <input type="number" name="max_members" value="{{ member_cap }}" min="2" max="200" aria-label="成员上限">
         <button class="button">调整成员上限</button>
       </form>
-    </p>
+    </div>
     <div class="invite-list">
       {% for i in invites %}
-      <div><code>{{ i.code }}</code><span>剩余 {{ i.uses_remaining }} · 到期 {{ (i.expires_at or '永久')[:10] }}</span><a href="{{ url_for('hub_register', invite=i.code) }}">打开注册页</a></div>
+      <div>
+        <div class="invite-meta"><code>{{ i.code }}</code><span>剩余 {{ i.uses_remaining }} · 到期 {{ (i.expires_at or '永久')[:10] }}</span></div>
+        <div class="invite-actions">
+          <a href="{{ url_for('hub_register', invite=i.code) }}">打开注册页</a>
+          <form method="post" action="{{ url_for('hub_invite_delete') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <input type="hidden" name="code" value="{{ i.code }}">
+            <button class="quiet-danger" type="submit">删除</button>
+          </form>
+        </div>
+      </div>
       {% else %}
       <div class="empty">尚未生成邀请码。</div>
       {% endfor %}

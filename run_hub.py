@@ -116,34 +116,44 @@ def packaged_self_check() -> None:
                 raise SystemExit(
                     f"Packaged hub self-check failed: {path} returned HTTP {response.status_code}."
                 )
-        login_page = client.get("/")
-        csrf_match = re.search(r'name="_csrf" value="([^"]+)"', login_page.text)
-        password_match = re.search(
-            r"密码:\s*(.+)",
-            HUB_ADMIN_PATH.read_text(encoding="utf-8"),
-        )
-        if not csrf_match or not password_match:
-            raise SystemExit(
-                "Packaged hub self-check failed: admin login bootstrap is incomplete."
+        # The credential file is intentionally destroyed after the first
+        # password change. Existing hubs therefore have no readable bootstrap
+        # password; their self-check must still pass the public/auth boundaries.
+        if HUB_ADMIN_PATH.exists():
+            login_page = client.get("/")
+            csrf_match = re.search(r'name="_csrf" value="([^"]+)"', login_page.text)
+            password_match = re.search(
+                r"密码:\s*(.+)",
+                HUB_ADMIN_PATH.read_text(encoding="utf-8"),
             )
-        login_response = client.post(
-            "/login",
-            data={
-                "username": "admin",
-                "password": password_match.group(1).strip(),
-                "_csrf": csrf_match.group(1),
-            },
-            follow_redirects=False,
-        )
-        if login_response.status_code != 303:
-            raise SystemExit(
-                "Packaged hub self-check failed: administrator login was rejected."
+            if not csrf_match or not password_match:
+                raise SystemExit(
+                    "Packaged hub self-check failed: admin login bootstrap is incomplete."
+                )
+            login_response = client.post(
+                "/login",
+                data={
+                    "username": "admin",
+                    "password": password_match.group(1).strip(),
+                    "_csrf": csrf_match.group(1),
+                },
+                follow_redirects=False,
             )
-        admin_page = client.get("/admin")
-        if admin_page.status_code != 200 or "管理控制台" not in admin_page.text:
-            raise SystemExit(
-                "Packaged hub self-check failed: administrator console could not render."
-            )
+            if login_response.status_code != 303:
+                raise SystemExit(
+                    "Packaged hub self-check failed: administrator login was rejected."
+                )
+            admin_page = client.get("/admin")
+            if admin_page.status_code != 200 or "管理控制台" not in admin_page.text:
+                raise SystemExit(
+                    "Packaged hub self-check failed: administrator console could not render."
+                )
+        else:
+            guest_admin = client.get("/admin", follow_redirects=False)
+            if guest_admin.status_code not in {302, 303, 401, 403}:
+                raise SystemExit(
+                    "Packaged hub self-check failed: guest admin page was not protected."
+                )
     with connect_hub() as conn:
         admins = int(
             conn.execute("SELECT COUNT(*) n FROM accounts WHERE role='admin'").fetchone()["n"]
@@ -152,6 +162,27 @@ def packaged_self_check() -> None:
             raise SystemExit("Packaged hub self-check failed: initial admin lifecycle is invalid.")
         if get_hub_setting(conn, "version") != APP_VERSION:
             raise SystemExit("Packaged hub self-check failed: hub database version is stale.")
+        if conn.execute("PRAGMA foreign_key_check").fetchall():
+            raise SystemExit("Packaged hub self-check failed: foreign keys are inconsistent.")
+        legacy_fks = []
+        for table in (
+            "hub_profiles", "hub_asset_transactions", "hub_inventory", "hub_sync_events",
+            "hub_invites", "hub_releases", "hub_resource_cards", "hub_audit_log",
+        ):
+            if not conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+            ).fetchone():
+                continue
+            if any(
+                str(row[2]) == "hub_users"
+                for row in conn.execute(f'PRAGMA foreign_key_list("{table}")')
+            ):
+                legacy_fks.append(table)
+        if legacy_fks:
+            raise SystemExit(
+                "Packaged hub self-check failed: legacy identity foreign keys remain: "
+                + ", ".join(legacy_fks)
+            )
     print(f"Research System Hub {APP_VERSION} self-check PASS")
 
 

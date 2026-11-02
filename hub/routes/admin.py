@@ -21,7 +21,7 @@ from hub.common import (
     templates,
     verify_csrf,
 )
-from hub.invites import generate_invite_code
+from hub.invites import generate_invite_code, normalize_code
 from hub.db import (
     ASSET_KEYS,
     get_hub_setting,
@@ -110,6 +110,44 @@ def admin_page(request: Request):
             welfare_limits=WELFARE_SINGLE_LIMITS,
         ),
     )
+
+
+def _stored_invite_code(conn, raw_code: str) -> str | None:
+    """Resolve normalized admin input to the exact stored invite-code value."""
+    code = normalize_code(raw_code)
+    if not code:
+        return None
+    row = conn.execute(
+        "SELECT code FROM hub_invites WHERE TRIM(code)=? COLLATE NOCASE "
+        "ORDER BY created_at DESC LIMIT 1",
+        (code,),
+    ).fetchone()
+    if row:
+        return str(row["code"])
+    for candidate in conn.execute("SELECT code FROM hub_invites"):
+        stored = str(candidate["code"])
+        if normalize_code(stored).casefold() == code.casefold():
+            return stored
+    return None
+
+
+@router.post("/admin/invites/delete", name="hub_invite_delete")
+def invite_delete(
+    request: Request,
+    code: str = Form(...),
+    csrf_value: str = Form(..., alias="_csrf"),
+):
+    admin = require_user(request, admin=True)
+    verify_csrf(request, csrf_value)
+    with hub_transaction() as conn:
+        stored = _stored_invite_code(conn, code)
+        if not stored:
+            flash(request, "邀请码不存在或已被删除。", "error")
+            return RedirectResponse("/admin", status_code=303)
+        conn.execute("DELETE FROM hub_invites WHERE code=?", (stored,))
+        audit(conn, int(admin["id"]), "invite_delete", stored, request)
+    flash(request, f"邀请码 {stored} 已删除；已有账号不受影响。")
+    return RedirectResponse("/admin", status_code=303)
 
 
 @router.post("/admin/invites", name="hub_invite_create")

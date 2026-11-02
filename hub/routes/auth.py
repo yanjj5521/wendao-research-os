@@ -112,6 +112,27 @@ def register_page(
     )
 
 
+def _account_creation_error_message(
+    exc: Exception, username: str, email: str | None
+) -> str:
+    """Translate database failures without mislabelling every error as a duplicate."""
+    detail = str(exc).lower()
+    if isinstance(exc, sqlite3.IntegrityError):
+        if "accounts.username" in detail:
+            return f"创建账户失败：用户名 {username} 已被使用，邀请码未扣除，请换一个用户名。"
+        if "accounts.email" in detail and email:
+            return f"创建账户失败：邮箱 {email} 已被使用，邀请码未扣除，请换一个邮箱或留空。"
+        if "foreign key constraint failed" in detail:
+            return (
+                "创建账户失败：中心数据库仍有关联结构未升级，本次没有创建账号，"
+                "邀请码也未扣除。请管理员安装包含中心库迁移的新版后重试。"
+            )
+        if "unique constraint failed" in detail:
+            return "创建账户失败：账号唯一标识冲突，邀请码未扣除，请重试。"
+        return "创建账户失败：账号数据未通过完整性校验，邀请码未扣除，请稍后重试。"
+    return "创建账户失败：中心数据库暂时不可用，邀请码未扣除，请稍后重试。"
+
+
 def _retry_url(invite: str, username: str, display_name: str, email: str) -> str:
     parts = []
     code = normalize_code(invite)
@@ -215,17 +236,21 @@ def register_submit(
             return RedirectResponse(_retry_url(row["code"], username, display_name, email), status_code=303)
         try:
             user_id, _ = create_user(conn, uname, password, clean_display, email=clean_email)
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as exc:
             conn.rollback()
-            flash(request, "创建账户失败：账号信息冲突，请更换用户名或邮箱后重试。", "error")
+            flash(
+                request,
+                _account_creation_error_message(exc, uname, clean_email),
+                "error",
+            )
             return RedirectResponse(_retry_url(row["code"], username, display_name, email), status_code=303)
         except ValueError as exc:
             conn.rollback()
             flash(request, str(exc), "error")
             return RedirectResponse(_retry_url(row["code"], username, display_name, email), status_code=303)
-        except sqlite3.Error:
+        except sqlite3.Error as exc:
             conn.rollback()
-            flash(request, "创建账户失败，请稍后重试。", "error")
+            flash(request, _account_creation_error_message(exc, uname, clean_email), "error")
             return RedirectResponse(_retry_url(row["code"], username, display_name, email), status_code=303)
         audit(conn, user_id, "register", "邀请码注册", request)
     if previous:

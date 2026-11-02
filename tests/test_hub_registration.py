@@ -15,6 +15,7 @@ class InviteRegistrationFlowTests(unittest.TestCase):
     def test_admin_and_member_registration_flows(self) -> None:
         script = r'''
 import re
+import sqlite3
 from urllib.parse import quote
 
 from fastapi.testclient import TestClient
@@ -48,6 +49,14 @@ with connect_hub() as conn:
     instance = hub_instance_id(conn)
 assert len(code) == 10, code
 assert not set(code) & set("IO01"), code
+
+register_page = TestClient(app).get("/register?invite=" + quote(code))
+assert "邮箱（可选）" in register_page.text
+assert "可留空" in register_page.text
+assert "/static/navigation.js" in register_page.text
+navigation = TestClient(app).get("/static/navigation.js")
+assert navigation.status_code == 200
+assert "wendao:nav-scroll" in navigation.text
 
 def register(username: str, invite_value: str, email: str = "", display: str = "", password: str = "Passw0rd!"):
     client = TestClient(app)
@@ -107,15 +116,54 @@ for username, invite_value, email in variants:
     assert response.status_code == 200, (username, response.text[:500])
     assert response.url.path == "/me", (username, response.url)
     assert username.title() in response.text, username
-assert uses() == 2, uses()
+
+# Email is optional: a blank value must register and persist as NULL.
+blank_mail = register("blankmail", code, "")
+assert blank_mail.url.path == "/me", blank_mail.text[:500]
+with connect_hub() as conn:
+    stored_email = conn.execute(
+        "SELECT email FROM accounts WHERE username='blankmail'"
+    ).fetchone()["email"]
+assert stored_email is None, stored_email
+assert uses() == 1, uses()
 
 # Duplicate username / email are reported accurately and never consume a use.
 dup_name = register("rawuser", code)
 assert "已被使用" in dup_name.text, dup_name.text[:500]
-assert uses() == 2, uses()
+assert uses() == 1, uses()
 dup_mail = register("maildup", code, email="raw@example.com")
 assert "已被账号 rawuser 使用" in dup_mail.text, dup_mail.text[:500]
-assert uses() == 2, uses()
+assert uses() == 1, uses()
+
+# A schema/foreign-key failure must be reported honestly and roll the invite back.
+admin.post(
+    "/admin/invites",
+    data={"uses": 1, "days": 7, "_csrf": csrf(admin, "/admin")},
+)
+with connect_hub() as conn:
+    fk_code = conn.execute(
+        "SELECT code FROM hub_invites ORDER BY rowid DESC LIMIT 1"
+    ).fetchone()["code"]
+import hub.routes.auth as auth_routes
+original_create_user = auth_routes.create_user
+def broken_create_user(*args, **kwargs):
+    raise sqlite3.IntegrityError("FOREIGN KEY constraint failed")
+auth_routes.create_user = broken_create_user
+try:
+    broken = register("schemafail", fk_code)
+finally:
+    auth_routes.create_user = original_create_user
+assert "关联结构未升级" in broken.text, broken.text[:500]
+assert "账号信息冲突" not in broken.text, broken.text[:500]
+with connect_hub() as conn:
+    fk_remaining = conn.execute(
+        "SELECT uses_remaining FROM hub_invites WHERE code=?", (fk_code,)
+    ).fetchone()["uses_remaining"]
+    schema_user = conn.execute(
+        "SELECT 1 FROM accounts WHERE username='schemafail'"
+    ).fetchone()
+assert fk_remaining == 1, fk_remaining
+assert schema_user is None
 
 missing = register("ghostuser", "ZZZZZZ")
 assert "不存在或已失效" in missing.text, missing.text[:500]
@@ -142,7 +190,7 @@ with connect_hub() as conn:
         row["username"]
         for row in conn.execute("SELECT username FROM accounts ORDER BY username")
     ]
-assert {"rawuser", "loweruser", "urluser", "labeluser", "onceuser"} <= set(accounts)
+assert {"rawuser", "loweruser", "urluser", "labeluser", "blankmail", "onceuser"} <= set(accounts)
 assert accounts.count("admin") == 1
 print("invite registration flow pass")
 '''

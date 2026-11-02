@@ -36,6 +36,7 @@
 
 from __future__ import annotations
 
+import re
 import sqlite3
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
@@ -189,7 +190,169 @@ PERSONAL_MIGRATIONS: list[Migration] = [
         runner=_upgrade_experiment_ledger,
     ),
 ]
-HUB_MIGRATIONS: list[Migration] = []
+_HUB_LEGACY_IDENTITY_TABLES = (
+    "hub_profiles",
+    "hub_asset_transactions",
+    "hub_inventory",
+    "hub_sync_events",
+    "hub_invites",
+    "hub_releases",
+    "hub_resource_cards",
+    "hub_audit_log",
+)
+
+
+def _quoted_sql_name(value: str) -> str:
+    return '"' + value.replace('"', '""') + '"'
+
+
+def _repair_hub_account_foreign_keys(conn: sqlite3.Connection) -> None:
+    """Retarget legacy identity foreign keys from ``hub_users`` to ``accounts``.
+
+    Hub schema v3 moved identity data to ``accounts`` but some upgraded
+    databases retained table definitions whose foreign keys still pointed at
+    the retired ``hub_users`` table. Registration then created the account and
+    credential successfully, but the first asset insert failed with a foreign
+    key error and rolled the whole transaction back.
+
+    SQLite cannot alter a foreign-key target in place, so affected tables are
+    rebuilt with the same DDL except for the target table. ``CASCADE`` children
+    without a matching account are intentionally omitted; ``SET NULL`` columns
+    are retained with NULL. Indexes and triggers are recreated before the
+    migration reports success.
+    """
+    create_table_re = re.compile(
+        r"^\s*CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?"
+        r"(?:\"[^\"]+\"|`[^`]+`|\[[^\]]+\]|[^\s(]+)",
+        re.IGNORECASE,
+    )
+    legacy_reference_re = re.compile(
+        r"\bREFERENCES\s+(?:\"hub_users\"|`hub_users`|\[hub_users\]|hub_users)\s*\(",
+        re.IGNORECASE,
+    )
+
+    for table in _HUB_LEGACY_IDENTITY_TABLES:
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        if not exists:
+            continue
+        foreign_keys = [
+            row
+            for row in conn.execute(f"PRAGMA foreign_key_list({_quoted_sql_name(table)})")
+            if str(row[2]) == "hub_users"
+        ]
+        if not foreign_keys:
+            continue
+
+        table_sql_row = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name=? AND sql IS NOT NULL",
+            (table,),
+        ).fetchone()
+        if not table_sql_row:
+            raise RuntimeError(f"无法读取中心表 {table} 的建表语句。")
+        table_sql = str(table_sql_row[0])
+        temporary = f"__hub_v4_{table}"
+        if conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (temporary,)
+        ).fetchone():
+            raise RuntimeError(f"迁移临时表 {temporary} 已存在，已停止以避免覆盖数据。")
+
+        rebuilt_sql, replacements = legacy_reference_re.subn(
+            "REFERENCES accounts(", table_sql
+        )
+        if replacements != len({int(row[0]) for row in foreign_keys}):
+            raise RuntimeError(f"中心表 {table} 的旧身份外键无法安全重写。")
+        rebuilt_sql = create_table_re.sub(
+            f"CREATE TABLE {_quoted_sql_name(temporary)}", rebuilt_sql, count=1
+        )
+
+        columns = [
+            str(row[1])
+            for row in conn.execute(f"PRAGMA table_info({_quoted_sql_name(table)})")
+        ]
+        if not columns:
+            raise RuntimeError(f"无法读取中心表 {table} 的字段定义。")
+
+        legacy_by_column = {str(row[3]): row for row in foreign_keys}
+        selected_columns: list[str] = []
+        cascade_filters: list[str] = []
+        for column in columns:
+            source = f"source.{_quoted_sql_name(column)}"
+            foreign_key = legacy_by_column.get(column)
+            if not foreign_key:
+                selected_columns.append(source)
+                continue
+            on_delete = str(foreign_key[6]).upper()
+            account_exists = (
+                f"EXISTS (SELECT 1 FROM accounts WHERE accounts.id = {source})"
+            )
+            if on_delete == "CASCADE":
+                cascade_filters.append(f"({source} IS NULL OR {account_exists})")
+                selected_columns.append(source)
+            elif on_delete == "SET NULL":
+                selected_columns.append(
+                    f"CASE WHEN {source} IS NULL OR {account_exists} "
+                    f"THEN {source} ELSE NULL END AS {_quoted_sql_name(column)}"
+                )
+            else:
+                raise RuntimeError(
+                    f"中心表 {table}.{column} 使用不支持的旧外键动作 {on_delete}。"
+                )
+
+        dependent_objects = [
+            str(row[0])
+            for row in conn.execute(
+                "SELECT sql FROM sqlite_master "
+                "WHERE tbl_name=? AND type IN ('index','trigger') AND sql IS NOT NULL "
+                "ORDER BY CASE type WHEN 'index' THEN 0 ELSE 1 END, name",
+                (table,),
+            )
+        ]
+
+        conn.execute(rebuilt_sql)
+        where_sql = f" WHERE {' AND '.join(cascade_filters)}" if cascade_filters else ""
+        conn.execute(
+            f"INSERT INTO {_quoted_sql_name(temporary)} "
+            f"({','.join(_quoted_sql_name(column) for column in columns)}) "
+            f"SELECT {', '.join(selected_columns)} FROM {_quoted_sql_name(table)} AS source"
+            f"{where_sql}"
+        )
+        conn.execute(f"DROP TABLE {_quoted_sql_name(table)}")
+        conn.execute(
+            f"ALTER TABLE {_quoted_sql_name(temporary)} RENAME TO {_quoted_sql_name(table)}"
+        )
+        for object_sql in dependent_objects:
+            conn.execute(object_sql)
+
+    remaining = []
+    for table in _HUB_LEGACY_IDENTITY_TABLES:
+        exists = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        if not exists:
+            continue
+        if any(
+            str(row[2]) == "hub_users"
+            for row in conn.execute(f"PRAGMA foreign_key_list({_quoted_sql_name(table)})")
+        ):
+            remaining.append(table)
+    if remaining:
+        raise RuntimeError(f"中心表仍引用旧身份表：{', '.join(remaining)}")
+
+    violations = conn.execute("PRAGMA foreign_key_check").fetchall()
+    if violations:
+        first = tuple(violations[0])
+        raise RuntimeError(f"中心库迁移后仍有外键冲突：{first}")
+
+
+HUB_MIGRATIONS: list[Migration] = [
+    Migration(
+        version=4,
+        note="修复中心库旧身份外键：hub_users → accounts",
+        runner=_repair_hub_account_foreign_keys,
+    ),
+]
 
 
 def _validate(migrations: Iterable[Migration], target_version: int) -> list[Migration]:

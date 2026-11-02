@@ -104,6 +104,7 @@
 | `social.py` | 红包/交换的限额与成员辅助 |
 | `sync.py` | 成员节点事件的落库校验 |
 | `routes/` | 按领域拆分的路由（system/pages/auth/social/market/me/admin/api） |
+| `hub_static/navigation.js` | 同行会跨页面滚动位置保存与恢复（与个人端共用 `wendao:nav-scroll`） |
 
 ## tools/（开发与部署工具）
 

@@ -130,6 +130,8 @@ personal_cookie = personal.cookies.get("session")
 assert personal_cookie
 team = personal.get("/team/", follow_redirects=False)
 assert team.status_code == 200
+assert "/team/static/navigation.js" in team.text
+assert personal.get("/team/static/navigation.js").status_code == 200
 assert not any(header.startswith("session=") for header in team.headers.get_list("set-cookie"))
 assert personal.cookies.get("session") == personal_cookie
 world = personal.get("/world", follow_redirects=True)

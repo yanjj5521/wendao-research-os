@@ -51,8 +51,9 @@ admin.post("/login", data={"username": "admin", "password": password, "_csrf": c
 page = admin.get("/admin")
 assert page.status_code == 200
 for marker in ("运营概览", "成员总数", "近 7 天新增", "今日在线", "导出账号留存 CSV",
-               "member@example.com", "邀请码", "审计"):
+               "member@example.com", "邀请码", "审计", "邀请码只属于这个中心数据库"):
     assert marker in page.text, marker
+assert "注册地址须与此处同源" not in page.text
 
 # 2) 账号留存 CSV：仅管理员可导出，内容含账号与资产
 csv_response = admin.get("/admin/export/accounts.csv")
@@ -65,7 +66,6 @@ member.post("/login", data={"username": "member", "password": "member-password-1
 member_csv = member.get("/admin/export/accounts.csv")
 assert member_csv.status_code == 403, member_csv.status_code
 assert member.get("/admin").status_code == 403
-
 # 2.5) 管理员停用/启用成员：派生列 active 不能被直接写入
 toggle_off = admin.post(
     f"/admin/users/{member_id}/toggle",
@@ -85,6 +85,65 @@ assert toggle_on.status_code == 303
 with connect_hub() as conn:
     row = conn.execute("SELECT status,active FROM accounts WHERE id=?", (member_id,)).fetchone()
 assert row["status"] == "active" and row["active"] == 1, dict(row)
+
+# 2.6) 邀请码删除：管理员可删除，账号不受影响，审计留痕
+admin.post(
+    "/admin/invites",
+    data={"uses": 2, "days": 7, "_csrf": csrf(admin, "/admin")},
+)
+with connect_hub() as conn:
+    invite_to_delete = conn.execute(
+        "SELECT code FROM hub_invites ORDER BY rowid DESC LIMIT 1"
+    ).fetchone()["code"]
+    accounts_before_delete = conn.execute("SELECT COUNT(*) n FROM accounts").fetchone()["n"]
+admin_page = admin.get("/admin")
+assert 'action="/admin/invites/delete"' in admin_page.text
+assert invite_to_delete in admin_page.text
+removed = admin.post(
+    "/admin/invites/delete",
+    data={"code": invite_to_delete, "_csrf": csrf(admin, "/admin")},
+    follow_redirects=False,
+)
+assert removed.status_code == 303, removed.status_code
+with connect_hub() as conn:
+    assert conn.execute(
+        "SELECT 1 FROM hub_invites WHERE code=?", (invite_to_delete,)
+    ).fetchone() is None
+    assert conn.execute("SELECT COUNT(*) n FROM accounts").fetchone()["n"] == accounts_before_delete
+    assert conn.execute(
+        "SELECT 1 FROM hub_audit_log WHERE action='invite_delete' AND detail=?",
+        (invite_to_delete,),
+    ).fetchone()
+
+# CSRF and privilege checks must protect the deletion endpoint.
+admin.post(
+    "/admin/invites",
+    data={"uses": 1, "days": 7, "_csrf": csrf(admin, "/admin")},
+)
+with connect_hub() as conn:
+    protected_invite = conn.execute(
+        "SELECT code FROM hub_invites ORDER BY rowid DESC LIMIT 1"
+    ).fetchone()["code"]
+bad_csrf = admin.post(
+    "/admin/invites/delete",
+    data={"code": protected_invite, "_csrf": "wrong-token"},
+    follow_redirects=False,
+)
+assert bad_csrf.status_code == 403, bad_csrf.status_code
+with connect_hub() as conn:
+    assert conn.execute(
+        "SELECT 1 FROM hub_invites WHERE code=?", (protected_invite,)
+    ).fetchone() is not None
+member_delete = member.post(
+    "/admin/invites/delete",
+    data={"code": protected_invite, "_csrf": csrf(member, "/")},
+    follow_redirects=False,
+)
+assert member_delete.status_code == 403, member_delete.status_code
+with connect_hub() as conn:
+    assert conn.execute(
+        "SELECT 1 FROM hub_invites WHERE code=?", (protected_invite,)
+    ).fetchone() is not None
 
 # 3) 成员头像：上传 → 我的联机主页可见 → 管理员重置 → 文件消失
 png = (b"\\x89PNG\\r\\n\\x1a\\n" + b"0" * 128)
@@ -112,7 +171,7 @@ assert len(avatar_files) == 0, avatar_files
 # 4) 管理动作入审计
 with connect_hub() as connection:
     actions = [row[0] for row in connection.execute("SELECT action FROM hub_audit_log ORDER BY id")]
-assert "avatar_upload" in actions and "avatar_reset" in actions and "export_accounts" in actions
+assert "avatar_upload" in actions and "avatar_reset" in actions and "export_accounts" in actions and "invite_delete" in actions
 print("hub-admin-ok")
 """
 

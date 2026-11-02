@@ -158,20 +158,20 @@ from hub.db import connect_hub, init_hub_db
 init_hub_db()
 dbm.HUB_MIGRATIONS.append(
     Migration(
-        version=4,
+        version=5,
         note="为账号增加 locale 字段",
         statements=(
             "ALTER TABLE accounts ADD COLUMN locale TEXT NOT NULL DEFAULT 'zh-CN';",
         ),
     )
 )
-dbm.HUB_SCHEMA_VERSION = 4
+dbm.HUB_SCHEMA_VERSION = 5
 init_hub_db()
 with connect_hub() as connection:
-    assert connection.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert connection.execute("PRAGMA user_version").fetchone()[0] == 5
     columns = {row[1] for row in connection.execute("PRAGMA table_info(accounts)")}
     assert "locale" in columns
-snapshots = list((dbm.INSTANCE_DIR / "migration_snapshots").glob("hub_to_v4_*.db"))
+snapshots = list((dbm.INSTANCE_DIR / "migration_snapshots").glob("hub_to_v5_*.db"))
 assert len(snapshots) == 1, snapshots
 print("hub-upgrade-ok")
 """
