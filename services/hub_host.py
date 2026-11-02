@@ -53,9 +53,14 @@ def start(data_root, *, port: int = 5050) -> dict[str, object]:
 
 
 def stop() -> None:
-    global _server
+    global _server, _thread
     with _lock:
-        if _server is not None:
-            _server.should_exit = True
+        server = _server
+        thread = _thread
+        if server is not None:
+            server.should_exit = True
         _server = None
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=5)
+        _thread = None
 

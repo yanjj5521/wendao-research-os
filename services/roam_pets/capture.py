@@ -1,4 +1,4 @@
-"""捕捉引擎（预留）：精灵球机制的核心公式已就位，UI/野外遭遇后续接入。
+"""捕捉引擎：精灵球概率、三次摇动判定与野外捕捉共用。
 
 设计（类似宝可梦/洛克王国）：
     p = capture_base × 球加成 × (2 − hp_ratio) × 元素加成 × 状态加成
@@ -11,9 +11,9 @@ import random
 from .catalog import SPECIES, element_bonus
 
 BALLS: dict[str, dict[str, object]] = {
-    "basic": {"name": "漫游球", "bonus": 1.0, "price": 0},
-    "great": {"name": "高级球", "bonus": 1.6, "price": 0},
-    "ultra": {"name": "究极球", "bonus": 2.4, "price": 0},
+    "basic": {"name": "漫游球", "bonus": 1.0, "price": 30},
+    "great": {"name": "高级球", "bonus": 1.6, "price": 80},
+    "ultra": {"name": "究极球", "bonus": 2.4, "price": 180},
 }
 
 SHAKE_COUNT = 3

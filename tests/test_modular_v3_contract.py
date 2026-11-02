@@ -467,7 +467,7 @@ else:
         self.assertTrue((ROOT / "hub" / "session_isolation.py").is_file())
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.7.0")
+        self.assertEqual(version, "1.8.0")
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",
@@ -504,13 +504,24 @@ else:
                 f"CI references a path that no longer exists: {target}",
             )
 
+    def test_daily_poem_pool_is_rich_and_unique(self) -> None:
+        from web.runtime import DEFAULT_POEMS
+
+        self.assertGreaterEqual(len(DEFAULT_POEMS), 170)
+        self.assertEqual(len(DEFAULT_POEMS), len(set(DEFAULT_POEMS)))
+
     def test_navigation_keeps_scroll_position(self) -> None:
         script = (ROOT / "static" / "app.js").read_text(encoding="utf-8")
         for marker in (
             "scrollRestoration",
             "NAV_SCROLL_KEY",
             "SIDEBAR_SCROLL_KEY",
+            "restoreSidebarScroll",
             "window.scrollTo(0, Math.min",
+            "Math.min(requested, limit)",
+            "setTimeout(restoreSidebarScroll, 16)",
+            "addEventListener('load', restoreSidebarScroll)",
+            "addEventListener('pageshow', restoreSidebarScroll)",
             "addEventListener('submit'",
             "rememberScroll(null)",
             "rememberScroll(url.pathname + url.search)",
@@ -518,6 +529,35 @@ else:
             self.assertIn(marker, script)
         base = (ROOT / "templates" / "base.html").read_text(encoding="utf-8")
         self.assertIn('data-no-scroll-restore="1"', base)
+
+    def test_hub_explanatory_copy_is_archived(self) -> None:
+        templates = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((ROOT / "hub_templates").glob("*.html"))
+        )
+        archived = (ROOT / "docs" / "HUB_UI_COPY.md").read_text(encoding="utf-8")
+        for phrase in (
+            "把科研伙伴连起来",
+            "为什么不共享文件",
+            "权限矩阵",
+            "还没有帖子。第一个帖子不必宏大",
+            "下载新版本到新文件夹",
+        ):
+            self.assertNotIn(phrase, templates)
+            self.assertIn(phrase, archived)
+
+    def test_hub_scripts_are_external_for_csp(self) -> None:
+        templates = "\n".join(
+            path.read_text(encoding="utf-8")
+            for path in sorted((ROOT / "hub_templates").glob("*.html"))
+        )
+        self.assertNotIn("<script>", templates)
+        self.assertNotIn("onsubmit=", templates)
+        self.assertIn("{% block scripts %}{% endblock %}", templates)
+        for name in ("chat.js", "forum.js", "register.js"):
+            self.assertTrue((ROOT / "hub_static" / name).is_file(), name)
+        common = (ROOT / "hub" / "common.py").read_text(encoding="utf-8")
+        self.assertIn("script-src 'self'", common)
 
     def test_hub_login_has_recovery_and_no_credentials(self) -> None:
         login = (ROOT / "hub_templates" / "login.html").read_text(encoding="utf-8")

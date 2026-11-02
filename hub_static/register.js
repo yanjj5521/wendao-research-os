@@ -1,0 +1,6 @@
+(()=>{const KEY='hub_register_draft_v1';const form=document.querySelector('form[action*="/register"]');if(!form)return;const f={invite:form.elements.invite,username:form.elements.username,display:form.elements.display_name,email:form.elements.email};const flashError=document.querySelector('.flash.error');const pending=localStorage.getItem(KEY+':pending')==='1';let saved=null;try{saved=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+if(saved&&!f.username.value&&!f.display.value&&!f.email.value){if(f.invite&&!f.invite.value)f.invite.value=saved.invite||'';f.username.value=saved.username||'';f.display.value=saved.display||'';f.email.value=saved.email||'';}
+if(pending){if(flashError){localStorage.setItem(KEY+':pending','0');}else{localStorage.removeItem(KEY);localStorage.removeItem(KEY+':pending');}}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify({invite:f.invite?f.invite.value:'',username:f.username.value,display:f.display.value,email:f.email.value}))}catch(e){}};
+form.addEventListener('input',save);form.addEventListener('submit',()=>{save();try{localStorage.setItem(KEY+':pending','1')}catch(e){}});
+const clear=document.getElementById('clearDraft');if(clear)clear.addEventListener('click',()=>{localStorage.removeItem(KEY);localStorage.removeItem(KEY+':pending');f.username.value='';f.display.value='';f.email.value='';});})();

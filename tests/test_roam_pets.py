@@ -3,13 +3,16 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import random
 import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from pathlib import Path
 
 from services.roam_pets import capture, frames, maps, service, storage
 from services.roam_pets.catalog import SPECIES, STARTERS
+from services.roam_pets.window import RoamPetWindow
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -78,6 +81,64 @@ class ServiceTests(unittest.TestCase):
         result = service.feed(self.data, "voltfinch")
         self.assertTrue(any("Lv.2" in event for event in result["events"]))
 
+    def test_explore_attack_capture_shop_and_rest(self) -> None:
+        service.adopt(self.data, "dewfrog", "小露")
+        with self.assertRaises(ValueError):
+            service.explore(self.data, "mistwood", rng=random.Random(1))
+        battle = service.explore(self.data, "plains", rng=random.Random(1))
+        self.assertEqual(battle["status"], "active")
+        self.assertTrue(battle["species_id"] in SPECIES)
+        self.assertIn(battle["species_id"], self.data["dex"]["seen"])
+
+        battle["species_id"] = "mosshell"
+        battle["enemy_level"] = 2
+        battle["enemy_hp"] = 1
+        battle["enemy_max_hp"] = 60
+        before_coins = self.data["wallet"]["coins"]
+        won = service.attack(self.data, rng=random.Random(1))
+        self.assertEqual(won["status"], "won")
+        self.assertGreater(self.data["wallet"]["coins"], before_coins)
+        self.assertEqual(service.close_battle(self.data), "won")
+
+        battle = service.explore(self.data, "plains", rng=random.Random(2))
+        battle["species_id"] = "mosshell"
+        battle["enemy_level"] = 1
+        battle["enemy_hp"] = 2
+        battle["enemy_max_hp"] = 50
+        self.data["inventory"]["ultra"] = 1
+        balls_before = self.data["inventory"]["ultra"]
+        caught = service.capture_wild(self.data, "ultra", rng=random.Random(1))
+        self.assertEqual(caught["status"], "caught")
+        self.assertIn("mosshell", self.data["pets"])
+        self.assertEqual(self.data["inventory"]["ultra"], balls_before - 1)
+        service.close_battle(self.data)
+
+        coins = self.data["wallet"]["coins"]
+        purchase = service.buy_item(self.data, "berry", 2)
+        self.assertEqual(purchase["quantity"], 2)
+        self.assertEqual(self.data["wallet"]["coins"], coins - 36)
+        self.assertGreaterEqual(self.data["inventory"]["berry"], 2)
+        self.data["pets"]["dewfrog"]["energy"] = 10
+        service.rest_team(self.data)
+        self.assertGreater(self.data["pets"]["dewfrog"]["energy"], 10)
+
+    def test_desktop_feed_and_play_keep_archive_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "roam_pets.json"
+            data = storage.blank()
+            service.adopt(data, "dewfrog", "小露")
+            storage.save(data, path)
+            window = RoamPetWindow.__new__(RoamPetWindow)
+            window.species_id = "dewfrog"
+            window.data = storage.load(path)
+            window._speak = lambda _text: None
+            window._mutate = lambda mutator: storage.update(mutator, path)[0]
+            window._feed()
+            window._play()
+            loaded = storage.load(path)
+            self.assertIn("dewfrog", loaded["pets"])
+            self.assertEqual(loaded["pets"]["dewfrog"]["nickname"], "小露")
+
     def test_dex_view_unknown_is_silhouetted(self) -> None:
         service.adopt(self.data, "emberpup")
         rows = {row["id"]: row for row in service.dex_view(self.data)}
@@ -99,6 +160,34 @@ class StorageTests(unittest.TestCase):
             self.assertEqual(loaded["pets"]["lunebunny"]["nickname"], "月亮")
             leftovers = [p for p in Path(directory).iterdir() if p.name.startswith(".roam_")]
             self.assertEqual(leftovers, [])
+
+    def test_transaction_serializes_concurrent_updates(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "roam_pets.json"
+            data = storage.blank()
+            service.adopt(data, "dewfrog", "小露")
+            storage.save(data, path)
+            def put_position(key: str) -> None:
+                def mutate(current):
+                    current.setdefault("window_pos", {})[key] = [10, 20]
+                storage.update(mutate, path)
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                list(pool.map(put_position, ("dewfrog", "emberpup")))
+            loaded = storage.load(path)
+            self.assertEqual(set(loaded["window_pos"]), {"dewfrog", "emberpup"})
+            self.assertIn("dewfrog", loaded["pets"])
+
+    def test_backup_recovers_corrupt_primary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "roam_pets.json"
+            data = storage.blank()
+            service.adopt(data, "dewfrog", "小露")
+            storage.save(data, path)
+            data["pets"]["dewfrog"]["nickname"] = "小露二号"
+            storage.save(data, path)
+            path.write_text("{broken", encoding="utf-8")
+            recovered = storage.load(path)
+            self.assertIn("dewfrog", recovered["pets"])
 
     def test_corrupt_file_returns_blank(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -187,18 +276,35 @@ from core.database import init_db
 init_db()
 c = TestClient(app)
 page = c.get("/pets").text
-assert "宠物乐园" in page and "初始三选一" in page and "宠物图鉴" in page and "捕捉与地图" in page
+for marker in ("宠物乐园", "初始三选一", "宠物图鉴", "地图与野外遭遇", "补给商店", "全队休整"):
+    assert marker in page, marker
 r = c.post("/pets/adopt", data={"species_id": "dewfrog", "nickname": "小露"})
 assert "小露 加入了你的研究旅程" in r.text, r.text[:300]
 page = c.get("/pets").text
 assert "跟随我" not in page or "roam-following" in page
-assert "已捕获 1" in page
+assert "已捕获 1" in page and "出发探索" in page
+from services.roam_pets import storage
+saved = storage.load()
+assert saved["active"] == "dewfrog" and "dewfrog" in saved["pets"]
 r = c.post("/pets/feed", data={"species_id": "dewfrog"})
 assert "吃得很香" in r.text, r.text[:300]
 r = c.post("/pets/play", data={"species_id": "dewfrog"})
 assert "玩得很开心" in r.text
+coins = storage.load()["wallet"]["coins"]
+r = c.post("/pets/shop", data={"item_id": "berry", "quantity": 1})
+assert "已购买 星莓" in r.text and storage.load()["wallet"]["coins"] == coins - 18
+r = c.post("/pets/rest")
+assert "全队休整完毕" in r.text
+r = c.post("/pets/explore", data={"map_id": "plains"})
+assert "遇见了野生的" in r.text, r.text[:500]
+page = c.get("/pets").text
+assert "战斗中" in page and "/pets/battle/attack" in page
+r = c.post("/pets/battle/attack")
+assert r.status_code == 200 and ("造成" in r.text or "战斗胜利" in r.text or "失败" in r.text)
+r = c.post("/pets/battle/close")
+assert "遭遇已结束" in r.text or "已返回宠物乐园" in r.text
 r = c.post("/pets/adopt", data={"species_id": "umbrae", "nickname": "影"})
-assert "尚未开放获取" in r.text
+assert "需要通过野外捕捉获得" in r.text
 print("roam web flow pass")
 '''
         with tempfile.TemporaryDirectory(prefix="roam-ui-") as directory:

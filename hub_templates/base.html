@@ -9,7 +9,7 @@
 </head>
 <body class="hub-role-{{ user.role if user else 'guest' }}">
   <header class="hub-topbar">
-    <a class="hub-brand" href="{{ url_for('hub_home') }}"><span>道</span><b>{{ site_name }}</b><small>问道科研内置模块 · 资料留在个人电脑</small></a>
+    <a class="hub-brand" href="{{ url_for('hub_home') }}"><span>道</span><b>{{ site_name }}</b></a>
     {% if system_home %}<a class="system-back" href="{{ system_home }}" title="回到问道科研个人端">← 返回系统界面</a>{% endif %}
     {% if user %}
     <nav>
@@ -54,7 +54,8 @@
     {% block content %}{% endblock %}
   </main>
   <footer>
-    <span>科研系统同行会 v{{ version }} · 中心只保存账号、公开主页、公开交流与虚拟资产；科研原文件始终留在个人电脑</span>
+    <span>同行会 v{{ version }} · 科研原文件仅保存在本机</span>
     <a class="mobile-deep-link" href="researchos://connect?hub={{ request.base_url|string|urlencode }}">在 Android App 中打开当前中心</a>
   </footer>
+  {% block scripts %}{% endblock %}
 </body></html>

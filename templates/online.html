@@ -70,11 +70,24 @@
 </div>
 
 <section class="online-control-grid">
-  
   <article class="panel">
-    <div class="panel-head simple"><div><span class="eyebrow">内嵌同行会</span><h2>同一个窗口，按身份显示界面</h2></div></div>
-    <p>管理员登录后自动出现成员、邀请、福利、版本和审计控制台；成员只看到个人联机主页、资料驿站、更新与领取福利。所有页面始终留在问道科研桌面窗口内。</p>
-    <a class="primary-button" href="/team/">打开同行会</a>
+    <div class="panel-head simple"><div><span class="eyebrow">本机联机中心</span><h2>{{ '运行中' if hub_host.running else '未启动' }}</h2></div></div>
+    {% if hub_host.running %}
+    <p>局域网：<code>{{ hub_host.lan_url }}</code></p>
+    <div class="button-row">
+      <a class="primary-button" href="{{ hub_host.local_url }}" target="_blank" rel="noopener">打开联机中心</a>
+      <form method="post" action="{{ url_for('online_hub_host_stop') }}"><button class="soft-button">停止中心</button></form>
+    </div>
+    {% else %}
+    <form method="post" action="{{ url_for('online_hub_host_start') }}" class="clean-form">
+      <label><span>端口</span><input type="number" name="port" value="5050" min="1024" max="65535"></label>
+      <button class="primary-button">启动联机中心</button>
+    </form>
+    {% endif %}
+  </article>
+  <article class="panel">
+    <div class="panel-head simple"><div><span class="eyebrow">同行会</span><h2>当前程序内打开</h2></div></div>
+    <a class="primary-button" href="/team/">进入同行会</a>
   </article>
 </section>
 

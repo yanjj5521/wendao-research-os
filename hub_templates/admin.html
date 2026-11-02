@@ -2,9 +2,7 @@
 {% block content %}
 <div class="page-title">
   <div>
-    <small>中心主机 · 唯一管理员</small>
     <h1>同行会管理</h1>
-    <p>只管理成员、邀请、备份和版本包。成员电脑中的论文、实验、数据集与附件不进入中心。</p>
   </div>
   <form method="post" action="{{ url_for('hub_backup') }}">
     <input type="hidden" name="_csrf" value="{{ csrf }}">
@@ -50,15 +48,8 @@
   </form>
 
   <div class="panel">
-    <h2>稳定运行边界</h2>
-    <ul>
-      <li>SQLite 只由中心主机进程访问，启用 WAL 与 10 秒忙等待。</li>
-      <li>启动时与每 24 小时使用 SQLite Backup API 备份，保留 14 份。</li>
-      <li>当前备份 {{ backup_count }} 份；最近：{{ last_backup }}</li>
-      <li>公网必须使用 HTTPS；中心 5050 端口不直接暴露。</li>
-      <li>版本更新安装到新目录，不原地覆盖。</li>
-    <li>账号留存：中心数据库 + 每日备份 + 账号 CSV 导出，三重可追溯。</li>
-    </ul>
+    <h2>备份</h2>
+    <p>{{ backup_count }} 份 · 最近 {{ last_backup }}</p>
   </div>
 </section>
 
@@ -66,7 +57,6 @@
   <form class="panel form-grid welfare-panel" method="post" action="{{ url_for('hub_welfare_grant') }}">
     <input type="hidden" name="_csrf" value="{{ csrf }}">
     <div class="section-head"><div><small>受限赠予</small><h2>发放同行福利</h2></div></div>
-    <p>只可赠与其他活跃成员。单次：修为≤{{ welfare_limits.xp }}、灵石≤{{ welfare_limits.spirit_stone }}、每种材料≤{{ welfare_limits.spirit_wood }}；同一成员每天最多 3 次，累计修为≤120、灵石≤100、各材料≤12。</p>
     <label>赠与成员<select name="recipient_id" required><option value="">请选择成员</option>{% for u in users if u.role=='member' and u.active %}<option value="{{ u.id }}">{{ u.display_name }} · @{{ u.username }}</option>{% endfor %}</select></label>
     <div class="welfare-inputs"><label>修为<input type="number" name="xp" min="0" max="{{ welfare_limits.xp }}" value="0"></label><label>灵石<input type="number" name="spirit_stone" min="0" max="{{ welfare_limits.spirit_stone }}" value="0"></label><label>灵木<input type="number" name="spirit_wood" min="0" max="{{ welfare_limits.spirit_wood }}" value="0"></label><label>玄铁<input type="number" name="mystic_iron" min="0" max="{{ welfare_limits.mystic_iron }}" value="0"></label><label>星砂<input type="number" name="star_sand" min="0" max="{{ welfare_limits.star_sand }}" value="0"></label></div>
     <label>赠予说明<input name="reason" maxlength="160" placeholder="例如：完成团队实验 SOP"></label>
@@ -97,7 +87,7 @@
 
   <div class="panel">
     <div class="section-head"><div><small>邀请</small><h2>邀请码</h2></div></div>
-    <p class="form-help">中心实例 ID：<b>{{ instance_id }}</b> · 成员注册地址必须与当前管理地址同源，否则邀请码会提示“不存在”。</p>
+    <p class="form-help">实例 <b>{{ instance_id }}</b> · 注册地址须与此处同源</p>
     <p class="form-help">成员名额：已用 <b>{{ member_used }}</b> / 上限 <b>{{ member_cap }}</b>（剩余 {{ [member_cap - member_used, 0]|max }}）。
       <form method="post" action="{{ url_for('hub_admin_settings') }}" style="display:flex;gap:6px;align-items:center;margin-top:6px">
         <input type="hidden" name="_csrf" value="{{ csrf }}">
@@ -112,22 +102,12 @@
       <div class="empty">尚未生成邀请码。</div>
       {% endfor %}
     </div>
-    <p class="form-help">新邀请码为 10 位大写字母/数字（不含 I/O/0/1）；旧码继续有效。注册页可直接粘贴整条注册链接，系统会自动提取邀请码。</p>
   </div>
 </section>
 
 <section class="panel">
   <div class="section-head"><div><small>不可篡改的管理员记录</small><h2>最近福利发放</h2></div></div>
   <div class="table-wrap"><table><tr><th>时间</th><th>成员</th><th>内容</th><th>说明</th><th>状态</th></tr>{% for g in welfare %}<tr><td>{{ g.created_at[:16].replace('T',' ') }}</td><td>{{ g.recipient_name }}</td><td>{% if g.xp %}+{{ g.xp }} 修为 {% endif %}{% if g.spirit_stone %}◆{{ g.spirit_stone }} {% endif %}{% if g.spirit_wood %}木{{ g.spirit_wood }} {% endif %}{% if g.mystic_iron %}铁{{ g.mystic_iron }} {% endif %}{% if g.star_sand %}砂{{ g.star_sand }}{% endif %}</td><td>{{ g.reason }}</td><td>{{ '已领取' if g.claimed_at else '等待成员同步' }}</td></tr>{% else %}<tr><td colspan="5">还没有发放过福利。</td></tr>{% endfor %}</table></div>
-</section>
-
-<section class="panel">
-  <div class="section-head"><div><small>权限边界</small><h2>谁能做什么</h2></div></div>
-  <ul>
-    <li><b>成员</b>：论坛、聊天、坊市、资料卡、自己的主页与头像；名册仅公开成员可见。</li>
-    <li><b>管理员（你）</b>：以上全部 + 邀请码、账号启停、头像重置、福利发放、版本发布、数据库备份、账号 CSV 导出、审计日志。</li>
-    <li>全部管理动作写入审计日志（含来源 IP）；成员无法访问任何 /admin/* 与导出端点。</li>
-  </ul>
 </section>
 
 <section class="panel">

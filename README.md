@@ -1,4 +1,4 @@
-# 问道科研 1.7.0
+# 问道科研 1.8.0
 
 个人科研工作流与内置同行会，使用 FastAPI、Jinja2 和 SQLite。Windows 发布版是单文件桌面 EXE，同行会作为同一个程序内的模块运行，不另开浏览器或第二个程序。
 
@@ -31,7 +31,7 @@ Linux 使用 `start_linux.sh`。
 
 ```powershell
 python tools/build.py --assemble --output out
-out\WendaoResearch-v1.7.0-Windows-x64.exe install
+out\WendaoResearch-v1.8.0-Windows-x64.exe install
 ```
 
 构建会生成单文件 `WendaoResearchV3.exe`、便携 ZIP 和同行会更新 ZIP。`install` 把程序安装到 `%LOCALAPPDATA%\Programs\WendaoResearchV3`，并创建桌面和开始菜单图标；程序本身仍可直接双击运行。
@@ -46,10 +46,12 @@ out\WendaoResearch-v1.7.0-Windows-x64.exe install
 - 实用工作台提供文本、图片与**积分面积计算**：读取 .txt/.csv/.bin 曲线数据，按梯形法或 Simpson 1/3 输出净面积、正负面积、公式与推导。
 - 交付必须有可检查证据；复盘只读取本人交付的关键文本。
 - 联机中心只保存账号、公开主页、公开交流与虚拟资产，不同步论文原文件、实验数据或私人附件。
-- 同行会支持论坛、聊天（发送即时显示 + 2 秒增量拉取）、定向红包、多人群红包、资产交换与资料卡；论文资料卡按低优先级延迟渲染。
+- 同行会支持论坛、聊天（即时发送、表情弹层与增量拉取）、定向红包、多人群红包、资产交换与资料卡；论文资料卡按低优先级延迟渲染。
 - 同一会话可添加多个同行会账号并在右上角切换；管理员代注册成员后仍保持当前管理员身份，新账号加入切换列表。
+- 个人端“同行会”页可启动、停止并打开本机联机中心；Hub 界面只保留操作必需的短文案，说明集中归档在 `docs/HUB_UI_COPY.md`。
 - 注册邮箱、显示名称和密码均有服务端校验；内嵌 `/team` 与个人端会话完全隔离。
 - 趣味层默认开启、可在设置中关闭；秘境试炼与复习调度保留。
+- 宠物乐园提供完整单人循环：初始领养、喂食/玩耍/星莓、四张等级地图、野外战斗、精灵球捕捉、商店补给、队伍切换、图鉴与桌宠陪伴；状态本地保存并支持并发写入保护。
 - 迁移执行器在升级数据库前创建快照，失败时整体回滚。
 
 ## 数据位置
@@ -87,7 +89,7 @@ python run_local.py --serve
 - [1.0 收敛决策](docs/CONVERGENCE_1.0.md)
 - [数据层约束](docs/DATA_LAYER.md)
 - [发布策略与更新机制](docs/RELEASE_STRATEGY.md)
-- [1.7.0 发布说明](docs/releases/v1.7.0.md)
+- [1.8.0 发布说明](docs/releases/v1.8.0.md)
 - [规模化同步接口](docs/SCALE_READY_SYNC_INTERFACE.md)
 
 仓库只保留当前源码、运行资源、测试和最新文档；旧发行包、历史版本说明、生成缓存及本地虚拟环境不在版本库内。

@@ -15,7 +15,10 @@ class GroupPacketAndChatTests(unittest.TestCase):
     def test_group_packet_split_claim_expiry_and_chat_json(self) -> None:
         script = r'''
 import re
+from pathlib import Path
 from fastapi.testclient import TestClient
+
+ROOT = Path.cwd()
 from hub.app import app
 from hub.db import connect_hub, create_user, init_hub_db
 
@@ -99,7 +102,24 @@ feed = bob.get(f"/chat/messages.json?after={message_id - 1}").json()
 assert any(item["body"] == "即时消息回归" for item in feed["messages"])
 empty = bob.get(f"/chat/messages.json?after={message_id}").json()
 assert empty["messages"] == []
-assert 'data-priority="chat-immediate"' in alice.get("/chat").text
+chat_page = alice.get("/chat").text
+assert 'data-priority="chat-immediate"' in chat_page
+assert '<details class="chat-emoji-picker" data-chat-emoji-picker>' in chat_page
+assert 'data-chat-emoji aria-label="常用表情"' in chat_page
+assert '<script src="/static/chat.js" defer></script>' in chat_page
+assert '<script>' not in chat_page
+chat_js = (ROOT / "hub_static" / "chat.js").read_text(encoding="utf-8")
+assert "dispatchEvent(new Event('input'" in chat_js
+assert "button[data-emoji]" in chat_js
+emoji_sent = alice.post(
+    "/chat/send.json",
+    data={"_csrf": csrf(alice, "/chat"), "body": "😀✨🧪"},
+)
+emoji_payload = emoji_sent.json()
+assert emoji_sent.status_code == 200 and emoji_payload["ok"]
+assert emoji_payload["message"]["body"] == "😀✨🧪"
+emoji_feed = bob.get(f"/chat/messages.json?after={emoji_payload['message']['id'] - 1}").json()
+assert any(item["body"] == "😀✨🧪" for item in emoji_feed["messages"])
 
 # expiry: an unclaimed packet is refunded when the market is opened
 alice.post(

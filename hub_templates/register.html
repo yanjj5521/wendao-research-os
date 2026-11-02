@@ -1,28 +1,21 @@
 {% extends 'base.html' %}{% block content %}
 <section class="narrow">
   <div class="panel">
-    <div class="section-head"><div><small>邀请制 · 每码限用次数与有效期</small><h1>加入同行会</h1></div></div>
-    <p class="form-help">管理员账号（admin）已在首次启动时自动创建，无需在此注册；忘记密码时使用 WendaoResearchV3.exe admin-path 查看凭据文件。</p>
+    <div class="section-head"><div><h1>加入同行会</h1></div></div>
+    <p class="form-help">管理员账号无需注册。</p>
     {% if user %}<p class="form-help" style="color:#b3543c;font-weight:700">当前已登录 {{ user.display_name }}（{{ '管理员' if user.role=='admin' else '成员' }}）。提交后会创建新账号并加入右上角账号切换列表，<b>当前账号不会退出</b>。</p>{% endif %}
-    <p class="form-help">同行会是邀请制的小圈子：资料卡与论坛对成员公开；科研原文件永远留在各自电脑，中心只沉淀名片、讨论与虚拟资产。</p>
     <form class="form-grid" method="post" action="{{ url_for('hub_register_submit') }}">
       <input type="hidden" name="_csrf" value="{{ csrf }}">
-      <label>邀请码<small>可直接粘贴管理员发来的注册链接，系统会自动提取</small><input name="invite" value="{{ invite }}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="邀请码或注册链接" required></label>
-      <label>用户名<small>（英文、数字、下划线，登录用）</small><input name="username" value="{{ username_draft }}" autocomplete="username" placeholder="英文、数字、下划线" required></label>
-      <label>显示名称<small>（朋友看到的名字）</small><input name="display_name" value="{{ display_draft }}" autocomplete="nickname" placeholder="朋友看到的名字" required></label>
-      <label>邮箱<small>（可选，方便管理员联系你）</small><input name="email" type="email" value="{{ email_draft }}" autocomplete="email" placeholder="you@example.com"></label>
+      <label>邀请码<small>可粘贴注册链接</small><input name="invite" value="{{ invite }}" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="邀请码或注册链接" required></label>
+      <label>用户名<input name="username" value="{{ username_draft }}" autocomplete="username" placeholder="英文、数字、下划线" required></label>
+      <label>显示名称<input name="display_name" value="{{ display_draft }}" autocomplete="nickname" placeholder="朋友看到的名字" required></label>
+      <label>邮箱<input name="email" type="email" value="{{ email_draft }}" autocomplete="email" placeholder="you@example.com"></label>
       <label>密码<input type="password" name="password" autocomplete="new-password" minlength="8" required></label>
       <label>确认密码<input type="password" name="password_confirm" autocomplete="new-password" minlength="8" required></label>
       <button class="primary">创建账户</button><button type="button" id="clearDraft" class="button">清空草稿</button>
       <a class="button" href="{{ url_for('hub_home') }}">返回登录</a>
     </form>
-    <p class="form-help">社区约定：论坛沉淀问题、聊天保持短沟通、坊市只流转虚拟资产。注册即表示接受这三条。</p>
   </div>
 </section>
 {% endblock %}
-{% block scripts %}<script>(()=>{const KEY='hub_register_draft_v1';const form=document.querySelector('form[action*="/register"]');if(!form)return;const f={invite:form.elements.invite,username:form.elements.username,display:form.elements.display_name,email:form.elements.email};const flashError=document.querySelector('.flash.error');const pending=localStorage.getItem(KEY+':pending')==='1';let saved=null;try{saved=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
-if(saved&&!f.username.value&&!f.display.value&&!f.email.value){if(f.invite&&!f.invite.value)f.invite.value=saved.invite||'';f.username.value=saved.username||'';f.display.value=saved.display||'';f.email.value=saved.email||'';}
-if(pending){if(flashError){localStorage.setItem(KEY+':pending','0');}else{localStorage.removeItem(KEY);localStorage.removeItem(KEY+':pending');}}
-const save=()=>{try{localStorage.setItem(KEY,JSON.stringify({invite:f.invite?f.invite.value:'',username:f.username.value,display:f.display.value,email:f.email.value}))}catch(e){}};
-form.addEventListener('input',save);form.addEventListener('submit',()=>{save();try{localStorage.setItem(KEY+':pending','1')}catch(e){}});
-const clear=document.getElementById('clearDraft');if(clear)clear.addEventListener('click',()=>{localStorage.removeItem(KEY);localStorage.removeItem(KEY+':pending');f.username.value='';f.display.value='';f.email.value='';});})();</script>{% endblock %}
+{% block scripts %}<script src="{{ media_base }}/static/register.js" defer></script>{% endblock %}

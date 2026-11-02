@@ -44,6 +44,8 @@ for key, value in {"sync_provider": "legacy_hub", "hub_url": "http://192.168.1.2
     assert db(key) == value, (key, db(key))
 page = c.get("/online").text
 assert "http://192.168.1.20:5050" in page and "已安全保存" in page
+assert "启动联机中心" in page and "/online/hub-host/start" in page
+assert "进入同行会" in page
 
 r = c.post("/online/settings", data={"sync_provider": "disabled", "hub_url": "", "hub_api_token": "",
                                      "auto_sync": "", "connect_now": "0"})

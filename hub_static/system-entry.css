@@ -27,7 +27,7 @@
 .chat-message.pending{opacity:.55}
 .chat-message.failed{outline:1px dashed #c26b5a;outline-offset:3px}
 .chat-delivery{display:block;margin-top:4px;color:var(--muted);font-size:10px}
-.chat-emoji-palette{display:flex;flex-wrap:wrap;gap:4px;padding:8px 2px 2px}
+.chat-emoji-picker{position:relative;margin:0 0 8px;width:max-content}.chat-emoji-picker>summary{list-style:none;display:inline-flex;align-items:center;gap:6px;padding:8px 11px;border:1px solid var(--line);border-radius:11px;background:#fffaf4;color:var(--text);font-size:12px;font-weight:700;cursor:pointer}.chat-emoji-picker>summary::-webkit-details-marker{display:none}.chat-emoji-picker[open]>summary{background:var(--soft);color:#8d4c36}.chat-emoji-palette{display:flex;flex-wrap:wrap;gap:4px;max-width:300px;padding:8px;margin-top:6px;border:1px solid var(--line);border-radius:13px;background:#fffaf4}
 .chat-emoji-palette button{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:#fffaf4;font-size:18px;line-height:1;cursor:pointer;transition:transform .12s ease,background .12s ease}
 .chat-emoji-palette button:hover{transform:translateY(-1px);background:#fff0d8}
 @media(max-width:900px){.group-packets{grid-template-columns:1fr}.grid.three.market-forms{grid-template-columns:1fr}}

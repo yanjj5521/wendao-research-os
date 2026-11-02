@@ -81,6 +81,7 @@
 | `workspace_profiles.py` | 七个学习领域的默认配置 |
 | `integral.py` | 曲线文件解析、梯形/Simpson 积分与 SVG 预览 |
 | `pet_progression.py` | 灵知经验、等级曲线与形态解锁（纯逻辑） |
+| `roam_pets/` | 多宠物完整循环：带锁持久化、养成、探索、战斗、捕捉、商店、图鉴与 Tk 桌宠窗口 |
 | `game_world.py` | 洞府建筑与法器数据 |
 | `economy.py` | 灵石与修为结算 |
 | `idle_space.py` | 休闲空间逻辑 |

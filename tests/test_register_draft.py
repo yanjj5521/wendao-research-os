@@ -51,11 +51,15 @@ page = client.get("/register?" + str(r.url).split("?", 1)[1]).text
 assert 'value="taken"' in page and 'value="新同学"' in page
 
 template = open("hub_templates/register.html", encoding="utf-8").read()
-scripts = re.findall(r"<script>(.*?)</script>", template, re.S)
-assert "password" not in scripts[-1]
-assert "clearDraft" in template
+assert '<script src="/static/register.js" defer></script>' in page or '<script src="/team/static/register.js" defer></script>' in page
+assert "<script>" not in template
+register_js = open("hub_static/register.js", encoding="utf-8").read()
+assert "password" not in register_js
+assert "clearDraft" in template and "clearDraft" in register_js
 page = client.get("/register").text
-assert "无需在此注册" in page and "admin-path" in page
+archived = open("docs/HUB_UI_COPY.md", encoding="utf-8").read()
+assert "管理员账号无需注册" in page and "admin-path" not in page
+assert "admin-path" in archived
 print("register draft flow pass")
 
 '''

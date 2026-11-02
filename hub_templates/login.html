@@ -1,16 +1,15 @@
 {% extends 'base.html' %}{% block title %}{{ '添加账号' if add_account_mode else '登录' }} · {{ site_name }}{% endblock %}{% block content %}
 <section class="auth-layout">
-  <div class="auth-story"><span class="seal">同行</span><h1>把科研伙伴连起来，<br>不把私人资料搬上云。</h1><p>账号、个人主页、灵石、法器、个性化和版本更新在这里同步；论文、实验数据、笔记图片仍保存在每个人自己的科研系统中。</p><ul><li>邀请制注册</li><li>一人可保留多个账号并随时切换</li><li>同步事件幂等处理</li><li>数据库自动备份</li></ul></div>
+  <div class="auth-story"><span class="seal">同行</span><h1>同行会</h1></div>
   <div class="auth-card">
     <form class="auth-form" method="post" action="{{ url_for('hub_login') }}"><input type="hidden" name="_csrf" value="{{ csrf }}">
       <h2>{{ '添加另一个账号' if add_account_mode else '进入同行会' }}</h2>
       {% if add_account_mode %}<small>当前会话不会被替换；登录成功后会加入右上角账号切换列表。</small>{% endif %}
       <label>用户名<input name="username" autocomplete="username" required></label><label>密码<input type="password" name="password" autocomplete="current-password" required></label><button class="primary">{{ '添加并切换' if add_account_mode else '登录' }}</button>
       {% if add_account_mode %}<a href="{{ url_for('hub_home') }}">返回当前账号</a>{% else %}<a href="{{ url_for('hub_register') }}">持邀请码注册</a>{% endif %}
-      <small>社区约定：论坛沉淀问题 · 聊天保持短沟通 · 坊市只流转虚拟资产</small>
     </form>
     <div class="auth-recovery">
-      <small>登录无响应或页面已过期？先刷新，或清除登录状态后重试。</small>
+      <small>页面过期？</small>
       <div>
         <a class="soft" href="{{ url_for('hub_home') }}">刷新页面</a>
         <form method="post" action="{{ url_for('hub_session_reset') }}"><button class="soft">清除登录状态并重试</button></form>

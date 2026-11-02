@@ -476,6 +476,31 @@
   },
   {
     "method": "POST",
+    "path": "/pets/battle/attack",
+    "name": "roam_battle_attack"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/battle/capture",
+    "name": "roam_battle_capture"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/battle/close",
+    "name": "roam_battle_close"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/berry",
+    "name": "roam_use_berry"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/explore",
+    "name": "roam_explore"
+  },
+  {
+    "method": "POST",
     "path": "/pets/feed",
     "name": "roam_feed"
   },
@@ -488,6 +513,21 @@
     "method": "POST",
     "path": "/pets/play",
     "name": "roam_play"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/rename",
+    "name": "roam_rename"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/rest",
+    "name": "roam_rest"
+  },
+  {
+    "method": "POST",
+    "path": "/pets/shop",
+    "name": "roam_buy"
   },
   {
     "method": "GET",

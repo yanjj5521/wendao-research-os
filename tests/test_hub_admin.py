@@ -51,7 +51,7 @@ admin.post("/login", data={"username": "admin", "password": password, "_csrf": c
 page = admin.get("/admin")
 assert page.status_code == 200
 for marker in ("运营概览", "成员总数", "近 7 天新增", "今日在线", "导出账号留存 CSV",
-               "member@example.com", "权限边界", "审计"):
+               "member@example.com", "邀请码", "审计"):
     assert marker in page.text, marker
 
 # 2) 账号留存 CSV：仅管理员可导出，内容含账号与资产

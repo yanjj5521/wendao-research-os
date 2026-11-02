@@ -7,9 +7,26 @@
   const NAV_SCROLL_KEY = 'wendao:nav-scroll';
   const SIDEBAR_SCROLL_KEY = 'wendao:side-nav-scroll';
   const sideNav = document.querySelector('.side-nav');
-  const savedSidebar = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
-  if (sideNav && savedSidebar !== null) {
-    sideNav.scrollTop = Number(savedSidebar) || 0;
+  const restoreSidebarScroll = () => {
+    if (!sideNav) return;
+    let savedSidebar = null;
+    try {
+      savedSidebar = sessionStorage.getItem(SIDEBAR_SCROLL_KEY);
+    } catch (error) {
+      return;
+    }
+    if (savedSidebar === null) return;
+    const requested = Number(savedSidebar) || 0;
+    const limit = Math.max(0, sideNav.scrollHeight - sideNav.clientHeight);
+    sideNav.scrollTop = Math.max(0, Math.min(requested, limit));
+  };
+  if (sideNav) {
+    restoreSidebarScroll();
+    window.setTimeout(restoreSidebarScroll, 16);
+    window.setTimeout(restoreSidebarScroll, 0);
+    window.setTimeout(restoreSidebarScroll, 90);
+    window.addEventListener('load', restoreSidebarScroll);
+    window.addEventListener('pageshow', restoreSidebarScroll);
   }
 
   const rememberScroll = path => {

@@ -50,6 +50,7 @@ class PetState:
     energy: int = 80
     mood: int = 60
     bond: int = 0
+    health: int = 100
     hatched_at: str = ""
     last_seen: str = ""
 

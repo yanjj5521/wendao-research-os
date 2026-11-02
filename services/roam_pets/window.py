@@ -28,6 +28,7 @@ class RoamPetWindow:
         self.quiet = False
         self._speech: tk.Toplevel | None = None
         self._t = 0.0
+        self._tick_count = 0
 
         self.root = tk.Tk()
         self.root.title("漫游宠物")
@@ -56,10 +57,18 @@ class RoamPetWindow:
         y = max(0, min(int(y), screen_h - HEIGHT))
         return x, y
 
+    def _mutate(self, mutator):
+        def apply(data):
+            return mutator(service.ensure_shape(data))
+        result, self.data = storage.update(apply)
+        return result
+
     def _save_pos(self) -> None:
         x, y = self._clamp(self.root.winfo_x(), self.root.winfo_y())
-        self.data.setdefault("window_pos", {})[self.species_id] = [x, y]
-        storage.save(self.data)
+        def save_position(data):
+            data.setdefault("window_pos", {})[self.species_id] = [x, y]
+            return None
+        self._mutate(save_position)
 
     # ---- 交互 ----
     def _bind(self) -> None:
@@ -94,10 +103,13 @@ class RoamPetWindow:
 
     def _on_double(self, _event) -> None:
         # 双击摸头：走好感度通道，不消耗饥饿
-        state = self.data["pets"].get(self.species_id)
-        if state is not None:
-            state["bond"] = min(100, int(state.get("bond", 0)) + 1)
-            storage.save(self.data)
+        def touch(data):
+            state = data["pets"].get(self.species_id)
+            if state is not None:
+                state["bond"] = min(100, int(state.get("bond", 0)) + 1)
+                state["last_seen"] = service._now()
+            return state
+        self._mutate(touch)
         self._speak("（开心地蹭了蹭你）")
 
     def _on_menu(self, event) -> None:
@@ -105,30 +117,38 @@ class RoamPetWindow:
 
     def _feed(self) -> None:
         try:
-            self.data = service.feed(self.data, self.species_id)
-            storage.save(self.data)
+            self._mutate(lambda data: service.feed(data, self.species_id))
             self._speak("唔——好吃！")
-        except ValueError as exc:
+        except (ValueError, OSError, TimeoutError) as exc:
             self._speak(str(exc))
 
     def _play(self) -> None:
         try:
-            self.data = service.play(self.data, self.species_id)
-            storage.save(self.data)
+            self._mutate(lambda data: service.play(data, self.species_id))
             self._speak("再玩一次嘛！")
-        except ValueError as exc:
+        except (ValueError, OSError, TimeoutError) as exc:
             self._speak(str(exc))
 
     def _switch(self) -> None:
-        owned = list(self.data["pets"].keys())
-        if len(owned) < 2:
-            self._speak("还没有其他伙伴，去宠物乐园领养吧。")
+        x, y = self._clamp(self.root.winfo_x(), self.root.winfo_y())
+        def switch(data):
+            owned = list(data["pets"].keys())
+            if len(owned) < 2:
+                raise ValueError("还没有其他伙伴，去宠物乐园领养吧。")
+            if self.species_id not in owned:
+                raise ValueError("当前伙伴已不在队伍中，请重新唤出桌宠。")
+            next_id = owned[(owned.index(self.species_id) + 1) % len(owned)]
+            data["active"] = next_id
+            data.setdefault("window_pos", {})[next_id] = [x, y]
+            return next_id
+        try:
+            next_id = self._mutate(switch)
+        except (ValueError, OSError, TimeoutError) as exc:
+            self._speak(str(exc))
             return
-        index = owned.index(self.species_id)
-        self.species_id = owned[(index + 1) % len(owned)]
+        self.species_id = next_id
         self.species = get(self.species_id)  # type: ignore[arg-type]
-        self.data["active"] = self.species_id
-        self._save_pos()
+        self._place_initial()
         self._speak(f"{self.species.name} 来啦！")
 
     def _toggle_quiet(self) -> None:
@@ -165,6 +185,14 @@ class RoamPetWindow:
     # ---- 动画循环 ----
     def _tick(self) -> None:
         self._t += 0.08
+        self._tick_count += 1
+        if self._tick_count % 25 == 0:
+            self.data = storage.load()
+            self.data = service.tick(self.data)
+            if self.species_id not in self.data["pets"]:
+                self.species_id = self.data.get("active") or next(iter(self.data["pets"]), "emberpup")
+                self.species = get(self.species_id) or get("emberpup")  # type: ignore[assignment]
+                self._place_initial()
         state = self.data["pets"].get(self.species_id)
         mood = service.mood_of(state) if state else "平静"
         self.canvas.delete("all")

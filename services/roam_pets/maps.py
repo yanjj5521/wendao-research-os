@@ -1,4 +1,4 @@
-"""地图场景（预留）：初始平原开放，其余地图待捕捉系统接入后解锁。"""
+"""地图场景：队伍最高等级决定迷雾林地、火山和月影湖的解锁。"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -25,19 +25,19 @@ MAPS: dict[str, MapScene] = {
         id="mistwood", name="雾语林", element_hint="水·暗", unlock_level=3,
         desc="雾气里能听见翻书声，墨影猫在书架般的树影间穿行。",
         encounters=(("dewfrog", 6), ("umbrae", 1)),
-        locked_note="捕捉系统开放后解锁（Lv.3）",
+        locked_note="队伍最高等级达标后解锁。",
     ),
     "crater": MapScene(
         id="crater", name="焰脊火山", element_hint="火·雷", unlock_level=5,
         desc="火山口附近雷雨不断，雷雀喜欢在火光里穿行。",
         encounters=(("emberpup", 6), ("voltfinch", 2)),
-        locked_note="捕捉系统开放后解锁（Lv.5）",
+        locked_note="队伍最高等级达标后解锁。",
     ),
     "moonlake": MapScene(
         id="moonlake", name="月影湖", element_hint="光", unlock_level=7,
         desc="湖面只在无风的夜晚映出完整的月亮。",
         encounters=(("lunebunny", 6),),
-        locked_note="捕捉系统开放后解锁（Lv.7）",
+        locked_note="队伍最高等级达标后解锁。",
     ),
 }
 
