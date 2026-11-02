@@ -396,6 +396,26 @@
   },
   {
     "method": "POST",
+    "path": "/online/headnet/save",
+    "name": "online_headnet_save"
+  },
+  {
+    "method": "POST",
+    "path": "/online/headnet/start-center",
+    "name": "online_headnet_start_center"
+  },
+  {
+    "method": "POST",
+    "path": "/online/headnet/start-member",
+    "name": "online_headnet_start_member"
+  },
+  {
+    "method": "POST",
+    "path": "/online/headnet/stop",
+    "name": "online_headnet_stop"
+  },
+  {
+    "method": "POST",
     "path": "/online/hub-host/start",
     "name": "online_hub_host_start"
   },

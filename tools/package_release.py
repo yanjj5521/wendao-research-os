@@ -117,6 +117,7 @@ def build_user_package(version: str, out_dir: Path, work: Path) -> Path:
         raise SystemExit(f"缺少构建产物：{exe}")
     shutil.copy2(exe, folder / "WendaoResearchV3.exe")
     shutil.copy2(ROOT / "packaging" / "windows" / "使用说明.txt", folder / "使用说明.txt")
+    shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", folder / "THIRD_PARTY_NOTICES.md")
     write_checksums(folder)
     assert_clean(folder)
     target = out_dir / f"WendaoResearch-v{version}-User.zip"
@@ -137,6 +138,7 @@ def build_admin_package(version: str, out_dir: Path, work: Path, ref: str) -> Pa
     export_source(folder / "source", ref)
 
     shutil.copy2(ROOT / "docs" / "RELEASE_STRATEGY.md", folder / "ADMIN_GUIDE.md")
+    shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", folder / "THIRD_PARTY_NOTICES.md")
     notes = ROOT / "docs" / "releases" / f"v{version}.md"
     if notes.is_file():
         shutil.copy2(notes, folder / "RELEASE_NOTES.md")

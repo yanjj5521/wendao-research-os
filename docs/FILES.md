@@ -91,6 +91,7 @@
 | `sync_backend.py` / `team_update.py` | 同步事件、版本下载、哈希校验、备份和可回滚原地更新 |
 | `hub_host.py` | 把同行会中心作为后台服务启动，并发布本地/VPN成员地址 |
 | `network_access.py` | 发现有线、无线、VPN 网卡，生成成员 URL，校验固定入口与 Tailscale CGNAT HTTP 地址 |
+| `headscale_vpn.py` | 管理内置 tsnet 助手的 Headscale 中心发布、成员代理、密钥配置和状态 |
 
 ## hub/（同行会中心：独立数据库、可独立部署）
 
@@ -126,6 +127,8 @@
 | `launchers/` | 被 run_local / run_hub 复用的服务启动器 |
 | `tests/` | pytest 契约与行为测试 |
 | `docs/` | 架构、数据层、文案规范、网络连接指南与发布说明 |
+| `native/headnet/` | 内置 Headscale/tsnet 用户态网络助手 Go 源码与构建产物占位 |
+| `deploy/headscale/` | 自建 Headscale + Caddy Docker Compose 示例 |
 | `packaging/` | PyInstaller 打包配置 |
 | `mobile/` | 安卓客户端源码 |
 | `deploy/` | 中心 Docker 部署示例 |

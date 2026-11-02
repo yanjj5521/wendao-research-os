@@ -1,0 +1,26 @@
+services:
+  headscale:
+    image: headscale/headscale:0.29.7
+    container_name: wendao-headscale
+    restart: unless-stopped
+    command: serve
+    volumes:
+      - ./config:/etc/headscale:ro
+      - ./data:/var/lib/headscale
+    ports:
+      - "8080:8080"
+      - "3478:3478/udp"
+
+  caddy:
+    image: caddy:2
+    container_name: wendao-headscale-caddy
+    restart: unless-stopped
+    depends_on:
+      - headscale
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./data/caddy:/data
+      - ./data/caddy/config:/config

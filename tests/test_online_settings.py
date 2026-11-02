@@ -46,6 +46,21 @@ page = c.get("/online").text
 assert "http://192.168.1.20:5050" in page and "已安全保存" in page
 assert "启动联机中心" in page and "/online/hub-host/start" in page
 assert "进入同行会" in page
+assert "Headscale 虚拟专网" in page
+assert "作为中心启动" in page and "作为成员连接" in page
+
+r = c.post("/online/headnet/save", data={
+    "control_url": "https://headscale.example.com",
+    "auth_key": "test-preauth-key",
+    "hostname": "wendao-test",
+    "peer": "100.64.0.10",
+    "port": "5050",
+    "peer_port": "5050",
+})
+assert "Headscale 控制端配置已保存" in flash(r.text), flash(r.text)
+page = c.get("/online").text
+assert "https://headscale.example.com" in page
+assert "已安全保存" in page
 
 # Tailscale/WireGuard-style CGNAT addresses are private enough for HTTP.
 r = c.post("/online/settings", data={"sync_provider": "legacy_hub", "hub_url": "http://100.64.0.10:5050",

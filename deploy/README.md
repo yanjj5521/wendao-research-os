@@ -10,3 +10,7 @@ This folder contains an optional Docker deployment for the lightweight collabora
 6. Back up `instance/hub.db`, `instance/hub_secret.txt`, and `storage/hub_backups/` off the VPS periodically.
 
 The first start creates `instance/HUB_ADMIN_CREDENTIALS.txt`.
+
+## Headscale 虚拟专网
+
+参见 `docs/HEADSCALE.md` 和 `deploy/headscale/`。Headscale 需要公网 HTTPS 控制端以及可用的 DERP/STUN 中继。

@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 from pathlib import Path
+import sys
 
 from PyInstaller.utils.hooks import collect_submodules
 
@@ -8,6 +9,18 @@ root = Path(SPECPATH).resolve().parent
 icon = root / "packaging" / "generated" / "research-system.ico"
 
 from PyInstaller.utils.hooks import collect_all
+
+
+headnet_dir = root / "native" / "headnet"
+headnet_suffix = ".exe" if sys.platform == "win32" else ""
+headnet_candidates = sorted(
+    headnet_dir.glob(f"headnet-runtime*{headnet_suffix}"),
+    key=lambda path: path.stat().st_mtime,
+    reverse=True,
+)
+if not headnet_candidates:
+    raise SystemExit("native/headnet helper is missing; run tools/build_headnet.py first")
+headnet_helper = headnet_candidates[0]
 
 hiddenimports = []
 for package in ("core", "web", "features", "services", "launchers", "hub"):
@@ -34,6 +47,7 @@ a = Analysis(
         (str(root / "static"), "static"),
         (str(root / "hub_templates"), "hub_templates"),
         (str(root / "hub_static"), "hub_static"),
+        (str(headnet_helper), "headnet"),
         (str(root / "VERSION"), "."),
         (str(root / "packaging" / "windows" / "install_windows.ps1"), "packaging/windows"),
     ],

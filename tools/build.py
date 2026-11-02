@@ -17,6 +17,7 @@ def run(*command: str) -> None:
 
 
 def build_executable() -> Path:
+    run(sys.executable, "tools/build_headnet.py")
     run(sys.executable, "packaging/build_icons.py")
     run(
         sys.executable,
@@ -83,6 +84,7 @@ def assemble_windows(executable: Path, output_dir: Path) -> list[Path]:
     # Do not ship a second visible CMD launcher in the portable/update bundle.
     for name in ("portable.flag", "使用说明.txt"):
         shutil.copy2(ROOT / "packaging" / "windows" / name, portable_root / name)
+    shutil.copy2(ROOT / "THIRD_PARTY_NOTICES.md", portable_root / "THIRD_PARTY_NOTICES.md")
 
     archive = output_dir / f"WendaoResearch-v{VERSION}-Portable.zip"
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as bundle:

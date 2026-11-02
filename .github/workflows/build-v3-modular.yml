@@ -53,6 +53,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.3"
+          cache: true
+          cache-dependency-path: native/headnet/go.sum
       - name: Install locked dependencies
         run: python -m pip install --disable-pip-version-check -r requirements-dev.txt
       - name: Verify source and original v3 behavior
@@ -204,7 +209,7 @@ jobs:
           Expand-Archive "out\WendaoResearch-v$version-Portable.zip" $expanded -Force
           $portable = @(Get-ChildItem $expanded -File -Recurse | Select-Object -ExpandProperty Name | Sort-Object)
           $expectedPortable = @(
-            "WendaoResearchV3.exe", "portable.flag", "使用说明.txt"
+            "WendaoResearchV3.exe", "portable.flag", "使用说明.txt", "THIRD_PARTY_NOTICES.md"
           ) | Sort-Object
           if (Compare-Object $expectedPortable $portable) {
             throw "Portable package is not the required four-file set."

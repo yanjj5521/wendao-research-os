@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.8.2"
-description = "问道科研 1.8.2：跨局域网、VPN 与有线/无线同行会连接"
+version = "1.8.3"
+description = "问道科研 1.8.3：内置 Headscale 用户态虚拟专网"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -46,6 +46,7 @@ include = ["core*", "features*", "hub*", "launchers*", "services*", "web*"]
 "share/wendao-research/hub_static" = ["hub_static/*"]
 "share/wendao-research/assets" = ["assets/*"]
 "share/wendao-research/packaging/windows" = ["packaging/windows/*"]
+"share/wendao-research/native/headnet" = ["native/headnet/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

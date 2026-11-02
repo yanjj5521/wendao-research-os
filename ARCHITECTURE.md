@@ -1,4 +1,4 @@
-# 问道科研 1.8.2 架构
+# 问道科研 1.8.3 架构
 
 ## 0. 产品定位：1.0 收敛
 
@@ -153,6 +153,8 @@ WendaoResearchV3.exe
 同行会路由通过 `app.mount("/team", preserve_outer_session(hub_app))` 挂载；它保留自己的中心数据库和 `hub_session` 会话，但不另起前端进程。挂载适配层在内层 SessionMiddleware 发完响应头后恢复外层个人 session，避免 `/team` 覆盖个人端 flash/会话。页面链接由 `hub_url_for()` 在挂载根路径下生成，绝对重定向由安全中间件校正。
 
 中心后台绑定 `0.0.0.0`，因此监听所有有线、无线和 VPN IPv4 网卡。`services/network_access.py` 负责发现可用地址、识别 Tailscale/WireGuard 等 VPN（含 `100.64.0.0/10`）、生成成员 URL，并校验固定的 VPN/HTTPS 入口。管理控制台把当前注册基址和邀请链接写入页面；中心启动时把自动推荐地址写入 `hub_settings.runtime_base_url`，管理员填写的固定地址写入 `public_base_url` 并优先使用。
+
+v1.8.3 增加自建 Headscale 支持：`services/headscale_vpn.py` 启动打包在 EXE 内的 `native/headnet` tsnet 助手。中心模式在 Headscale 虚拟 IP 上代理到本机 Hub，成员模式只在 `127.0.0.1` 提供本地代理；因此不需要安装系统 VPN 网卡，也不要求成员与中心处于同一局域网。控制端、DERP/STUN 和预授权密钥仍由管理员自建与分发。
 
 多账号保存在 Hub session 的 `hub_account_ids` 列表中，`hub_user_id` 指向当前账号。登录新账号只追加列表，不清理旧账号；切换、退出当前、退出全部都由 CSRF 保护的 POST 完成。管理员在登录态代注册成员时保持当前管理员为活动账号，新成员加入切换列表。
 

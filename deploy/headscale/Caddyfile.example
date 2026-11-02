@@ -1,0 +1,4 @@
+CHANGE_ME_HEADSCALE_DOMAIN {
+    reverse_proxy headscale:8080
+    encode gzip
+}

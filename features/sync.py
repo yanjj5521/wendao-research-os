@@ -40,7 +40,7 @@ from services.team_update import (
 )
 from services import github_update
 from services.team_update import last_apply_log
-from services import hub_host
+from services import hub_host, headscale_vpn
 
 EXPORT_DIR = STORAGE_ROOT / "sync_exports"
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -179,6 +179,7 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 update_log_tail=last_apply_log(),
                 data_root=str(DATA_ROOT),
                 hub_host=hub_host.status(),
+                headnet=headscale_vpn.status(),
             ),
         )
 
@@ -204,6 +205,110 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                     "请在管理控制台填写固定的 VPN 或公网连接地址。",
                     "error",
                 )
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/headnet/save", name="online_headnet_save")
+    def online_headnet_save(
+        request: Request,
+        control_url: str = Form(""),
+        auth_key: str = Form(""),
+        hostname: str = Form("wendao-node"),
+        peer: str = Form(""),
+        port: int = Form(5050),
+        peer_port: int = Form(5050),
+    ):
+        try:
+            headscale_vpn.save_config(
+                control_url=control_url,
+                auth_key=auth_key,
+                hostname=hostname,
+                peer=peer,
+                center_port=port,
+                peer_port=peer_port,
+            )
+        except (OSError, ValueError, RuntimeError) as exc:
+            flash(request, f"Headscale 配置未保存：{exc}", "error")
+        else:
+            flash(request, "Headscale 控制端配置已保存。预授权密钥只保存在本机数据库。")
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    def _headnet_save_form(
+        control_url: str,
+        auth_key: str,
+        hostname: str,
+        peer: str,
+        port: int,
+        peer_port: int,
+    ) -> None:
+        headscale_vpn.save_config(
+            control_url=control_url,
+            auth_key=auth_key,
+            hostname=hostname,
+            peer=peer,
+            center_port=port,
+            peer_port=peer_port,
+        )
+
+    @router.post("/online/headnet/start-center", name="online_headnet_start_center")
+    def online_headnet_start_center(
+        request: Request,
+        control_url: str = Form(""),
+        auth_key: str = Form(""),
+        hostname: str = Form("wendao-hub"),
+        peer: str = Form(""),
+        port: int = Form(5050),
+        peer_port: int = Form(5050),
+    ):
+        try:
+            _headnet_save_form(control_url, auth_key, hostname, peer, port, peer_port)
+            hub = hub_host.status()
+            if not hub.get("running"):
+                hub = hub_host.start(STORAGE_ROOT.parent, port=port)
+            result = headscale_vpn.start_center(
+                hub_port=int(hub["port"]),
+                hostname_override=hostname,
+            )
+        except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+            flash(request, f"Headscale 中心发布失败：{exc}", "error")
+        else:
+            flash(
+                request,
+                f"中心已加入 Headscale 虚拟网络：{result.get('virtual_url', '')}。"
+                "邀请码会自动使用这个地址；请确保 Headscale/DERP 与 ACL 已允许成员访问。",
+            )
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/headnet/start-member", name="online_headnet_start_member")
+    def online_headnet_start_member(
+        request: Request,
+        control_url: str = Form(""),
+        auth_key: str = Form(""),
+        hostname: str = Form("wendao-member"),
+        peer: str = Form(""),
+        port: int = Form(5050),
+        peer_port: int = Form(5050),
+    ):
+        try:
+            _headnet_save_form(control_url, auth_key, hostname, peer, port, peer_port)
+            result = headscale_vpn.start_member(
+                peer_override=peer,
+                peer_port=peer_port,
+                hostname_override=hostname,
+            )
+        except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+            flash(request, f"Headscale 成员连接失败：{exc}", "error")
+        else:
+            flash(
+                request,
+                f"已加入 Headscale 虚拟网络；本地入口：{result.get('local_url', '')}。"
+                "点击下方“打开虚拟网络同行会”完成登录或邀请码注册。",
+            )
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/headnet/stop", name="online_headnet_stop")
+    def online_headnet_stop(request: Request):
+        headscale_vpn.stop()
+        flash(request, "Headscale 虚拟网络连接已停止。局域网连接不会受影响。")
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/hub-host/stop", name="online_hub_host_stop")

@@ -69,3 +69,13 @@ deploy-cloud/
 # WorkBuddy internal
 .workbuddy/
 *.genie
+
+# Local native build tools
+.build-tools/
+native/headnet/headnet.exe
+native/headnet/headnet-runtime*
+native/headnet/headnet.building
+
+
+# Local service sockets
+*.sock
