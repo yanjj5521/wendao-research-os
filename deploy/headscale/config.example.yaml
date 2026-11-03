@@ -1,5 +1,20 @@
-# Copy this file to config/config.yaml and replace every CHANGE_ME value.
-server_url: https://CHANGE_ME_HEADSCALE_DOMAIN
+# 问道科研 · Headscale 中心配置模板（v2，2026-11-03）
+#
+# 三种无域名/常规模式，由 deploy/headscale/deploy.sh 自动渲染；
+# 手工部署时把本文件复制为 config/config.yaml，按注释选择分支。
+#
+# 关键升级说明（相对 v1 模板）：
+#   * server_url 一旦投入使用就不再变更——变更会导致所有成员节点重新登录；
+#     所以第一次部署请按 docs/HEADSCALE.md「无域名三路径」选定模式。
+#   * selfsigned 模式启用 tls_cert_path/tls_key_path（headscale 原生 TLS，
+#     不再需要 Caddy）；证书为 IP SAN 自签，客户端需导入 deploy.sh 生成的 CA。
+#   * 其余键位与 v1 兼容，./data 数据目录可直接沿用。
+
+server_url: CHANGE_ME_SERVER_URL
+# sslip 模式：     https://<SERVER_IP>.sslip.io      （Let's Encrypt 真证书，零客户端配置）
+# domain 模式：    https://<你的域名>                 （原有方式）
+# selfsigned 模式：https://<SERVER_IP>               （需导入客户端 CA，纯内网可用）
+
 listen_addr: 0.0.0.0:8080
 metrics_listen_addr: 127.0.0.1:9090
 grpc_listen_addr: 127.0.0.1:50443
@@ -8,12 +23,15 @@ unix_socket: /var/run/headscale/headscale.sock
 unix_socket_permission: "0770"
 trusted_proxies:
   - 172.16.0.0/12
+
 noise:
   private_key_path: /var/lib/headscale/noise_private.key
+
 prefixes:
   v4: 100.64.0.0/10
   v6: fd7a:115c:a1e0::/48
   allocation: sequential
+
 derp:
   server:
     enabled: true
@@ -28,11 +46,14 @@ derp:
   paths: []
   auto_update_enabled: false
   update_frequency: 24h
+
 disable_check_updates: true
+
 node:
   expiry: 0
   ephemeral:
     inactivity_timeout: 30m
+
 database:
   type: sqlite
   debug: false
@@ -45,14 +66,18 @@ database:
     path: /var/lib/headscale/db.sqlite
     write_ahead_log: true
     wal_autocheckpoint: 1000
-acme_url: https://acme-v02.api.letsencrypt.org/directory
-acme_email: ""
+
+# ---- TLS（按模式二选一） ----
+# sslip / domain 模式：TLS 由 Caddy 终结，以下保持为空。
 tls_letsencrypt_hostname: ""
 tls_letsencrypt_listen: ":http"
 tls_letsencrypt_challenge_type: HTTP-01
 tls_letsencrypt_cache_dir: /var/lib/headscale/cache
+# selfsigned 模式：headscale 原生 TLS（证书由 deploy.sh 生成，IP SAN，有效期约 825 天；
+# CA 有效期 10 年，重签证书不需要客户端重新导入 CA）。
 tls_cert_path: ""
 tls_key_path: ""
+
 dns:
   magic_dns: true
   base_domain: headnet.internal
@@ -62,9 +87,11 @@ dns:
     split: {}
   search_domains: []
   extra_records: []
+
 log:
   level: info
   format: text
+
 policy:
   mode: database
   path: ""

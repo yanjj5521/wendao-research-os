@@ -1,26 +1,44 @@
+# 问道科研 · Headscale 中心（v2，2026-11-03）
+# 三种模式由 deploy/headscale/deploy.sh 一键装配；本文件手工使用时：
+#   - sslip / domain 模式：docker compose --profile caddy up -d
+#   - selfsigned（IP 自签）模式：headscale 原生 TLS，直接 docker compose up -d
 services:
   headscale:
-    image: headscale/headscale:0.29.7
+    image: headscale/headscale:${HEADSCALE_VERSION:-0.29.7}
     container_name: wendao-headscale
     restart: unless-stopped
     command: serve
     volumes:
       - ./config:/etc/headscale:ro
       - ./data:/var/lib/headscale
+      # selfsigned 模式下由 deploy.sh 生成，存放 CA 与 IP-SAN 证书：
+      - ./certs:/etc/headscale/certs:ro
     ports:
-      - "8080:8080"
-      - "3478:3478/udp"
+      # sslip/domain 模式：Caddy 占用 80/443，headscale 仅内部 8080
+      # selfsigned 模式：把宿主机 443 映射到 headscale 的 TLS 监听
+      - "${HEADSCALE_HTTP_BIND:-8080}:8080"
+      - "${DERP_UDP_BIND:-3478}:3478/udp"
+      - "${TLS_BIND:-127.0.0.1:8443}:8443"
+    healthcheck:
+      # 镜像为 distroless，只能用二进制自带的子命令做健康检查
+      test: ["CMD", "headscale", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
 
   caddy:
     image: caddy:2
     container_name: wendao-headscale-caddy
     restart: unless-stopped
+    profiles: ["caddy"]          # 仅 sslip / domain 模式启用
     depends_on:
-      - headscale
+      headscale:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./data/caddy:/data
-      - ./data/caddy/config:/config
+      - ./data/caddy-config:/config

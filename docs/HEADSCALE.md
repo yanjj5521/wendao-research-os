@@ -1,141 +1,115 @@
 # 自建 Headscale 虚拟专网
 
-> 适用版本：1.8.3 起。
+> 适用版本：1.8.3 起；部署脚本与无域名方案适用 **1.9.2 起**（`deploy/headscale/` v2）。
 
-v1.8.3 把 Headscale 客户端封装进程序，成员无需安装系统级 VPN 网卡。程序使用 `tsnet` 用户态网络助手：
+v1.8.3 把 Headscale 客户端封装进程序（`native/headnet`，基于 tsnet 用户态网络），
+成员无需安装系统级 VPN 网卡。中心端把同行会发布到 `100.64.x.x` 虚拟 IP，
+成员端只在 `127.0.0.1` 建立代理入口。
 
-- 中心端：把同行会发布到 Headscale 分配的 `100.64.x.x` 虚拟 IP；
-- 成员端：在本机回环地址建立代理，通过虚拟网络访问中心；
-- 有线、无线、不同局域网都可以使用，只要双方都加入同一个 Headscale 网络。
+## 一、部署方式总览（v2）
 
-## 一、服务端条件
+| 方式 | 适用 | TLS 证书 | 客户端要做的事 |
+| --- | --- | --- | --- |
+| **Docker 一键脚本** | 有 Linux 服务器 | 见下表三模式 | 见下表 |
+| **systemd 裸机** | 不用 Docker 的服务器 | 同上 | 同上 |
 
-Headscale 是控制端，必须有公网可访问服务器。推荐至少 1 核 1 GiB 内存的 Linux VPS，并准备一个域名：
+### 无域名三路径（重点）
 
-```text
-headscale.example.com  A    你的公网 IPv4
-headscale.example.com  AAAA 你的公网 IPv6（可选）
-```
+| 路径 | 控制地址 | 证书来源 | 前提 | 客户端操作 |
+| --- | --- | --- | --- | --- |
+| **A. sslip.io（推荐）** | `https://<SERVER_IP>.sslip.io` | Let's Encrypt 真证书（Caddy 自动签发） | 80/443 公网可达；**无需购买域名** | 无（系统信任链直接可用） |
+| **B. IP 自签（纯内网）** | `https://<SERVER_IP>` | 自建 CA（10 年）+ IP SAN 证书（825 天），headscale 原生 TLS | 无需公网 | **每台客户端导入一次 CA**（Windows：管理员运行 `client-install-ca.ps1`） |
+| **C. 自有域名** | `https://你的域名` | Let's Encrypt | 有域名 | 无 |
 
-防火墙/安全组至少开放：
+> 路径 B 的原理：成员端 `headnet` 助手基于 Go/tsnet，TLS 校验走操作系统证书库；
+> 把 deploy.sh 生成的 CA 导入系统"受信任的根证书存储"后，`https://<IP>` 即被信任，
+> 助手程序本身无需任何改动。CA 10 年有效，重签服务端证书不需要客户端重导。
 
-| 端口 | 协议 | 用途 |
-| --- | --- | --- |
-| 80 | TCP | Caddy 申请 TLS 证书 |
-| 443 | TCP | Headscale 控制端 HTTPS |
-| 3478 | UDP | 内置 DERP/STUN 中继（重要） |
-
-如果 3478/UDP 被封，跨 NAT 时可能无法中继；Headscale 必须配置可用的 DERP。生产服务器必须使用有效 HTTPS，不能把控制端的 HTTP 直接暴露到公网。
-
-## 二、Docker Compose 部署
-
-仓库提供示例：
-
-```text
-deploy/headscale/docker-compose.yml
-deploy/headscale/config.example.yaml
-deploy/headscale/Caddyfile.example
-```
-
-在服务器上执行：
+## 二、Docker 一键部署（推荐）
 
 ```bash
-mkdir -p wendao-headscale/config
-cd wendao-headscale
-# 将 docker-compose.yml、config.example.yaml、Caddyfile.example 放到当前目录
-cp config.example.yaml config/config.yaml
-cp Caddyfile.example Caddyfile
+# 路径 A：无域名 + 真证书（最省事）
+MODE=sslip SERVER_IP=<你的公网IP> ./deploy.sh
+
+# 路径 B：纯内网自签
+MODE=selfsigned SERVER_IP=<内网IP> ./deploy.sh
+
+# 路径 C：自有域名
+MODE=domain SERVER_IP=<公网IP> DOMAIN=vpn.example.com ./deploy.sh
 ```
 
-编辑 `config/config.yaml` 和 `Caddyfile`，把所有 `CHANGE_ME_HEADSCALE_DOMAIN` 替换为真实域名。然后：
+脚本自动完成：渲染 `config/config.yaml` 与 `Caddyfile` → 生成证书（路径 B）→
+`docker compose up` → 等待健康检查 → **打印成员接入所需的控制地址、CA 导入脚本与预授权密钥命令**。
+幂等可重复执行；`./data`（成员节点、密钥、数据库）不受影响。
+
+验证：
 
 ```bash
-docker compose up -d
-docker compose logs -f headscale
+curl -fsS https://<SERVER_IP>.sslip.io/health     # 或对应控制地址
+docker inspect -f '{{.State.Health.Status}}' wendao-headscale
 ```
 
-检查服务：
+## 三、创建用户与预授权密钥
 
 ```bash
-curl -fsS https://headscale.example.com/health
+docker exec wendao-headscale headscale users create wendao
+docker exec wendao-headscale headscale preauthkeys create --user wendao --reusable --expiration 24h
 ```
 
-## 三、创建用户和预授权密钥
+密钥只在终端显示一次：不要进 Git、聊天记录或公开文档。正式使用建议每人一把。
 
-在服务器执行：
+## 四、在程序中接入
+
+- **中心端**：同行会页 → Headscale 虚拟专网 → 填控制地址 + 中心节点预授权密钥 →
+  "作为中心启动" → 得到虚拟地址（如 `http://100.64.0.1:5050`），
+  程序自动把它写为固定成员入口，邀请码链接随之更新；
+- **成员端**：同页填同一控制地址 + 中心虚拟 IP + 自己的预授权密钥 → "作为成员连接"。
+  路径 B 的成员先双击 `client-install-ca.ps1` 导入 CA（每台一次）。
+
+## 五、systemd 裸机托管（不用 Docker）
+
+见 `deploy/headscale/systemd/README.md` + `wendao-headscale.service`。
+要点：`Restart=on-failure` 自动拉起、`ProtectSystem=strict` 安全加固、
+证书重签 825 天一轮（CA 不变则客户端无感）。与 Docker 模式共享数据格式，
+迁移 = 停一侧 → 拷 `/var/lib/headscale` → 启另一侧（`server_url` 不变则成员无感）。
+
+## 六、常见故障
+
+| 现象 | 处理 |
+| --- | --- |
+| 容器不 healthy | `docker logs wendao-headscale`；多数是 config.yaml 语法或证书路径错误 |
+| sslip 模式证书签发失败 | 确认 80/443 公网可达、IP 正确；国内部分网络对 sslip.io 解析不稳定时可改路径 C |
+| 成员 TLS 报 x509 错误（路径 B） | 客户端未导入 CA：重跑 `client-install-ca.ps1`（需管理员） |
+| 成员能启动但连不上中心 | 检查控制地址与 `server_url` 是否一字不差；跨 NAT 检查 3478/UDP 与 DERP |
+| Windows 防火墙提示 | 允许 `headnet` 助手出站即可，不需要开入站 |
+
+## 七、从 v1 配置升级（CHANGE_ME 域名方式 → v2）
+
+**第一步永远是把 `server_url` 定下来**——它是节点身份的一部分，变更会让所有成员重新登录。
+
+| 配置项 | v1（旧） | v2（新） | 说明 |
+| --- | --- | --- | --- |
+| `server_url` | `https://CHANGE_ME_HEADSCALE_DOMAIN` | 按三路径选定的固定地址 | 升级前先确定，别再动 |
+| `tls_cert_path` / `tls_key_path` | 空（Caddy 终结 TLS） | 路径 B 下指向 `/etc/headscale/certs/`；其余为空 | 路径 A/C 仍由 Caddy 终结 |
+| `Caddyfile` | `CHANGE_ME_HEADSCALE_DOMAIN` | deploy.sh 渲染；Caddy 移入 `profiles: [caddy]` | 路径 B 不再启动 Caddy |
+| compose 健康检查 | 无 | `headscale healthcheck` 每 30s | `restart: unless-stopped` 已有 |
+| 数据 | `./data` | 不变，直接沿用 | 成员节点与密钥保留 |
+
+升级步骤（Docker）：
 
 ```bash
-docker compose exec headscale \
-  headscale users create wendao
-
-docker compose exec headscale \
-  headscale users list
-
-docker compose exec headscale \
-  headscale preauthkeys create --user 1 --reusable --expiration 30d
+cd 旧目录 && docker compose down            # 数据在 ./data
+cp -r data /备份路径                        # 保险起见备份一次
+cd 新目录（deploy/headscale）               # 放入 v2 的 docker-compose.yml / config.example.yaml / deploy.sh
+MODE=… SERVER_IP=… ./deploy.sh              # 用与旧部署一致的 server_url 模式渲染
+docker exec wendao-headscale headscale users list   # 确认老用户还在
 ```
 
-命令输出的 `preauthkey` 只在终端显示，不要提交到 Git、聊天记录或公开文档。正式使用建议每个成员单独生成一把密钥；测试时可以暂时使用一把短期 reusable key。
+成员端：控制地址没变就**什么都不用做**；变了才需要重新登录一次。
 
-## 四、在程序中建立虚拟网络
+## 八、安全边界
 
-### 中心端
-
-1. 打开问道科研“同行会”页。
-2. 在“Headscale 虚拟专网”中填写控制端地址。
-3. 粘贴中心节点的预授权密钥。
-4. 节点名称填例如 `wendao-hub`。
-5. 点击“作为中心启动”。
-6. 成功后页面会显示中心虚拟地址，例如：
-
-```text
-http://100.64.0.1:5050
-```
-
-程序会把这个虚拟地址写为同行会固定成员入口，之后生成邀请码注册链接会自动使用它。中心端本机仍保留 `127.0.0.1` 管理入口。
-
-### 成员端
-
-每个成员都需要：
-
-1. 自己的 Headscale 预授权密钥；
-2. 在“Headscale 虚拟专网”中填写同一个控制端地址；
-3. 填写中心节点启动后显示的虚拟 IP；
-4. 点击“作为成员连接”。
-
-成功后页面显示：
-
-```text
-本机入口：http://127.0.0.1:<动态端口>
-```
-
-点击“打开虚拟网络同行会”即可登录或使用邀请码注册。程序会在本机建立仅绑定 `127.0.0.1` 的代理，不会把成员本机端口暴露给局域网。
-
-## 五、常见故障
-
-### 中心启动失败
-
-- 检查控制端地址是否能打开；
-- 检查预授权密钥是否过期、是否已被使用；
-- 检查 Headscale 日志和 DERP/STUN 端口；
-- 检查中心节点是否已经启动了同行会中心。
-
-### 成员能启动但打不开中心
-
-- 确认中心端“作为中心启动”已成功；
-- 确认成员填写的是中心虚拟 IP，而不是中心局域网 IP；
-- 检查 Headscale ACL 是否允许节点互访；
-- 检查服务器 3478/UDP 和 DERP 状态；
-- 在中心端查看 `headscale nodes list` 是否两个节点都 online。
-
-### Windows 提示防火墙
-
-tsnet 用户态助手不需要安装系统 VPN 网卡，但中心本机仍需允许同行会 TCP 端口被本机代理访问。它通常只访问 `127.0.0.1`；跨网络流量由 Headscale/DERP 处理。
-
-## 六、安全边界
-
-- Headscale 控制端和 DERP 是你自己的基础设施；备份 `data/` 目录中的 SQLite、私钥和 ACL。
-- 预授权密钥等同入网凭据，必须按成员分发并定期轮换。
-- 本程序把密钥保存在本机个人数据库，不上传 GitHub、不进入个性化包、不进入科研同步事件。
-- 科研论文、实验数据、笔记和附件仍只保存在个人数据库；虚拟网络只承载账号、注册、论坛、聊天和虚拟资产等同行会流量。
-- 公网 HTTP 不安全；Headscale 控制端必须 HTTPS，同行会虚拟地址建议仅走 Headscale 加密网络。
+- 预授权密钥只保存在本机个人数据库；不进入同步事件、个性化包或发布资产；
+- `verify_clients: true` 保持开启：只有预授权注册的节点能进 DERP；
+- 控制端必须 HTTPS（三条路径均为 HTTPS），不要把 HTTP 控制端口暴露公网；
+- 路径 B 的 CA 私钥（`certs/ca.key`）只存在于服务器，权限 600；泄露需换 CA 并重导全部客户端。

@@ -1,0 +1,23 @@
+[Unit]
+Description=Wendao Headscale control server
+Documentation=https://github.com/juanfont/headscale
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=headscale
+Group=headscale
+ExecStart=/usr/local/bin/headscale serve --config /etc/headscale/config.yaml
+Restart=on-failure
+RestartSec=5
+
+# 安全加固：仅数据目录可写
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/headscale /var/run/headscale
+
+[Install]
+WantedBy=multi-user.target

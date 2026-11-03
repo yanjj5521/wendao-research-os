@@ -1,4 +1,16 @@
-CHANGE_ME_HEADSCALE_DOMAIN {
-    reverse_proxy headscale:8080
-    encode gzip
-}
+# ---- 模式一：sslip.io（无域名，全自动真证书）----
+# Caddy 会为 <公网IP>.sslip.io 自动签发 Let's Encrypt 证书（要求 80/443 公网可达）。
+# deploy.sh 会把 SERVER_IP 渲染进本文件；手工使用时替换 IP 即可。
+#{
+#    email CHANGE_ME@example.com
+#}
+#CHANGE_ME_SERVER_IP.sslip.io {
+#    reverse_proxy headscale:8080
+#    encode gzip
+#}
+
+# ---- 模式二：自有域名（原方式，保持兼容）----
+#CHANGE_ME_HEADSCALE_DOMAIN {
+#    reverse_proxy headscale:8080
+#    encode gzip
+#}
