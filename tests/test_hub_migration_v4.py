@@ -105,7 +105,7 @@ conn.close()
 
 dbm.init_hub_db()
 with dbm.connect_hub() as conn:
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == dbm.HUB_SCHEMA_VERSION
     assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
     assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
     assert accounts.authenticate(conn, "legacyadmin", "Passw0rd!") is not None
@@ -168,7 +168,7 @@ with dbm.connect_hub() as conn:
     ).rowcount == 1
     conn.commit()
 
-snapshots = list((INSTANCE_DIR / "migration_snapshots").glob("hub_to_v4_*.db"))
+snapshots = list((INSTANCE_DIR / "migration_snapshots").glob("hub_to_v*_*.db"))
 assert len(snapshots) == 1, snapshots
 print("hub-migration-v4-ok")
 '''

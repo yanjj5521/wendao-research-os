@@ -50,6 +50,14 @@ LIMIT 20
 """
 
 
+def _announce(conn, sender_id: int, text: str) -> None:
+    """红包广播：插入聊天消息，所有成员在聊天刷新时收到提示。"""
+    conn.execute(
+        "INSERT INTO hub_chat_messages(user_id,body,created_at) VALUES (?,?,?)",
+        (int(sender_id), social_text(text, limit=500, label="红包通知"), now_iso()),
+    )
+
+
 def _settle_expired_packets(conn) -> None:
     """Refund the unclaimed remainder once a group packet passes its deadline."""
     now = now_iso()
@@ -205,10 +213,117 @@ def group_red_packet_create(
                 (int(user["id"]), asset, total, shares, shares, note, now_iso(), expires),
             )
             audit(conn, int(user["id"]), "group_red_packet", f"{SOCIAL_ASSET_LABELS[asset]}×{total}/{shares}份", request)
+            _announce(
+                conn, int(user["id"]),
+                f"🧧 {user['display_name']} 发出{SOCIAL_ASSET_LABELS[asset]}红包 ×{total}（{shares} 份，24 小时内到坊市领取）"
+                + (f"｜{note}" if note else ""),
+            )
         flash(request, f"群红包已发出：{shares} 份，24 小时内可抢。")
     except ValueError as exc:
         flash(request, str(exc), "error")
     return RedirectResponse(hub_url_for(request, "hub_market"), status_code=303)
+
+
+@router.post("/chat/red-packet", name="hub_chat_red_packet")
+def chat_red_packet(
+    request: Request,
+    asset_key: str = Form("spirit_stone"),
+    total_amount: int = Form(...),
+    shares: int = Form(...),
+    note: str = Form(""),
+    csrf_value: str = Form(..., alias="_csrf"),
+):
+    """在聊天里发红包：托管份额 + 全员可见的聊天提示。"""
+    user = require_user(request)
+    verify_csrf(request, csrf_value)
+    try:
+        asset = social_asset(asset_key)
+        total = social_amount(asset, total_amount)
+        shares = int(shares)
+        if not 2 <= shares <= 50:
+            raise ValueError("份数需在 2–50 之间。")
+        if total < shares:
+            raise ValueError("总数量至少等于份数。")
+        note = social_text(note, limit=160, label="祝福") if note.strip() else ""
+        expires = (datetime.now().astimezone() + timedelta(hours=24)).isoformat(timespec="seconds")
+        with hub_transaction(immediate=True) as conn:
+            transact_asset(conn, int(user["id"]), asset, -total, f"聊天红包（{shares}份）")
+            cursor = conn.execute(
+                """INSERT INTO hub_red_packets(
+                       sender_id,asset_key,total_amount,shares_total,shares_left,
+                       note,status,created_at,expires_at
+                   ) VALUES (?,?,?,?,?,?,'open',?,?)""",
+                (int(user["id"]), asset, total, shares, shares, note, now_iso(), expires),
+            )
+            packet_id = int(cursor.lastrowid)
+            audit(conn, int(user["id"]), "chat_red_packet",
+                  f"{SOCIAL_ASSET_LABELS[asset]}×{total}/{shares}份", request)
+            _announce(
+                conn, int(user["id"]),
+                f"🧧 {user['display_name']} 在聊天发出{SOCIAL_ASSET_LABELS[asset]}红包 #{packet_id}"
+                f" ×{total}（{shares} 份，24 小时内）"
+                + (f"｜{note}" if note else "")
+                + "。到「同行坊市」领取。",
+            )
+        flash(request, f"红包已发到聊天：{shares} 份。")
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+    return RedirectResponse(hub_url_for(request, "hub_chat"), status_code=303)
+
+
+@router.post("/forum/red-packet", name="hub_forum_red_packet")
+def forum_red_packet(
+    request: Request,
+    title: str = Form(...),
+    body: str = Form(""),
+    asset_key: str = Form("spirit_stone"),
+    total_amount: int = Form(...),
+    shares: int = Form(...),
+    csrf_value: str = Form(..., alias="_csrf"),
+):
+    """在论坛发红包：托管份额 + 红包帖 + 全员聊天提示。"""
+    user = require_user(request)
+    verify_csrf(request, csrf_value)
+    try:
+        title = social_text(title, limit=100, label="标题")
+        body = social_text(body, limit=2400, label="内容") if body.strip() else ""
+        asset = social_asset(asset_key)
+        total = social_amount(asset, total_amount)
+        shares = int(shares)
+        if not 2 <= shares <= 50:
+            raise ValueError("份数需在 2–50 之间。")
+        if total < shares:
+            raise ValueError("总数量至少等于份数。")
+        expires = (datetime.now().astimezone() + timedelta(hours=24)).isoformat(timespec="seconds")
+        with hub_transaction(immediate=True) as conn:
+            transact_asset(conn, int(user["id"]), asset, -total, f"论坛红包（{shares}份）")
+            cursor = conn.execute(
+                """INSERT INTO hub_red_packets(
+                       sender_id,asset_key,total_amount,shares_total,shares_left,
+                       note,status,created_at,expires_at
+                   ) VALUES (?,?,?,?,?,?,'open',?,?)""",
+                (int(user["id"]), asset, total, shares, shares, title, now_iso(), expires),
+            )
+            packet_id = int(cursor.lastrowid)
+            post_body = (
+                f"🧧 红包 #{packet_id}：{SOCIAL_ASSET_LABELS[asset]} ×{total}（{shares} 份，24 小时内）\n\n"
+                f"到「同行坊市」的群红包列表领取。\n\n{body}"
+            )
+            conn.execute(
+                "INSERT INTO hub_forum_posts(user_id,title,body,tags,created_at,updated_at) VALUES (?,?,?,?,?,?)",
+                (int(user["id"]), f"[红包] {title}"[:100], post_body, "红包", now_iso(), now_iso()),
+            )
+            audit(conn, int(user["id"]), "forum_red_packet",
+                  f"{SOCIAL_ASSET_LABELS[asset]}×{total}/{shares}份", request)
+            _announce(
+                conn, int(user["id"]),
+                f"🧧 {user['display_name']} 在论坛发布{SOCIAL_ASSET_LABELS[asset]}红包帖「{title[:40]}」"
+                f"（×{total}，{shares} 份），到「研究论坛」查看、到「同行坊市」领取。",
+            )
+        flash(request, "红包帖已发布，全员已收到提示。")
+    except ValueError as exc:
+        flash(request, str(exc), "error")
+    return RedirectResponse(hub_url_for(request, "hub_forum"), status_code=303)
 
 
 @router.post("/market/group-red-packets/{packet_id}/claim", name="hub_group_red_packet_claim")

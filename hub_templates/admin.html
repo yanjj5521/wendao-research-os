@@ -58,7 +58,8 @@
     <input type="hidden" name="_csrf" value="{{ csrf }}">
     <div class="section-head"><div><small>受限赠予</small><h2>发放同行福利</h2></div></div>
     <label>赠与成员<select name="recipient_id" required><option value="">请选择成员</option>{% for u in users if u.role=='member' and u.active %}<option value="{{ u.id }}">{{ u.display_name }} · @{{ u.username }}</option>{% endfor %}</select></label>
-    <div class="welfare-inputs"><label>修为<input type="number" name="xp" min="0" max="{{ welfare_limits.xp }}" value="0"></label><label>灵石<input type="number" name="spirit_stone" min="0" max="{{ welfare_limits.spirit_stone }}" value="0"></label><label>灵木<input type="number" name="spirit_wood" min="0" max="{{ welfare_limits.spirit_wood }}" value="0"></label><label>玄铁<input type="number" name="mystic_iron" min="0" max="{{ welfare_limits.mystic_iron }}" value="0"></label><label>星砂<input type="number" name="star_sand" min="0" max="{{ welfare_limits.star_sand }}" value="0"></label></div>
+    <div class="welfare-inputs">{% for key, label in welfare_labels.items() %}<label>{{ label }}<input type="number" name="{{ key }}" min="0" max="{{ welfare_limits[key] }}" value="0"></label>{% endfor %}</div>
+    <div class="form-help">本周（{{ welfare_week_key }}）每人额度已随机刷新：{% for key, label in welfare_labels.items() %}{{ label }} {{ welfare_weekly[key] }}{% if not loop.last %} · {% endif %}{% endfor %}。超出将拒绝并提示剩余。</div>
     <label>赠予说明<input name="reason" maxlength="160" placeholder="例如：完成团队实验 SOP"></label>
     <button class="primary">发放并记录</button>
   </form>
@@ -138,7 +139,7 @@
 
 <section class="panel">
   <div class="section-head"><div><small>不可篡改的管理员记录</small><h2>最近福利发放</h2></div></div>
-  <div class="table-wrap"><table><tr><th>时间</th><th>成员</th><th>内容</th><th>说明</th><th>状态</th></tr>{% for g in welfare %}<tr><td>{{ g.created_at[:16].replace('T',' ') }}</td><td>{{ g.recipient_name }}</td><td>{% if g.xp %}+{{ g.xp }} 修为 {% endif %}{% if g.spirit_stone %}◆{{ g.spirit_stone }} {% endif %}{% if g.spirit_wood %}木{{ g.spirit_wood }} {% endif %}{% if g.mystic_iron %}铁{{ g.mystic_iron }} {% endif %}{% if g.star_sand %}砂{{ g.star_sand }}{% endif %}</td><td>{{ g.reason }}</td><td>{{ '已领取' if g.claimed_at else '等待成员同步' }}</td></tr>{% else %}<tr><td colspan="5">还没有发放过福利。</td></tr>{% endfor %}</table></div>
+  <div class="table-wrap"><table><tr><th>时间</th><th>成员</th><th>内容</th><th>说明</th><th>状态</th></tr>{% for g in welfare %}<tr><td>{{ g.created_at[:16].replace('T',' ') }}</td><td>{{ g.recipient_name }}</td><td>{% if g.xp %}+{{ g.xp }} 修为 {% endif %}{% for key, label in welfare_labels.items() %}{% if key != 'xp' and g[key] %}{{ label }}×{{ g[key] }} {% endif %}{% endfor %}</td><td>{{ g.reason }}</td><td>{{ '已领取' if g.claimed_at else '等待成员同步' }}</td></tr>{% else %}<tr><td colspan="5">还没有发放过福利。</td></tr>{% endfor %}</table></div>
 </section>
 
 <section class="panel">

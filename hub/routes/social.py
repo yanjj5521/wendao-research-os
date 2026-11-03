@@ -60,7 +60,8 @@ def forum_page(request: Request):
     return templates.TemplateResponse(
         request=request,
         name="forum.html",
-        context=hub_context(request, "forum", posts=posts, replies_by_post=replies_by_post, social_asset_labels=SOCIAL_ASSET_LABELS),
+        context=hub_context(request, "forum",
+                forum_assets=SOCIAL_ASSET_LABELS, posts=posts, replies_by_post=replies_by_post, social_asset_labels=SOCIAL_ASSET_LABELS),
     )
 
 
@@ -163,7 +164,7 @@ def chat_page(request: Request):
             )
         ]
     messages.reverse()
-    return templates.TemplateResponse(request=request, name="chat.html", context=hub_context(request, "chat", messages=messages, chat_refresh_seconds=20, chat_emojis=CHAT_EMOJIS))
+    return templates.TemplateResponse(request=request, name="chat.html", context=hub_context(request, "chat", messages=messages, chat_refresh_seconds=20, chat_emojis=CHAT_EMOJIS, chat_assets=SOCIAL_ASSET_LABELS))
 
 
 @router.post("/chat", name="hub_chat_send")

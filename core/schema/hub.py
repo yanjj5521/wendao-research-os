@@ -12,7 +12,7 @@ from __future__ import annotations
 三者分开后，改口令策略不必动身份表，账号量大时也能各走各的索引。
 """
 
-HUB_SCHEMA_VERSION = 4
+HUB_SCHEMA_VERSION = 5
 
 HUB_SCHEMA_SQL = r"""
 -- 身份：只放"这个人是谁"，不放任何凭据
@@ -146,6 +146,14 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
                 spirit_wood INTEGER NOT NULL DEFAULT 0,
                 mystic_iron INTEGER NOT NULL DEFAULT 0,
                 star_sand INTEGER NOT NULL DEFAULT 0,
+                cultivation INTEGER NOT NULL DEFAULT 0,
+                qi_grass INTEGER NOT NULL DEFAULT 0,
+                dew_flower INTEGER NOT NULL DEFAULT 0,
+                red_ganoderma INTEGER NOT NULL DEFAULT 0,
+                azure_sword INTEGER NOT NULL DEFAULT 0,
+                heart_mirror INTEGER NOT NULL DEFAULT 0,
+                cosmos_bag INTEGER NOT NULL DEFAULT 0,
+                primordial_stone INTEGER NOT NULL DEFAULT 0,
                 reason TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 claimed_at TEXT,
@@ -256,6 +264,11 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
             CREATE INDEX IF NOT EXISTS idx_hub_events_user_created ON hub_sync_events(user_id,created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_hub_assets_user_created ON hub_asset_transactions(user_id,created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_hub_releases_created ON hub_releases(created_at DESC);
+            CREATE TABLE IF NOT EXISTS hub_welfare_week_quota(
+                week_key TEXT PRIMARY KEY,
+                quotas_json TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            );
             CREATE INDEX IF NOT EXISTS idx_hub_welfare_recipient ON hub_welfare_grants(recipient_id,created_at DESC);
 
 CREATE INDEX IF NOT EXISTS idx_accounts_role_status ON accounts(role, status);

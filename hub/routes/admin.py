@@ -36,7 +36,10 @@ from hub.db import (
     set_hub_setting,
     backup_hub_db,
     connect_hub,
-    enforce_welfare_daily_limits,
+    enforce_welfare_weekly_limits,
+    weekly_quotas,
+    weekly_quota_key,
+    WELFARE_LABELS,
     hub_transaction,
     normalize_welfare_values,
     now_iso,
@@ -137,6 +140,9 @@ def admin_page(request: Request):
             last_backup=backup_files[0].name if backup_files else "尚无",
             welfare=welfare,
             welfare_limits=WELFARE_SINGLE_LIMITS,
+            welfare_labels=WELFARE_LABELS,
+            welfare_weekly=weekly_quotas(conn),
+            welfare_week_key=weekly_quota_key(),
             public_base_url=public_base_url,
             public_base_error=public_base_error,
             runtime_base_url=runtime_base_url,
@@ -269,7 +275,10 @@ def welfare_grant(
     request: Request,
     recipient_id: int = Form(...),
     xp: int = Form(0), spirit_stone: int = Form(0), spirit_wood: int = Form(0),
-    mystic_iron: int = Form(0), star_sand: int = Form(0), reason: str = Form(""),
+    qi_grass: int = Form(0), dew_flower: int = Form(0), red_ganoderma: int = Form(0),
+    azure_sword: int = Form(0), heart_mirror: int = Form(0), cosmos_bag: int = Form(0),
+    mystic_iron: int = Form(0), star_sand: int = Form(0), primordial_stone: int = Form(0),
+    reason: str = Form(""),
     csrf_value: str = Form(..., alias="_csrf"),
 ):
     admin = require_user(request, admin=True)
@@ -278,16 +287,24 @@ def welfare_grant(
         flash(request, "福利只能赠与其他成员，不能给自己。", "error")
         return RedirectResponse("/admin", status_code=303)
     try:
-        values = normalize_welfare_values({"xp": xp, "spirit_stone": spirit_stone, "spirit_wood": spirit_wood, "mystic_iron": mystic_iron, "star_sand": star_sand})
+        values = normalize_welfare_values({
+            "xp": xp, "spirit_stone": spirit_stone, "spirit_wood": spirit_wood,
+            "qi_grass": qi_grass, "dew_flower": dew_flower, "red_ganoderma": red_ganoderma,
+            "azure_sword": azure_sword, "heart_mirror": heart_mirror, "cosmos_bag": cosmos_bag,
+            "mystic_iron": mystic_iron, "star_sand": star_sand, "primordial_stone": primordial_stone,
+        })
         with hub_transaction() as conn:
             member = conn.execute("SELECT id,display_name FROM accounts WHERE id=? AND role='member' AND active=1", (recipient_id,)).fetchone()
             if not member:
                 raise ValueError("成员不存在或已停用。")
-            enforce_welfare_daily_limits(conn, int(recipient_id), values)
+            enforce_welfare_weekly_limits(conn, int(recipient_id), values)
+            grant_columns = ",".join(values)
+            grant_marks = ",".join("?" for _ in values)
             cursor = conn.execute(
-                """INSERT INTO hub_welfare_grants(recipient_id,granted_by,xp,spirit_stone,spirit_wood,mystic_iron,star_sand,reason,created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
-                (recipient_id, admin["id"], values["xp"], values["spirit_stone"], values["spirit_wood"], values["mystic_iron"], values["star_sand"], reason.strip()[:160] or "同行会福利", now_iso()),
+                f"""INSERT INTO hub_welfare_grants(recipient_id,granted_by,{grant_columns},reason,created_at)
+                    VALUES (?,?,{grant_marks},?,?)""",
+                (recipient_id, admin["id"], *[values[k] for k in values],
+                 reason.strip()[:160] or "同行会福利", now_iso()),
             )
             grant_id = int(cursor.lastrowid)
             for asset in ASSET_KEYS:

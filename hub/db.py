@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import secrets
 import sqlite3
 from contextlib import contextmanager
@@ -38,34 +39,124 @@ ASSET_KEYS = (
     "primordial_stone",
 )
 WELFARE_SINGLE_LIMITS = {
-    "xp": 60,
-    "spirit_stone": 50,
-    "spirit_wood": 6,
-    "qi_grass": 10,
-    "dew_flower": 6,
-    "red_ganoderma": 3,
-    "azure_sword": 2,
-    "heart_mirror": 2,
-    "cosmos_bag": 1,
-    "mystic_iron": 6,
-    "star_sand": 6,
-    "primordial_stone": 2,
-}
-WELFARE_DAILY_LIMITS = {
-    "grants": 3,
-    "xp": 120,
-    "spirit_stone": 100,
-    "spirit_wood": 12,
-    "qi_grass": 20,
-    "dew_flower": 12,
-    "red_ganoderma": 6,
-    "azure_sword": 4,
-    "heart_mirror": 4,
+    "xp": 200,
+    "cultivation": 100,
+    "spirit_stone": 150,
+    "spirit_wood": 20,
+    "qi_grass": 30,
+    "dew_flower": 20,
+    "red_ganoderma": 10,
+    "azure_sword": 6,
+    "heart_mirror": 6,
     "cosmos_bag": 2,
-    "mystic_iron": 12,
-    "star_sand": 12,
-    "primordial_stone": 4,
+    "mystic_iron": 18,
+    "star_sand": 18,
+    "primordial_stone": 6,
 }
+
+WELFARE_LABELS = {
+    "xp": "修为（同步）",
+    "cultivation": "修为（资产）",
+    "spirit_stone": "灵石",
+    "spirit_wood": "灵木",
+    "qi_grass": "青灵草",
+    "dew_flower": "凝露花",
+    "red_ganoderma": "赤芝",
+    "azure_sword": "青锋剑",
+    "heart_mirror": "心镜",
+    "cosmos_bag": "乾坤袋",
+    "mystic_iron": "玄铁",
+    "star_sand": "星砂",
+    "primordial_stone": "混元石",
+}
+
+# 每人每周额度：每周一自动刷新，数值在 [floor, cap] 间随机；floor 保证下限，
+# 让成员每周都有一笔可观的成长资源（快速发展的基数）。
+WELFARE_WEEKLY_FLOORS = {key: max(1, value * 3) for key, value in WELFARE_SINGLE_LIMITS.items()}
+WELFARE_WEEKLY_CAPS = {key: value * 7 for key, value in WELFARE_SINGLE_LIMITS.items()}
+
+
+def weekly_quota_key(now: datetime | None = None) -> str:
+    """当前 ISO 周键，形如 2026-W45（周一为一周起点）。"""
+    current = now or datetime.now().astimezone()
+    year, week, _ = current.isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def week_start_iso(now: datetime | None = None) -> str:
+    """当前 ISO 周的周一 00:00（本地时区），用于统计本周已发放。"""
+    current = now or datetime.now().astimezone()
+    year, week, _ = current.isocalendar()
+    monday = datetime.fromisocalendar(year, week, 1)
+    return monday.astimezone().isoformat(timespec="seconds")
+
+
+def weekly_quotas(conn: sqlite3.Connection | None = None, now: datetime | None = None) -> dict[str, int]:
+    """读取（必要时生成）本周每人额度：各类材料/修为在 [下限, 上限] 内随机。
+
+    生成本周额度时使用自持短事务写入（double-check 防并发重复生成）；
+    ``conn`` 只用于读取，调用方传只读连接也安全。
+    """
+    key = weekly_quota_key(now)
+    reader = conn or connect_hub()
+    row = reader.execute(
+        "SELECT quotas_json FROM hub_welfare_week_quota WHERE week_key=?", (key,)
+    ).fetchone()
+    if row:
+        try:
+            return {k: int(v) for k, v in json.loads(str(row["quotas_json"])).items()}
+        except (ValueError, TypeError):
+            pass
+    with hub_transaction(immediate=True) as writer:
+        row = writer.execute(
+            "SELECT quotas_json FROM hub_welfare_week_quota WHERE week_key=?", (key,)
+        ).fetchone()
+        if row:
+            try:
+                return {k: int(v) for k, v in json.loads(str(row["quotas_json"])).items()}
+            except (ValueError, TypeError):
+                pass
+        quotas = {
+            k: WELFARE_WEEKLY_FLOORS[k]
+            + secrets.randbelow(max(1, WELFARE_WEEKLY_CAPS[k] - WELFARE_WEEKLY_FLOORS[k] + 1))
+            for k in WELFARE_SINGLE_LIMITS
+        }
+        writer.execute(
+            "INSERT OR IGNORE INTO hub_welfare_week_quota(week_key,quotas_json,created_at) VALUES (?,?,?)",
+            (key, json.dumps(quotas, ensure_ascii=False), now_iso()),
+        )
+    return quotas
+
+
+def enforce_welfare_weekly_limits(
+    conn: sqlite3.Connection, recipient_id: int, values: dict[str, int], now: datetime | None = None
+) -> dict[str, int]:
+    """每周额度校验：本周已发 + 本次 > 随机额度 时拒绝，并告知剩余。"""
+    quotas = weekly_quotas(conn, now)
+    start = week_start_iso(now)
+    columns = ",".join(WELFARE_SINGLE_LIMITS)
+    row = conn.execute(
+        f"""SELECT {columns} FROM hub_welfare_grants
+            WHERE recipient_id=? AND created_at>=?""",
+        (recipient_id, start),
+    ).fetchone()
+    used_map = (
+        {key: int(row[key] or 0) for key in WELFARE_SINGLE_LIMITS}
+        if row is not None
+        else {key: 0 for key in WELFARE_SINGLE_LIMITS}
+    )
+    remaining: dict[str, int] = {}
+    for key in WELFARE_SINGLE_LIMITS:
+        used = used_map[key]
+        left = int(quotas[key]) - used
+        remaining[key] = max(0, left)
+        if left < int(values.get(key, 0) or 0):
+            raise ValueError(
+                f"该成员本周 {WELFARE_LABELS[key]} 剩余额度 {max(0, left)}"
+                f"（本周额度 {quotas[key]}，已用 {used}），不足以再发 {int(values.get(key, 0) or 0)}。"
+            )
+    return remaining
+
 
 
 def _restrict_private_file(path: Path) -> None:
@@ -178,24 +269,6 @@ def normalize_welfare_values(values: dict[str, object]) -> dict[str, int]:
     if not any(result.values()):
         raise ValueError("至少填写一项福利。")
     return result
-
-
-def enforce_welfare_daily_limits(conn: sqlite3.Connection, recipient_id: int, values: dict[str, int]) -> None:
-    today = datetime.now().astimezone().date().isoformat()
-    row = conn.execute(
-        """SELECT COUNT(*) grants,COALESCE(SUM(xp),0) xp,COALESCE(SUM(spirit_stone),0) spirit_stone,
-                  COALESCE(SUM(spirit_wood),0) spirit_wood,COALESCE(SUM(mystic_iron),0) mystic_iron,
-                  COALESCE(SUM(star_sand),0) star_sand
-           FROM hub_welfare_grants WHERE recipient_id=? AND substr(created_at,1,10)=?""",
-        (recipient_id, today),
-    ).fetchone()
-    if int(row["grants"] or 0) >= WELFARE_DAILY_LIMITS["grants"]:
-        raise ValueError("该成员今日已达到 3 次福利上限。")
-    for key, upper in WELFARE_DAILY_LIMITS.items():
-        if key == "grants":
-            continue
-        if int(row[key] or 0) + int(values[key]) > upper:
-            raise ValueError(f"该成员今日 {key} 福利上限为 {upper}。")
 
 
 def backup_hub_db(keep: int = 14) -> Path:
