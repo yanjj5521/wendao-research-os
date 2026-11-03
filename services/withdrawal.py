@@ -9,7 +9,7 @@
 自动判级（全部满足才自动执行）：
 - 条目存在且状态为 active；
 - 同一条目没有处理中/已执行的撤回单；
-- 提交时间距条目创建 ≤ WITHDRAW_WINDOW_HOURS（24h）；
+- 提交时间距条目创建 ≤ 自动窗口（settings 键 ``withdraw_window_hours``，默认 72h）；
 - 错误类型在枚举内、说明 ≥10 字。
 """
 
@@ -23,7 +23,19 @@ from typing import Any
 
 from core.runtime_paths import STORAGE_ROOT
 
-WITHDRAW_WINDOW_HOURS = 24
+DEFAULT_WINDOW_HOURS = 72          # 自动撤回窗口，可经 settings 的 withdraw_window_hours 调整
+ARCHIVE_AFTER_DAYS = 90            # 已完结撤回单的归档时限
+
+
+def window_hours(conn: sqlite3.Connection) -> int:
+    """自动撤回窗口（小时）：settings.withdraw_window_hours，默认 72，合法范围 1–8760。"""
+    try:
+        row = conn.execute("SELECT value FROM settings WHERE key='withdraw_window_hours'").fetchone()
+        if row:
+            return max(1, min(8760, int(row[0])))
+    except (ValueError, TypeError, sqlite3.OperationalError):
+        pass
+    return DEFAULT_WINDOW_HOURS
 MIN_DESCRIPTION = 10
 MAX_TEAM_NOTE = 400
 
@@ -65,6 +77,7 @@ def recent_withdrawals(conn: sqlite3.Connection, limit: int = 12) -> list[dict[s
     rows = conn.execute(
         "SELECT w.*, e.title AS entry_title, e.status AS entry_status "
         "FROM upload_withdrawals w LEFT JOIN entries e ON e.id = w.entry_id "
+        "WHERE w.status <> 'archived' "
         "ORDER BY w.id DESC LIMIT ?",
         (limit,),
     ).fetchall()
@@ -117,6 +130,26 @@ def _execute_withdrawal(
     )
 
 
+def archive_expired_withdrawals(conn: sqlite3.Connection, *, now: datetime | None = None) -> int:
+    """把 90 天前已完结、且条目不再处于"已撤回"状态的撤回单标记为 archived。
+
+    条目仍处于 withdrawn 状态的 approved 单不归档——否则会夺走用户的恢复入口。
+    返回归档数量；在知识库页加载时惰性调用。
+    """
+    current = now or datetime.now().astimezone()
+    horizon = (current - timedelta(days=ARCHIVE_AFTER_DAYS)).isoformat(timespec="seconds")
+    cursor = conn.execute(
+        "UPDATE upload_withdrawals SET status='archived' "
+        "WHERE status IN ('approved','cancelled','obsolete') AND decided_at IS NOT NULL "
+        "AND decided_at < ? "
+        "AND NOT EXISTS ("
+        "  SELECT 1 FROM entries e WHERE e.id = upload_withdrawals.entry_id AND e.status='withdrawn'"
+        ")",
+        (horizon,),
+    )
+    return cursor.rowcount
+
+
 def request_withdrawal(
     conn: sqlite3.Connection,
     entry_id: int,
@@ -149,7 +182,7 @@ def request_withdrawal(
     if created_at.tzinfo is None:
         created_at = created_at.astimezone()
     current = now or datetime.now().astimezone()
-    within_window = (current - created_at) <= timedelta(hours=WITHDRAW_WINDOW_HOURS)
+    within_window = (current - created_at) <= timedelta(hours=window_hours(conn))
     auto_level = "auto" if within_window else "manual_confirm"
     status = "approved" if within_window else "pending_review"
 
@@ -163,7 +196,7 @@ def request_withdrawal(
             status,
             auto_level,
             "system" if within_window else "",
-            "边界内自动执行" if within_window else "超出24小时窗口，需人工确认",
+            "边界内自动执行" if within_window else "超出自动撤回窗口，需人工确认",
             _now(),
         ),
     )

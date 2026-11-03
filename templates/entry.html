@@ -64,7 +64,7 @@
       <form method="post" action="{{url_for('entry_reindex',entry_id=entry.id)}}"><button class="ghost-button full-button">重新提取全文</button></form>{% endif %}
     </section>
     <section class="panel">
-      <div class="panel-head simple"><div><span class="eyebrow">Withdraw</span><h2>内容有误？申请撤回</h2><p>24 小时内自动执行并留存快照；超出窗口转待确认记录，全程留痕、可恢复。</p></div></div>
+      <div class="panel-head simple"><div><span class="eyebrow">Withdraw</span><h2>内容有误？申请撤回</h2><p>{{ window_hours }} 小时内自动执行并留存快照；超出窗口转待确认记录，全程留痕、可恢复。</p></div></div>
       {% if entry_withdrawal %}
       <p class="form-help">已有处理中的撤回单 #{{ entry_withdrawal.id }}（{{ entry_withdrawal.status }}），可在知识库页的撤回记录里处理。</p>
       {% else %}

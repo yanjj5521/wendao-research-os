@@ -60,6 +60,7 @@ def library(request: Request, kind: str = "", domain: str = "", favorite: str = 
     sql += " ORDER BY favorite DESC, updated_at DESC LIMIT 300"
     with connect() as conn:
         entries = [entry_dict(row) for row in conn.execute(sql, params)]
+        withdrawal_service.archive_expired_withdrawals(conn)
         withdrawals = withdrawal_service.recent_withdrawals(conn)
         selected_workspace = conn.execute(
             "SELECT id,name,icon FROM workspaces WHERE id=?", (workspace,)
@@ -318,7 +319,8 @@ def entry_view(request: Request, entry_id: int):
         request=request,
         name="entry.html",
         context=context(request, "entry", entry=entry, related=related,
-                           entry_withdrawal=withdrawal, error_types=withdrawal_service.ERROR_TYPES),
+                           entry_withdrawal=withdrawal, error_types=withdrawal_service.ERROR_TYPES,
+                           window_hours=withdrawal_service.window_hours(conn)),
     )
 
 
@@ -435,7 +437,7 @@ def entry_withdraw(request: Request, entry_id: int, error_type: str = Form(""), 
             if result["status"] == "approved":
                 flash(request, f"《{result['entry_title']}》已自动撤回；快照与附件副本已留存，可在撤回记录里恢复。", "success")
             else:
-                flash(request, "该条目超出 24 小时自动撤回窗口，已转入待确认记录；请在知识库页的撤回记录里确认执行。", "success")
+                flash(request, "该条目超出自动撤回窗口，已转入待确认记录；请在知识库页的撤回记录里确认执行。", "success")
     return redirect("library", request)
 
 
