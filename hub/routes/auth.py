@@ -187,13 +187,24 @@ def register_submit(
         row, reason = find_invite(conn, invite)
         if not row:
             instance = ensure_instance_id(conn)
+            embedded_hint = ""
+            # 个人端应用把中心挂载在 /team：成员看到的是"自己电脑上的中心实例"。
+            # 若邀请码来自管理员的中心（另一台电脑），必须走浏览器注册 + Token 连接，
+            # 这里就地给出正确路径，避免成员在错误的实例里反复尝试。
+            if str(request.scope.get("root_path", "")).rstrip("/").endswith("/team"):
+                embedded_hint = (
+                    "提示：你当前打开的是本机自带的中心实例（每个安装各有一个）。"
+                    "如果这条邀请码来自管理员发的链接，请：① 用浏览器打开管理员发的链接，"
+                    "在管理员的中心完成注册并登录；② 进入「我的联机主页」复制 API Token；"
+                    "③ 回到程序「连接同行会」保存中心地址与 Token 即可加入。"
+                )
             messages = {
                 "empty": "请输入邀请码。",
                 "format": "邀请码格式不正确，请粘贴管理员生成的完整邀请码或注册链接。",
                 "missing": (
                     f"邀请码不存在或已失效（中心实例 {instance}）。"
                     "请确认注册地址与管理员面板属于同一实例，或让管理员重新生成。"
-                ),
+                ) + embedded_hint,
                 "used": "邀请码已用完。",
                 "expired": "邀请码已过期。",
             }
