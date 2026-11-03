@@ -405,6 +405,11 @@
     "name": "online_connect"
   },
   {
+    "method": "GET",
+    "path": "/online/enter",
+    "name": "online_enter"
+  },
+  {
     "method": "POST",
     "path": "/online/headnet/save",
     "name": "online_headnet_save"
@@ -443,6 +448,16 @@
     "method": "POST",
     "path": "/online/personalization/import",
     "name": "online_personalization_import"
+  },
+  {
+    "method": "POST",
+    "path": "/online/releases/download",
+    "name": "online_release_download"
+  },
+  {
+    "method": "POST",
+    "path": "/online/releases/reveal",
+    "name": "online_release_reveal"
   },
   {
     "method": "POST",

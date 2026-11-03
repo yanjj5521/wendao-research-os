@@ -8,13 +8,16 @@ the previous EXE is kept briefly so a failed launch can be rolled back.
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 import sys
 import threading
+import webbrowser
 import zipfile
 from pathlib import Path
 
+from core.database import get_setting
 from core.runtime_paths import STORAGE_ROOT
 from services.backups import backup_local_db
 from services.download import fetch_resumable
@@ -41,6 +44,60 @@ def _safe_package(path: Path) -> None:
         exe_count = sum(name.name.lower() == APP_EXE_NAME.lower() for name in names)
         if exe_count != 1 or not required.issubset(basenames):
             raise ValueError("更新包不是有效的 Team-Update.zip。")
+
+
+DOWNLOAD_DIR_NAME = "downloads"
+
+
+def download_release_package(
+    *,
+    release_id: int,
+    sha256: str,
+    version: str = "",
+    hub_url: str = "",
+    token: str = "",
+) -> Path:
+    """把中心的版本包**下载到本机**（只落盘，不替换 EXE）。
+
+    桌面窗口里点浏览器式下载经常没有反应（内嵌 WebView 不弹保存框），
+    这里改成服务端拉取：走 Bearer Token、断点续传、SHA-256 校验，
+    放好后由界面告诉用户文件在哪，保证"能下、能用"。
+    """
+    hub_url = (hub_url or get_setting("hub_url", "")).strip().rstrip("/")
+    token = (token or get_setting("hub_api_token", "")).strip()
+    if not hub_url or not token:
+        raise ValueError("请先在「我加入他人的中心」里保存中心地址与 API Token。")
+    update_dir = STORAGE_ROOT / "team_updates" / DOWNLOAD_DIR_NAME
+    update_dir.mkdir(parents=True, exist_ok=True)
+    safe_version = re.sub(r"[^0-9A-Za-z._-]+", "_", version or str(release_id))[:40] or str(release_id)
+    target = update_dir / f"WendaoResearch-v{safe_version}-Team-Update.zip"
+    fetch_resumable(
+        f"{hub_url}/api/v1/releases/{release_id}/download",
+        target,
+        expected_sha256=sha256,
+        max_bytes=MAX_UPDATE_BYTES,
+        timeout=300,
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    try:
+        _safe_package(target)
+    except Exception:
+        target.unlink(missing_ok=True)
+        raise
+    return target
+
+
+def reveal_path(path: Path) -> None:
+    """在文件管理器里定位该文件（Windows 用资源管理器，其他平台打开目录）。"""
+    target = Path(path)
+    folder = target if target.is_dir() else target.parent
+    try:
+        if sys.platform == "win32":
+            os.startfile(str(folder))  # type: ignore[attr-defined]
+        else:
+            webbrowser.open(folder.as_uri())
+    except OSError:
+        webbrowser.open(folder.as_uri())
 
 
 def prepare_team_update(*, hub_url: str, token: str, release_id: int, sha256: str) -> Path:

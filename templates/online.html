@@ -10,6 +10,25 @@
   <span class="sync-provider-badge {% if sync_provider == 'disabled' %}disabled{% endif %}">{{ sync_capabilities.label }}</span>
 </div>
 
+<section class="panel identity-hero role-{{ identity.role }}" id="identity">
+  <div class="panel-head simple">
+    <div>
+      <span class="eyebrow">当前身份 · 只会有一种</span>
+      <h2>{{ identity.label }}</h2>
+      <p>{{ identity.detail }}</p>
+    </div>
+    <span class="sync-provider-badge {% if identity.role == 'unbound' %}disabled{% endif %}">{{ identity.badge }}</span>
+  </div>
+  <div class="button-row">
+    <a class="primary-button" href="{{ identity.entry_url }}" {% if identity.entry_kind == 'external' %}target="_blank" rel="noopener"{% endif %}>{{ identity.action_label }}</a>
+    {% if identity.center_url %}<small class="form-help">中心地址：<code>{{ identity.center_url }}</code></small>{% endif %}
+  </div>
+  <div class="privacy-note"><b>两种身份的流程不通用</b>
+    <p><b>A · 我是中心</b>：在这台电脑启动中心 → 把成员地址与邀请码发出去 → 版本包由你在「版本中心」上传。<br>
+       <b>B · 我是成员</b>：只保存对方的中心地址与 API Token → 点「进入同行会」直接打开对方中心。本机那份副本是空的，在里面注册或找邀请码一定失败。</p>
+  </div>
+</section>
+
 <section class="sync-contract-hero panel">
   <div>
     <span class="eyebrow">Channel ready</span>
@@ -32,11 +51,11 @@
 
 <div class="content-grid equal">
   <form method="post" action="{{ url_for('online_settings_save') }}" class="panel clean-form">
-    <div class="panel-head simple"><div><span class="eyebrow">成员连接</span><h2>连接同行会</h2></div></div>
+    <div class="panel-head simple"><div><span class="eyebrow">B · 我是成员</span><h2>连接他人的中心</h2></div></div>
     <ol class="connection-steps">
-      <li><b>1</b><span>管理员在本页点击“启动本机同行会中心”</span></li>
-      <li><b>2</b><span>所有人用同一个问道科研 EXE，在“同行会”登录</span></li>
-      <li><b>3</b><span>成员在“我的联机主页”复制 Token，再在此保存连接</span></li>
+      <li><b>1</b><span>向中心管理员索取「成员入口」地址与邀请码</span></li>
+      <li><b>2</b><span>用浏览器打开该地址注册并登录，在「我的联机主页」复制 API Token</span></li>
+      <li><b>3</b><span>回到本页填入地址与 Token，点「保存并联机」——此后「进入同行会」直接打开对方中心</span></li>
     </ol>
     <label>
       <span>当前模式</span>
@@ -71,7 +90,7 @@
 
 <section class="online-control-grid">
   <article class="panel">
-    <div class="panel-head simple"><div><span class="eyebrow">本机联机中心</span><h2>{{ '运行中' if hub_host.running else '未启动' }}</h2></div></div>
+    <div class="panel-head simple"><div><span class="eyebrow">A · 我是中心</span><h2>本机联机中心 · {{ '运行中' if hub_host.running else '未启动' }}</h2></div></div>
     {% if hub_host.running %}
     {% if hub_host.access_urls %}
     <div class="hub-access-list">
@@ -96,8 +115,9 @@
     {% endif %}
   </article>
   <article class="panel">
-    <div class="panel-head simple"><div><span class="eyebrow">同行会</span><h2>当前程序内打开</h2></div></div>
-    <a class="primary-button" href="/team/">进入同行会</a>
+    <div class="panel-head simple"><div><span class="eyebrow">同行会入口</span><h2>{{ identity.badge }} · 点进去是哪一份</h2></div></div>
+    <p>{% if identity.entry_kind == 'external' %}你连的是别人的中心：入口直接指向 <code>{{ identity.center_url }}</code>，不会再进本机空副本。{% elif identity.role == 'host' %}入口打开本机中心；别人看到的是你发布的成员地址。{% else %}先在上面选好身份，入口才知道该打开哪一份。{% endif %}</p>
+    <a class="primary-button" href="{{ identity.entry_url }}" {% if identity.entry_kind == 'external' %}target="_blank" rel="noopener"{% endif %}>{{ identity.action_label }}</a>
   </article>
 </section>
 
@@ -155,7 +175,7 @@
 </section>
 
 <section class="panel legacy-sync-panel">
-  <div class="panel-head simple"><div><span class="eyebrow">Version center</span><h2>更新与同步</h2><p>版本检查、原地更新和轻量状态同步都在同一程序中完成。</p></div><a class="primary-button" href="/team/">进入同行会</a></div>
+  <div class="panel-head simple"><div><span class="eyebrow">Version center</span><h2>更新与同步</h2><p>版本检查、原地更新和轻量状态同步都在同一程序中完成。</p></div><a class="primary-button" href="{{ identity.entry_url }}" {% if identity.entry_kind == 'external' %}target="_blank" rel="noopener"{% endif %}>{{ identity.action_label }}</a></div>
   <div class="privacy-note"><b>当前数据目录</b><p><code>{{ data_root }}</code>。更新只会替换程序 EXE；数据库、论文、笔记、附件和个人配置不会被更新包覆盖。</p></div>
   <div class="button-row">
     <form method="post" action="{{ url_for('online_update_check') }}"><button class="soft-button">检查新版本</button></form>
@@ -168,6 +188,17 @@
     {% elif latest_release %}
       <small>当前版本 {{ local_version }} 已是同行会记录的最新版本。</small>
     {% endif %}
+  </div>
+  <div class="privacy-note"><b>版本包下载（桌面窗口里也能用）</b>
+    <p>桌面内嵌窗口点浏览器式下载经常没有反应。这里改成程序自己去中心取包：断点续传 + SHA-256 校验 + 解包结构检查，存到本机后告诉你文件位置。</p>
+    <div class="button-row">
+      {% if latest_release %}
+      <form method="post" action="{{ url_for('online_release_download') }}"><button class="soft-button">下载版本包到本机 · v{{ latest_release.version }}</button></form>
+      {% else %}
+      <small>先点「检查新版本」或「立即同步」，取到中心的版本包信息后才能下载。</small>
+      {% endif %}
+      <form method="post" action="{{ url_for('online_release_reveal') }}"><button class="soft-button">打开版本包所在文件夹</button></form>
+    </div>
   </div>
   <div class="privacy-note"><b>没有同行会？可直接查 GitHub</b><p>只读取公开仓库的正式发布，不上传任何本地资料；下载后仍校验 SHA-256、备份数据库并走同一套替换与回滚流程。</p></div>
   <div class="button-row">

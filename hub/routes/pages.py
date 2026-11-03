@@ -2,21 +2,24 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, timedelta
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import HTMLResponse
 
 from hub.common import (
-    BASE_DIR,
     current_user,
     hub_context,
     require_user,
     templates,
 )
 from hub.db import (
-    HUB_RELEASE_DIR,
     connect_hub,
+    get_user_by_token,
+)
+from hub.releases import (
+    MISSING_MESSAGE,
+    release_download_response,
+    resolve_release_file,
 )
 
 router = APIRouter()
@@ -120,14 +123,49 @@ def releases_page(request: Request):
 
 
 @router.get("/releases/{release_id}/download", name="hub_release_download")
-def release_download(request: Request, release_id: int):
-    require_user(request)
+def release_download(request: Request, release_id: int, token: str = ""):
+    """版本包下载。
+
+    主路径靠登录态 Cookie；桌面内嵌窗口、或把链接发给别人时，Cookie 可能带不上，
+    所以额外支持 ``?token=<我的API Token>``。两条路径都必须通过身份校验。
+    """
+    if current_user(request) is None and not _token_identity(token):
+        raise HTTPException(
+            status_code=401,
+            detail="请先登录同行会，或在下载链接后加上 ?token=你的 API Token。",
+        )
     with connect_hub() as conn:
-        row=conn.execute("SELECT * FROM hub_releases WHERE id=? AND active=1",(release_id,)).fetchone()
+        row = conn.execute("SELECT * FROM hub_releases WHERE id=? AND active=1", (release_id,)).fetchone()
     if not row:
-        raise HTTPException(status_code=404)
-    stored = Path(str(row["file_path"]))
-    target=(stored if stored.is_absolute() else BASE_DIR/stored).resolve()
-    if not target.exists() or HUB_RELEASE_DIR.resolve() not in target.parents:
-        raise HTTPException(status_code=404)
-    return FileResponse(target,filename=target.name,media_type="application/zip")
+        raise HTTPException(status_code=404, detail="版本包不存在或已下架。")
+    if resolve_release_file(row) is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="error.html",
+            context=hub_context(
+                request,
+                "error",
+                status_code=404,
+                title="版本包文件不存在",
+                message=MISSING_MESSAGE,
+            ),
+            status_code=404,
+        )
+    return release_download_response(row)
+
+
+def _token_identity(token: str):
+    from hub.db import now_iso
+
+    value = token.strip()
+    if not value:
+        return None
+    with connect_hub() as conn:
+        row = get_user_by_token(conn, value)
+        if row:
+            conn.execute(
+                "UPDATE accounts SET last_seen_at=?,updated_at=? WHERE id=?",
+                (now_iso(), now_iso(), row["id"]),
+            )
+            conn.commit()
+        return row

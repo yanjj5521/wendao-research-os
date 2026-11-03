@@ -329,6 +329,18 @@ def release_upload(request:Request,version:str=Form(...),title:str=Form(...),not
     if not safe_version:
         flash(request, "版本号无效。", "error")
         return RedirectResponse("/admin", status_code=303)
+    with connect_hub() as conn:
+        duplicated = conn.execute(
+            "SELECT 1 FROM hub_releases WHERE version=? AND active=1", (safe_version,)
+        ).fetchone()
+    if duplicated:
+        flash(
+            request,
+            f"v{safe_version} 已经存在。请先把旧版本下架，或改用新版本号重新发布，"
+            "否则成员端会一直拿到旧包。",
+            "error",
+        )
+        return RedirectResponse("/admin", status_code=303)
     try:
         HUB_RELEASE_DIR.mkdir(parents=True, exist_ok=True)
         target=HUB_RELEASE_DIR/f"ResearchCultivationOS_{safe_version}_{secrets.token_hex(4)}.zip"

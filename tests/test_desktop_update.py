@@ -224,7 +224,8 @@ print('legacy-adopt-ok')
         installer = (ROOT / "packaging" / "windows" / "install_windows.ps1").read_text(
             encoding="utf-8"
         )
-        self.assertIn('app.mount("/team", preserve_outer_session(hub_app), name="team")', app)
+        self.assertIn("team_entry(preserve_outer_session(hub_app))", app)
+        self.assertIn("from web.team_entry import team_entry", app)
         self.assertIn("本机联机中心", template)
         self.assertIn("进入同行会", template)
         self.assertIn("更新只会替换程序 EXE", template)

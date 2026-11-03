@@ -35,13 +35,15 @@ from services.workspace_profiles import normalize_toolset, normalize_workflow
 from core.version import APP_VERSION, is_newer_version
 from services.team_update import (
     can_self_update,
+    download_release_package,
     exit_for_update,
     prepare_team_update,
+    reveal_path,
     schedule_windows_replace,
 )
 from services import github_update
 from services.team_update import last_apply_log
-from services import hub_host, headscale_vpn
+from services import headscale_vpn, hub_host, hub_identity
 
 EXPORT_DIR = STORAGE_ROOT / "sync_exports"
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -149,6 +151,8 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
             isinstance(latest_release, dict)
             and is_newer_version(str(latest_release.get("version", "")), APP_VERSION)
         )
+        host_status = hub_host.status()
+        identity = hub_identity.resolve(host_status)
         return templates.TemplateResponse(
             request=request,
             name="online.html",
@@ -179,10 +183,48 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 github_update_checked_at=get_setting("github_update_checked_at", ""),
                 update_log_tail=last_apply_log(),
                 data_root=str(DATA_ROOT),
-                hub_host=hub_host.status(),
+                hub_host=host_status,
+                identity=identity,
                 headnet=headscale_vpn.status(),
             ),
         )
+
+    @router.get("/online/enter", name="online_enter")
+    def online_enter(request: Request):
+        """「进入同行会」的唯一入口：按当前身份打开对应的那一份中心。"""
+        identity = hub_identity.resolve()
+        return RedirectResponse(identity["entry_url"], status_code=303)
+
+    @router.post("/online/releases/download", name="online_release_download")
+    def online_release_download(request: Request):
+        """把中心的最新版本包下载到本机并校验（只落盘，不替换程序）。"""
+        release = cached_value("latest_release", None)
+        if not isinstance(release, dict) or not release.get("id"):
+            flash(request, "还没有取到中心的版本包信息，请先点「立即同步」或「检查更新」。", "error")
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
+        try:
+            package = download_release_package(
+                release_id=int(release["id"]),
+                sha256=str(release.get("sha256", "")),
+                version=str(release.get("version", "")),
+            )
+        except (OSError, ValueError, RuntimeError) as exc:
+            flash(request, f"版本包下载失败：{exc}", "error")
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
+        flash(
+            request,
+            f"版本包 v{release.get('version', '')} 已下载并通过 SHA-256 校验：{package}。"
+            "可在下方「打开版本包所在文件夹」取用。",
+        )
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/releases/reveal", name="online_release_reveal")
+    def online_release_reveal(request: Request):
+        folder = STORAGE_ROOT / "team_updates" / "downloads"
+        folder.mkdir(parents=True, exist_ok=True)
+        reveal_path(folder)
+        flash(request, f"已打开版本包文件夹：{folder}")
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/hub-host/start", name="online_hub_host_start")
     def online_hub_host_start(request: Request, port: int = Form(5050)):
@@ -469,6 +511,10 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
         url = hub_url.strip().rstrip("/")
         existing_token = get_setting("hub_api_token", "").strip()
         token = hub_api_token.strip() or existing_token
+        if connect_now == "1" and sync_provider == "disabled" and url and token:
+            # 填了地址 + Token 还点了“保存并联机”，意图已经明确是当成员；
+            # 不再要求先在下拉框里手动切一次模式。
+            sync_provider = "legacy_hub"
         # 非敏感输入先落库：即使校验失败，用户也不必重新填写地址/模式。
         set_setting("sync_provider", sync_provider)
         set_setting("hub_url", url)
@@ -497,11 +543,12 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
         if sync_provider == "legacy_hub" and connect_now == "1":
             enqueue_initial_state()
             result = sync_now(force=True)
+            identity = hub_identity.resolve()
             flash(
                 request,
                 (
-                    f"{result['message']} 联机通道已开启，"
-                    f"本次确认 {result.get('synced', 0)} 个状态事件。"
+                    f"{result['message']} 联机通道已开启，本次确认 {result.get('synced', 0)} 个状态事件。"
+                    f"当前身份：{identity['badge']}；「进入同行会」将打开 {identity['center_url'] or '本机中心'}。"
                 ),
                 "success" if result["ok"] else "error",
             )

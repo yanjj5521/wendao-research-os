@@ -41,6 +41,12 @@ def login(client, username, password):
         data={"username": username, "password": password, "_csrf": csrf(client, "/team/login")},
     )
 
+# 本机中心的身份声明：地址指向回环 → 这台电脑就是中心，/team 应正常给出行会页面
+from core.database import set_setting
+set_setting("sync_provider", "legacy_hub")
+set_setting("hub_url", "http://127.0.0.1:5050")
+set_setting("hub_api_token", "self-center-token")
+
 client = TestClient(web.app)
 first = login(client, "admin", admin_password)
 assert first.status_code == 200 and first.url.path == "/team/"

@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.10.0"
-description = "问道科研 1.8.3：内置 Headscale 用户态虚拟专网"
+version = "1.11.0"
+description = "问道科研 1.11.0：同行会身份分流（自己开中心 / 连接他人中心）与版本包下载修复"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

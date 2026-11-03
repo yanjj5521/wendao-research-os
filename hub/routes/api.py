@@ -1,14 +1,11 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
 
 from hub.common import (
     profile_payload,
-    BASE_DIR,
     VERSION,
     api_user,
     audit,
@@ -16,11 +13,11 @@ from hub.common import (
 )
 from hub.sync import apply_event
 from hub.db import (
-    HUB_RELEASE_DIR,
     connect_hub,
     hub_transaction,
     now_iso,
 )
+from hub.releases import release_download_response
 
 router = APIRouter()
 MAX_API_BODY_BYTES = 256 * 1024
@@ -121,9 +118,5 @@ def api_release_download(request:Request,release_id:int):
     with connect_hub() as conn:
         row = conn.execute("SELECT * FROM hub_releases WHERE id=? AND active=1", (release_id,)).fetchone()
     if not row:
-        raise HTTPException(status_code=404)
-    stored = Path(str(row["file_path"]))
-    target=(stored if stored.is_absolute() else BASE_DIR/stored).resolve()
-    if not target.exists() or HUB_RELEASE_DIR.resolve() not in target.parents:
-        raise HTTPException(status_code=404)
-    return FileResponse(target,filename=target.name,media_type="application/zip")
+        raise HTTPException(status_code=404, detail="版本包不存在或已下架。")
+    return release_download_response(row)

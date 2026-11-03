@@ -19,6 +19,7 @@ from hub.app import app as hub_app
 from hub.db import init_hub_db
 from hub.session_isolation import preserve_outer_session
 from web.gate import install_access_gate
+from web.team_entry import team_entry
 from web.routes import analysis, foundation, home, integral, library, research_tools, roam, settings
 from web.runtime import app, context, current_realm, entry_dict, flash, templates
 
@@ -27,8 +28,13 @@ def register_routes() -> None:
     # The team centre is a first-class page of the desktop product.  It still
     # keeps its own central database (multiple people must never write the
     # personal SQLite database), but no longer needs a second executable.
+    # ``/team`` 先过身份分流：连接他人中心的成员不应该掉进本机这份空副本。
     init_hub_db()
-    app.mount("/team", preserve_outer_session(hub_app), name="team")
+    app.mount(
+        "/team",
+        team_entry(preserve_outer_session(hub_app)),
+        name="team",
+    )
     for route_module in (
         home,
         library,
