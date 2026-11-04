@@ -1,111 +1,147 @@
 {% extends "base.html" %}
 {% block title %}每日任务 · {{ site_name }}{% endblock %}
 {% block content %}
-<div class="page-head minimal-head daily-head">
-  <div>
-    <span class="eyebrow">Day {{ current_day }} / {{ plan.total_days }}</span>
-    <h1>{{ day_title }}</h1>
-    <p>任务只是一种可选激励，不是学习的准入证。今天剩余约 {{ total_minutes }} 分钟。</p>
-  </div>
-  <div class="wallet-strip compact-wallet">
-    <span>◆ {{ wallet.spirit_stone }}</span><span>⌁ {{ wallet.spirit_wood }}</span><span>⬢ {{ wallet.mystic_iron }}</span><span>✦ {{ wallet.star_sand }}</span>
-  </div>
-</div>
+<style>
+  .daily-page{--card-gap:14px}
+  .daily-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
+  .daily-top h1{margin:6px 0 8px;font-size:clamp(24px,3vw,32px);line-height:1.25}
+  .daily-top .sub{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:#6f685c;font-size:13.5px}
+  .daily-bar{flex:1 1 220px;min-width:180px;height:8px;border-radius:999px;background:rgba(0,0,0,.07);overflow:hidden}
+  .daily-bar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#b8752f,#d9a45f);transition:width .4s ease}
+  .daily-wallet{display:flex;gap:12px;font-size:13px;color:#6f685c;white-space:nowrap}
+  .daily-page .mission-card{display:flex;gap:14px;padding:18px 18px 16px;border-radius:16px;border:1px solid rgba(0,0,0,.07);background:#fff;box-shadow:0 8px 24px rgba(80,62,38,.05);margin-bottom:var(--card-gap)}
+  .daily-page .mission-card.done{background:#f6faf7;border-color:rgba(61,139,110,.28);box-shadow:none}
+  .daily-page .mission-state{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;color:#8a5a1f;background:rgba(184,117,47,.12)}
+  .daily-page .mission-card.done .mission-state{color:#2f6b52;background:rgba(61,139,110,.14)}
+  .daily-page .mission-copy{flex:1;min-width:0}
+  .daily-page .mission-copy h2{font-size:19px;line-height:1.4;margin:2px 0 8px}
+  .daily-page .mission-meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:#8a8378;margin-bottom:6px}
+  .daily-page .mission-copy>p{font-size:14px;line-height:1.7;color:#4a463f;margin:0 0 8px}
+  .daily-page .deliverable{display:block;font-size:12.5px;color:#8a8378;margin-bottom:12px}
+  .daily-page .mission-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .daily-page .delivery-box>summary{list-style:none;cursor:pointer}
+  .daily-page .delivery-box>summary::-webkit-details-marker{display:none}
+  .daily-page .delivery-form{display:grid;gap:10px;margin-top:12px;padding:14px;border-radius:12px;background:#faf7f1}
+  .daily-page .delivery-form label span{font-size:13px;color:#4a463f}
+  .daily-page .delivery-form textarea{font-size:13.5px;line-height:1.65}
+  .daily-page .delivery-pickers{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+  .daily-page .delivery-success{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:13px;color:#2f6b52}
+  .daily-page .postpone-button{font-size:12.5px;color:#8a8378;border:none;background:none;padding:6px 4px;text-decoration:underline}
+  .daily-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:20px}
+  .daily-foot .panel{margin:0}
+  .daily-note-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .daily-note-row select{flex:0 0 88px}
+  .daily-note-row input{flex:1 1 200px}
+  .daily-quick>summary{cursor:pointer;font-size:14px;color:#4a463f;list-style:none}
+  .daily-quick>summary::-webkit-details-marker{display:none}
+  .daily-quick .quick-progress-form{display:grid;gap:8px;margin-top:12px}
+  .day-map{gap:6px;margin-top:18px}
+</style>
 
-<details class="panel quick-progress-card">
-  <summary><span>不想排计划？直接留下一步</span><small>不生成待办、不要求打卡；自动变成可编辑知识卡</small></summary>
-  <form method="post" action="{{ url_for('daily_quick_note') }}" class="quick-progress-form">
-    <input name="title" placeholder="可选标题，例如：Fig. 3 的真实含义">
-    <textarea name="note" required rows="3" placeholder="写下一个事实、一个判断或下一步。以后可以在知识库继续改。"></textarea>
-    <input name="source" value="随手推进">
-    <button class="primary-button">归档这一小步</button>
-  </form>
-</details>
-
-<section class="daily-status panel lean-status">
-  <div><small>计划</small><strong>{{ plan.name }}</strong></div>
-  <div><small>必做进度</small><strong>{{ progress }}%</strong></div>
-  <span class="game-progress"><i style="width:{{ progress }}%"></i></span>
-</section>
-
-<details class="thought-egg panel">
-  <summary><span>🥚 今日彩蛋</span><small>点开拓展思维</small></summary>
-  <div class="egg-question">{{ thought_egg }}</div>
-</details>
-
-<section class="mission-stack official-missions">
-  {% for mission in missions %}
-  <article class="mission-card delivery-mission {% if mission.optional %}optional{% endif %} {% if mission.completed %}done{% endif %}">
-    <div class="mission-state">{{ '✓' if mission.completed else loop.index }}</div>
-    <div class="mission-copy">
-      <div class="mission-meta">
-        <span>{{ mission.category }}</span>
-        {% if mission.workspace_name %}<span class="context-chip">{{ mission.workspace_icon }} {{ mission.workspace_name }}</span>{% endif %}
-        {% if mission.project_title %}<span class="context-chip project-context">项目 · {{ mission.project_title }}</span>{% endif %}
-        {% if mission.track_name %}<span>{{ mission.track_icon }} 滋养{{ mission.track_name }}</span>{% endif %}
-        {% if mission.cultivation_title %}<span>推进修炼 · {{ mission.cultivation_title }}</span>{% endif %}
-        <span>{{ mission.duration_minutes }} 分钟</span>
-        <span>统一奖励 +{{ mission.xp }} 修为</span>
+<div class="daily-page">
+  <div class="daily-top">
+    <div style="flex:1 1 320px">
+      <span class="eyebrow">第 {{ current_day }} / {{ plan.total_days }} 天</span>
+      <h1>{{ day_title }}</h1>
+      <div class="sub">
+        <span>必做 {{ progress }}%</span>
+        <span>剩余约 {{ total_minutes }} 分钟</span>
+        <span>{{ plan.name }}</span>
       </div>
-      <h2>{{ mission.title }}</h2>
-      {% if mission.description %}<p>{{ mission.description }}</p>{% endif %}
-      <small>交付标准 · {{ mission.deliverable or '留下一个能够证明完成情况的成果' }}。文字会同时生成可编辑知识卡。</small>
-
-      {% if mission.completed %}
-      <div class="delivery-success">
-        <span>已交付 {{ mission.delivery_count }} 次</span>
-        {% for delivery in mission.deliveries[:2] %}
-        <a href="{{ url_for('daily_delivery_download', delivery_id=delivery.id) }}">下载成果包 {{ loop.index }}</a>
-        {% endfor %}
-      </div>
-      {% else %}
-      <div class="mission-actions">
-        <details class="delivery-box">
-          <summary class="primary-button">交付并打卡</summary>
-          <form class="delivery-form" method="post" enctype="multipart/form-data" action="{{ url_for('daily_delivery_submit', mission_id=mission.id) }}">
-            <input type="hidden" name="view_day" value="{{ current_day }}">
-            <input type="hidden" name="folder_paths" value="[]" class="folder-paths">
-            <label><span>文字交付（可选）</span><textarea name="note" rows="3" placeholder="一句结论、一个问题或简短复盘，也会保存为TXT。"></textarea></label>
-            <label class="review-key-field"><span>复盘关键文本（建议填写）</span><textarea name="review_text" rows="5" placeholder="写3–8条你今天真正学到的事实、因果关系、判断边界或未解决问题。系统明天只从这段文本出题；答案会先隐藏。"></textarea><small>它会作为“复盘关键文本.txt”放入本次交付文件夹。不填写则本次交付不会进入自动复盘。</small></label>
-            <div class="delivery-pickers">
-              <label class="upload-choice"><strong>选择文件</strong><small>文档、图片、PDF、PPT、表格等</small><input type="file" name="files" multiple></label>
-              <label class="upload-choice"><strong>选择文件夹</strong><small>保留原目录结构</small><input type="file" name="folder_files" webkitdirectory directory multiple class="folder-input"></label>
-            </div>
-            <div class="picked-files" aria-live="polite">尚未选择文件</div>
-            <button class="primary-button full-button">确认交付并结算</button>
-          </form>
-        </details>
-        <form method="post" action="{{ url_for('daily_mission_postpone', mission_id=mission.id) }}" onsubmit="return confirm('推迟到下一天将消耗 {{ postpone_cost }} 灵石，继续吗？')">
-          <input type="hidden" name="view_day" value="{{ current_day }}">
-          <button class="soft-button postpone-button">推迟 · {{ postpone_cost }}灵石</button>
-        </form>
-      </div>
-      {% endif %}
+      <div class="daily-bar" role="progressbar" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"><i style="width:{{ progress }}%"></i></div>
     </div>
-  </article>
-  {% endfor %}
-</section>
+    <div class="daily-wallet"><span>◆ {{ wallet.spirit_stone }}</span><span>⌁ {{ wallet.spirit_wood }}</span><span>⬢ {{ wallet.mystic_iron }}</span><span>✦ {{ wallet.star_sand }}</span></div>
+  </div>
 
-<div class="daily-actions-row">
-  <form method="post" action="{{ url_for('daily_advance') }}">
-    <input type="hidden" name="plan_id" value="{{ plan.id }}">
-    <input type="hidden" name="current_day" value="{{ current_day }}">
-    <button class="primary-button large-button" {% if progress < 100 %}disabled{% endif %}>{{ '开启下一关' if current_day < plan.total_days else '完成整套计划' }}</button>
-  </form>
-  <a class="soft-button" href="{{ url_for('plans_page') }}?plan_id={{ plan.id }}">微调计划</a>
+  <section class="mission-stack official-missions">
+    {% for mission in missions %}
+    <article class="mission-card delivery-mission {% if mission.optional %}optional{% endif %} {% if mission.completed %}done{% endif %}">
+      <div class="mission-state">{{ '✓' if mission.completed else loop.index }}</div>
+      <div class="mission-copy">
+        <div class="mission-meta">
+          <span>{{ mission.category }}</span>
+          {% if mission.workspace_name %}<span>{{ mission.workspace_icon }} {{ mission.workspace_name }}</span>{% endif %}
+          {% if mission.project_title %}<span>项目 · {{ mission.project_title }}</span>{% endif %}
+          <span>{{ mission.duration_minutes }} 分钟</span>
+          <span>+{{ mission.xp }} 修为</span>
+        </div>
+        <h2>{{ mission.title }}</h2>
+        {% if mission.description %}<p>{{ mission.description }}</p>{% endif %}
+        <small class="deliverable">交付：{{ mission.deliverable or '留下能证明完成的成果' }}</small>
+
+        {% if mission.completed %}
+        <div class="delivery-success">
+          <span>已交付 {{ mission.delivery_count }} 次</span>
+          {% for delivery in mission.deliveries[:2] %}
+          <a href="{{ url_for('daily_delivery_download', delivery_id=delivery.id) }}">下载成果 {{ loop.index }}</a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="mission-actions">
+          <details class="delivery-box">
+            <summary class="primary-button">交付打卡</summary>
+            <form class="delivery-form" method="post" enctype="multipart/form-data" action="{{ url_for('daily_delivery_submit', mission_id=mission.id) }}">
+              <input type="hidden" name="view_day" value="{{ current_day }}">
+              <input type="hidden" name="folder_paths" value="[]" class="folder-paths">
+              <label><span>一句话结论（可选）</span><textarea name="note" rows="2" placeholder="结论、疑问或下一步。"></textarea></label>
+              <label class="review-key-field"><span>复盘关键文本（建议）</span><textarea name="review_text" rows="4" placeholder="3–8 条今天真正学到的事实、因果或边界；明天从这里出题。"></textarea><small>不填则本次不进自动复盘。</small></label>
+              <div class="delivery-pickers">
+                <label class="upload-choice"><strong>文件</strong><small>文档 / 图片 / 表格</small><input type="file" name="files" multiple></label>
+                <label class="upload-choice"><strong>文件夹</strong><small>保留目录结构</small><input type="file" name="folder_files" webkitdirectory directory multiple class="folder-input"></label>
+              </div>
+              <div class="picked-files" aria-live="polite">尚未选择文件</div>
+              <button class="primary-button full-button">确认交付</button>
+            </form>
+          </details>
+          <form method="post" action="{{ url_for('daily_mission_postpone', mission_id=mission.id) }}" onsubmit="return confirm('推迟到下一天将消耗 {{ postpone_cost }} 灵石，继续吗？')">
+            <input type="hidden" name="view_day" value="{{ current_day }}">
+            <button class="postpone-button">推迟 · {{ postpone_cost }} 灵石</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </section>
+
+  <div class="daily-actions-row">
+    <form method="post" action="{{ url_for('daily_advance') }}">
+      <input type="hidden" name="plan_id" value="{{ plan.id }}">
+      <input type="hidden" name="current_day" value="{{ current_day }}">
+      <button class="primary-button large-button" {% if progress < 100 %}disabled{% endif %}>{{ '开启下一天' if current_day < plan.total_days else '完成整套计划' }}</button>
+    </form>
+    <a class="soft-button" href="{{ url_for('plans_page') }}?plan_id={{ plan.id }}">调整计划</a>
+  </div>
+
+  <div class="daily-foot">
+    <section class="panel">
+      <div class="panel-head simple"><div><span class="eyebrow">收功</span><h2>今天怎么样</h2></div></div>
+      <form method="post" action="{{ url_for('daily_log_save') }}" class="daily-note-row">
+        <input type="hidden" name="plan_id" value="{{ plan.id }}"><input type="hidden" name="day_index" value="{{ current_day }}">
+        <select name="mood"><option value="light" {% if day_log and day_log.mood=='light' %}selected{% endif %}>轻松</option><option value="steady" {% if not day_log or day_log.mood=='steady' %}selected{% endif %}>稳定</option><option value="stuck" {% if day_log and day_log.mood=='stuck' %}selected{% endif %}>卡住</option></select>
+        <input name="note" value="{{ day_log.note if day_log else '' }}" placeholder="一句话即可">
+        <button class="soft-button">保存</button>
+      </form>
+    </section>
+
+    <details class="panel daily-quick">
+      <summary>只想留一句下一步？</summary>
+      <form method="post" action="{{ url_for('daily_quick_note') }}" class="quick-progress-form">
+        <input name="title" placeholder="可选标题">
+        <textarea name="note" required rows="2" placeholder="一个事实、一个判断或下一步，会存成知识卡。"></textarea>
+        <input name="source" value="随手推进">
+        <button class="primary-button">归档</button>
+      </form>
+    </details>
+
+    <details class="thought-egg panel">
+      <summary><span>今日彩蛋</span><small>点开拓展思路</small></summary>
+      <div class="egg-question">{{ thought_egg }}</div>
+    </details>
+  </div>
+
+  <nav class="day-map" aria-label="计划天数">{% for item in day_map %}<a href="{{ url_for('daily_page') }}?day={{ item.day_index }}" class="day-dot {% if item.day_index == current_day %}active{% endif %} {% if item.required_count and item.done_count == item.required_count %}cleared{% endif %}">{{ item.day_index }}</a>{% endfor %}</nav>
 </div>
-
-<section class="panel one-line-log">
-  <div class="panel-head simple"><div><span class="eyebrow">收功</span><h2>今天留下哪一句？</h2></div></div>
-  <form method="post" action="{{ url_for('daily_log_save') }}" class="one-line-form">
-    <input type="hidden" name="plan_id" value="{{ plan.id }}"><input type="hidden" name="day_index" value="{{ current_day }}">
-    <select name="mood"><option value="light" {% if day_log and day_log.mood=='light' %}selected{% endif %}>轻松</option><option value="steady" {% if not day_log or day_log.mood=='steady' %}selected{% endif %}>稳定</option><option value="stuck" {% if day_log and day_log.mood=='stuck' %}selected{% endif %}>卡住</option></select>
-    <input name="note" value="{{ day_log.note if day_log else '' }}" placeholder="一句话即可。">
-    <button class="soft-button">保存</button>
-  </form>
-</section>
-
-<nav class="day-map" aria-label="计划天数">{% for item in day_map %}<a href="{{ url_for('daily_page') }}?day={{ item.day_index }}" class="day-dot {% if item.day_index == current_day %}active{% endif %} {% if item.required_count and item.done_count == item.required_count %}cleared{% endif %}">{{ item.day_index }}</a>{% endfor %}</nav>
 {% endblock %}
 {% block scripts %}
 <script>

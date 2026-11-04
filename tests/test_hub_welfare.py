@@ -22,7 +22,7 @@ from datetime import datetime, timedelta
 
 from fastapi.testclient import TestClient
 
-from core.migrations import _upgrade_hub_welfare_v5
+from core.migrations import repair_hub_welfare_columns
 from hub.app import app
 from hub.db import (
     HUB_ADMIN_PATH,
@@ -54,16 +54,49 @@ legacy.execute(
         claimed_at TEXT
     )"""
 )
-_upgrade_hub_welfare_v5(legacy)
+repair_hub_welfare_columns(legacy)
 cols = {row["name"] for row in legacy.execute("PRAGMA table_info(hub_welfare_grants)")}
 for name in ("cultivation", "qi_grass", "dew_flower", "red_ganoderma",
              "azure_sword", "heart_mirror", "cosmos_bag", "primordial_stone"):
     assert name in cols, name
-_upgrade_hub_welfare_v5(legacy)  # 幂等
+repair_hub_welfare_columns(legacy)  # 幂等
 assert legacy.execute(
     "SELECT 1 FROM sqlite_master WHERE type='table' AND name='hub_welfare_week_quota'"
 ).fetchone()
 legacy.close()
+
+# --- 0.5) 版本号被写成 5、但福利列从未补（1.10–1.12 的真实故障形态）---
+# 直接改当前库：删表重建为 11 列并伪造 user_version=5，再走一次 init_hub_db。
+import sqlite3
+from hub.db import HUB_DB_PATH
+
+init_hub_db()
+legacy_conn = sqlite3.connect(HUB_DB_PATH)
+legacy_conn.executescript(
+    """
+    DROP TABLE hub_welfare_grants;
+    CREATE TABLE hub_welfare_grants(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recipient_id INTEGER NOT NULL, granted_by INTEGER NOT NULL,
+      xp INTEGER NOT NULL DEFAULT 0, spirit_stone INTEGER NOT NULL DEFAULT 0,
+      spirit_wood INTEGER NOT NULL DEFAULT 0, mystic_iron INTEGER NOT NULL DEFAULT 0,
+      star_sand INTEGER NOT NULL DEFAULT 0, reason TEXT NOT NULL DEFAULT '',
+      created_at TEXT NOT NULL, claimed_at TEXT
+    );
+    PRAGMA user_version = 5;
+    """
+)
+legacy_conn.commit()
+legacy_conn.close()
+init_hub_db()  # 启动自愈 + v6 迁移
+check = sqlite3.connect(HUB_DB_PATH)
+cols = {row[1] for row in check.execute("PRAGMA table_info(hub_welfare_grants)")}
+version = check.execute("PRAGMA user_version").fetchone()[0]
+check.close()
+for name in ("cultivation", "qi_grass", "dew_flower", "red_ganoderma",
+             "azure_sword", "heart_mirror", "cosmos_bag", "primordial_stone"):
+    assert name in cols, f"启动后仍缺列 {name}"
+assert int(version) >= 6, version
 
 # --- 1) 真正走一遍管理员发福利 ---
 init_hub_db()

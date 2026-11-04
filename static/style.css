@@ -496,3 +496,9 @@ body.home-effect-prism .geometry-ring{opacity:.28}body.home-effect-prism .geomet
 .share-forms textarea{width:100%;min-height:120px;font-family:ui-monospace,Consolas,monospace;font-size:10px}
 .share-forms .check-label{margin-bottom:8px}
 @media(max-width:900px){.settings-grid,.share-forms{grid-template-columns:1fr}}
+
+/* 静修页常驻快捷入口：全屏沉浸但保留切换能力 */
+.idle-quicknav{position:absolute;right:clamp(24px,5vw,72px);top:24px;z-index:3;display:flex;gap:4px;padding:4px;border:1px solid rgba(255,255,255,.3);border-radius:999px;background:rgba(10,14,24,.34);backdrop-filter:blur(10px)}
+.idle-quicknav a{padding:6px 11px;border-radius:999px;color:rgba(255,255,255,.86);font-size:12px;line-height:1;text-decoration:none}
+.idle-quicknav a:hover,.idle-quicknav a:focus-visible{background:rgba(255,255,255,.16);color:#fff}
+@media(max-width:780px){.idle-quicknav{right:22px;top:66px;left:22px;justify-content:space-between;overflow:auto}}

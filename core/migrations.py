@@ -378,7 +378,7 @@ def _repair_hub_account_foreign_keys(conn: sqlite3.Connection) -> None:
 
 
 
-def _upgrade_hub_welfare_v5(conn: sqlite3.Connection) -> None:
+def repair_hub_welfare_columns(conn: sqlite3.Connection) -> None:
     """中心库 v4→v5：补齐福利表缺失列，并建立每周额度表。
 
     1.10.0 的建表语句早就写了 13 个福利列，但老库的 ``hub_welfare_grants``
@@ -420,7 +420,14 @@ HUB_MIGRATIONS: list[Migration] = [
     Migration(
         version=5,
         note="福利表补齐 8 种材料列，并建立每周额度表",
-        runner=_upgrade_hub_welfare_v5,
+        runner=repair_hub_welfare_columns,
+    ),
+    # 1.10–1.12 把 user_version 直接写成 5 却没有跑迁移，导致 v5 永远不会执行；
+    # 用 v6 再跑一次同一套幂等修复，覆盖这批"版本已到位、列还没补"的库。
+    Migration(
+        version=6,
+        note="修复被跳过 v5 迁移的中心库：再补一次福利列",
+        runner=repair_hub_welfare_columns,
     ),
 ]
 

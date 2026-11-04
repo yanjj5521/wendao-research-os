@@ -4,6 +4,14 @@
 <section class="idle-stage idle-{{ idle_layout }}" style="--idle-wallpaper:url('{{ idle_wallpaper_url }}')">
   <div class="idle-vignette"></div>
   <a class="idle-exit" href="{{ url_for('dashboard') }}">← 返回山门</a>
+  <nav class="idle-quicknav" aria-label="静修中切换">
+    <a href="{{ url_for('dashboard') }}">山门</a>
+    <a href="{{ url_for('daily_page') }}">今日</a>
+    <a href="{{ url_for('plans_page') }}">计划</a>
+    <a href="{{ url_for('review_page') }}">复盘</a>
+    <a href="{{ url_for('professions_page') }}">百艺</a>
+    <a href="{{ url_for('online_page') }}">同行会</a>
+  </nav>
   <div class="idle-orb" aria-hidden="true"><i></i><i></i><b>道</b></div>
   <div class="idle-copy">
     <span>挂机静修 · 本地专注</span>
@@ -11,6 +19,7 @@
     <p>{{ idle_focus }}</p>
     <div class="idle-clock" data-idle-clock>00:00:00</div>
     <small data-idle-note hidden style="display:block;margin-top:6px;color:#8a8278"></small>
+    <small>静修会继续计时，可随时切到其他页面。</small>
     <div class="idle-actions"><button type="button" class="primary-button" data-idle-toggle>开始静修</button><button type="button" class="soft-button" data-idle-reset>清零</button></div>
     <small>仅作沉浸计时；修为、灵石与材料只由真实任务、交付或管理员福利记录获得。</small>
   </div>

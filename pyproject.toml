@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.12.1"
-description = "问道科研 1.12.1：全站文案精简、发布前点击级核验与确定性回归"
+version = "1.12.2"
+description = "问道科研 1.12.2：福利升级自愈、灵兽袋扩容、静修页切换、今日与 AI 协作排版重做"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

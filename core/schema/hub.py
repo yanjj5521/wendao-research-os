@@ -12,7 +12,7 @@ from __future__ import annotations
 三者分开后，改口令策略不必动身份表，账号量大时也能各走各的索引。
 """
 
-HUB_SCHEMA_VERSION = 5
+HUB_SCHEMA_VERSION = 6
 
 HUB_SCHEMA_SQL = r"""
 -- 身份：只放"这个人是谁"，不放任何凭据

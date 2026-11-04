@@ -423,6 +423,10 @@ def init_hub_db() -> None:
                 raise RuntimeError(
                     f"中心库升级失败，已回滚到 v{version}；迁移前快照在 {snapshot_dir}。原因：{exc}"
                 ) from exc
+        # 版本号可能被旧版直接写成 5 而没跑迁移；这里不看版本，缺列就补，作为兜底自愈。
+        from core.migrations import repair_hub_welfare_columns
+
+        repair_hub_welfare_columns(conn)
         migration_engine.ensure_base_record(conn, HUB_SCHEMA_VERSION, "initial hub schema")
         # 新建库也应把版本号落到库头，否则下次 init 的迁移基线永远从 0 开始。
         conn.execute(f"PRAGMA user_version = {HUB_SCHEMA_VERSION}")

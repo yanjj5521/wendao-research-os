@@ -91,6 +91,7 @@ def roam_page(request: Request):
             battle_player=player_species,
             battle_enemy=enemy_species,
             max_level=max_level,
+            team_capacity=roam_service.MAX_TEAM,
             species_count=len(SPECIES),
         ),
     )

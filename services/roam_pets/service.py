@@ -12,7 +12,7 @@ MAX_LEVEL = 10
 FEED_CAP = 95
 PLAY_ENERGY_MIN = 15
 EXPLORE_ENERGY_MIN = 10
-MAX_TEAM = 6
+MAX_TEAM = 12
 REST_COST = 8
 
 SHOP_ITEMS: dict[str, dict[str, object]] = {
