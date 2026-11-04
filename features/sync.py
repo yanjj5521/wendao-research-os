@@ -35,7 +35,6 @@ from services.workspace_profiles import normalize_toolset, normalize_workflow
 from core.version import APP_VERSION, is_newer_version
 from services.team_update import (
     can_self_update,
-    download_release_package,
     exit_for_update,
     prepare_team_update,
     reveal_path,
@@ -43,7 +42,7 @@ from services.team_update import (
 )
 from services import github_update
 from services.team_update import last_apply_log
-from services import headscale_vpn, hub_host, hub_identity
+from services import headscale_vpn, hub_host, hub_identity, release_feed
 
 EXPORT_DIR = STORAGE_ROOT / "sync_exports"
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -146,7 +145,8 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
         with connect() as conn:
             recent = [dict(row) for row in conn.execute("SELECT * FROM online_sync_queue ORDER BY id DESC LIMIT 12")]
         url_ok, url_policy = validate_hub_url(hub_url) if hub_url else (True, "尚未配置中心地址")
-        latest_release = cached_value("latest_release", None)
+        # 版本包信息按身份现取：管理员读本机中心，成员问对方中心；都失败才退回同步缓存。
+        latest_release = release_feed.latest_release()
         update_available = bool(
             isinstance(latest_release, dict)
             and is_newer_version(str(latest_release.get("version", "")), APP_VERSION)
@@ -180,6 +180,7 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 update_available=update_available,
                 can_self_update=can_self_update(),
                 github_update=_json_setting("github_update", {}),
+                github_releases_url=f"https://github.com/{github_update.GITHUB_REPO}/releases",
                 github_update_checked_at=get_setting("github_update_checked_at", ""),
                 update_log_tail=last_apply_log(),
                 data_root=str(DATA_ROOT),
@@ -197,24 +198,25 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
 
     @router.post("/online/releases/download", name="online_release_download")
     def online_release_download(request: Request):
-        """把中心的最新版本包下载到本机并校验（只落盘，不替换程序）。"""
-        release = cached_value("latest_release", None)
-        if not isinstance(release, dict) or not release.get("id"):
-            flash(request, "还没有取到中心的版本包信息，请先点「立即同步」或「检查更新」。", "error")
+        """把当前中心的版本包取到本机并校验（只落盘，不替换程序）。"""
+        release = release_feed.latest_release()
+        if not release:
+            flash(
+                request,
+                "还没有拿到版本包信息。管理员请先在「版本中心」上传；成员请先检查与中心地址、Token 是否可用。",
+                "error",
+            )
             return RedirectResponse(request.url_for("online_page"), status_code=303)
         try:
-            package = download_release_package(
-                release_id=int(release["id"]),
-                sha256=str(release.get("sha256", "")),
-                version=str(release.get("version", "")),
-            )
+            package = release_feed.fetch_package(release)
         except (OSError, ValueError, RuntimeError) as exc:
             flash(request, f"版本包下载失败：{exc}", "error")
             return RedirectResponse(request.url_for("online_page"), status_code=303)
+        where = "本机中心" if release.get("source") == "local" else str(release.get("center_url") or "中心")
         flash(
             request,
-            f"版本包 v{release.get('version', '')} 已下载并通过 SHA-256 校验：{package}。"
-            "可在下方「打开版本包所在文件夹」取用。",
+            f"版本包 v{release.get('version', '')}（来自{where}）已取到本机并通过 SHA-256 校验：{package}。"
+            "可用「打开版本包所在文件夹」取用。",
         )
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
@@ -385,9 +387,16 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
 
     @router.post("/online/update/latest", name="online_update_latest")
     def online_update_latest(request: Request):
-        release = cached_value("latest_release", None)
-        if not isinstance(release, dict):
-            flash(request, "尚未发现可用的同行会更新包，请先点击“立即同步”。", "error")
+        release = release_feed.latest_release()
+        if not release:
+            flash(request, "尚未发现可用的同行会更新包，请先点击「检查新版本」。", "error")
+            return RedirectResponse("/online", status_code=303)
+        if release.get("source") == "local":
+            flash(
+                request,
+                "你当前就是中心，本机已持有该版本包；用「下载版本包到本机」即可取用，无需从中心更新自己。",
+                "error",
+            )
             return RedirectResponse("/online", status_code=303)
         if not is_newer_version(str(release.get("version", "")), APP_VERSION):
             flash(request, "当前版本不低于同行会记录的最新版本，无需更新。")

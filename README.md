@@ -1,4 +1,4 @@
-# 问道科研 1.11.0
+# 问道科研 1.11.1
 
 个人科研工作流与内置同行会，使用 FastAPI、Jinja2 和 SQLite。Windows 发布版是单文件桌面 EXE，同行会作为同一个程序内的模块运行，不另开浏览器或第二个程序。
 
@@ -93,6 +93,7 @@ python run_local.py --serve
 - [1.0 收敛决策](docs/CONVERGENCE_1.0.md)
 - [数据层约束](docs/DATA_LAYER.md)
 - [发布策略与更新机制](docs/RELEASE_STRATEGY.md)
+- [1.11.1 发布说明](docs/releases/v1.11.1.md)
 - [1.11.0 发布说明](docs/releases/v1.11.0.md)
 - [1.10.0 发布说明](docs/releases/v1.10.0.md)
 - [自建 Headscale 虚拟专网指南](docs/HEADSCALE.md)

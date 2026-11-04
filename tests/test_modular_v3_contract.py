@@ -469,7 +469,14 @@ else:
         self.assertTrue((ROOT / "hub" / "session_isolation.py").is_file())
         self.assertIn("cn.wendao.research.v3.mobile", workflow)
         self.assertIn("Team-Update.zip", workflow)
-        self.assertEqual(version, "1.10.0")
+        # 版本号三处必须一致，但不把测试钉死成某个具体版本：
+        # 升级时只改 VERSION / pyproject / core.version 的默认值，测试仍然守的是"一致"。
+        self.assertRegex(version, r"^\d+\.\d+\.\d+$")
+        self.assertIn(f'version = "{version}"', pyproject)
+        self.assertIn(
+            f'return "{version}"',
+            (ROOT / "core" / "version.py").read_text(encoding="utf-8"),
+        )
         for obsolete in (
             ".github/workflows/release-windows.yml",
             ".github/workflows/validate-development.yml",

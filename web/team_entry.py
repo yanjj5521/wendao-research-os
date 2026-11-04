@@ -62,12 +62,13 @@ def _page(title: str, eyebrow: str, body: str) -> HTMLResponse:
 
 def _member_page(identity: dict) -> HTMLResponse:
     center = escape(str(identity["center_url"]))
+    short = escape(hub_identity.display_address(str(identity["center_url"])))
     body = f"""<h1>你是成员，同行会在别人的电脑上 <span class="tag">成员</span></h1>
 <p>你连接的联机中心是 <code>{center}</code>。团队数据、成员名单、福利和版本包都在那台机器上，
 本机这份只是空副本。</p>
 <div class="row">
-  <a class="btn primary" href="{center}" target="_blank" rel="noopener">打开我连接的同行会</a>
-  <a class="btn soft" href="/online">返回联机设置</a>
+  <a class="btn primary" href="{center}" target="_blank" rel="noopener">打开我连接的同行会（{short}）</a>
+  <a class="btn soft" href="/online#identity-connect">不是我连的中心？去改连接</a>
 </div>
 <div class="note">想在本机重开一个自己的中心？先在联机页停止连接，再启动本机中心。
 仅排查问题时，可<a href="/team/?local=1">打开本机副本</a>。</div>"""

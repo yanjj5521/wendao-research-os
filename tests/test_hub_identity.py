@@ -38,7 +38,8 @@ assert 'name="password"' not in team.text, "未选身份时不应出现登录表
 online = client.get("/online")
 assert online.status_code == 200
 assert "还没选择身份" in online.text
-assert "两种身份的流程不通用" in online.text
+assert "点之前先看地址" in online.text
+assert "选择我的身份" in online.text
 
 # --- 2) 成员身份：入口指向对方中心，本机副本被拦住 ---
 set_setting("sync_provider", "legacy_hub")
@@ -48,11 +49,16 @@ team = client.get("/team/")
 assert team.status_code == 200
 assert "你是成员" in team.text
 assert "http://192.168.50.20:5050" in team.text
+assert "打开我连接的同行会（192.168.50.20:5050）" in team.text, "按钮必须写明要打开的中心"
 assert 'name="password"' not in team.text, "成员身份不应看到本机中心的登录表单"
 
 online = client.get("/online")
 assert "我是成员" in online.text
 assert "http://192.168.50.20:5050" in online.text
+assert "打开我连接的同行会（192.168.50.20:5050）" in online.text
+assert "不是我连的中心？去改连接" in online.text, "成员需要一条明确的改连接入口"
+assert "打开发布页（GitHub）" in online.text, "寻找新版本的地方要能直接跳到发布页"
+assert "要打开的中心" in online.text
 
 enter = client.get("/online/enter", follow_redirects=False)
 assert enter.status_code == 303, enter.status_code
@@ -70,6 +76,7 @@ assert team.status_code == 200
 assert "选择你的同行会身份" not in team.text and "你是成员" not in team.text
 online = client.get("/online")
 assert "我是中心" in online.text or "由本机承载同行会" in online.text
+assert "进入本机中心" in online.text
 print("hub identity pass")
 '''
         with tempfile.TemporaryDirectory(prefix="hub-identity-") as directory:

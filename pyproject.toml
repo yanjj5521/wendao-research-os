@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.11.0"
-description = "问道科研 1.11.0：同行会身份分流（自己开中心 / 连接他人中心）与版本包下载修复"
+version = "1.11.1"
+description = "问道科研 1.11.1：同行会身份分流、管理员与成员的版本包取用、入口按钮标识与 GitHub 发布页直达"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -46,6 +46,11 @@ def _safe_package(path: Path) -> None:
             raise ValueError("更新包不是有效的 Team-Update.zip。")
 
 
+def validate_package(path: Path) -> None:
+    """公开的结构校验入口：版本包下载与自动更新共用同一套判定。"""
+    _safe_package(path)
+
+
 DOWNLOAD_DIR_NAME = "downloads"
 
 
