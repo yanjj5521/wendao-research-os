@@ -108,6 +108,20 @@ def settings_get(request: Request):
     )
 
 
+@app.post("/settings/nav/reset", name="settings_nav_reset")
+def settings_nav_reset(request: Request):
+    """恢复推荐分类，不覆盖自定义标签。"""
+    from fastapi.responses import RedirectResponse
+
+    from core.database import set_setting
+
+    from web.runtime import flash  # 复用统一 flash 实现
+
+    set_setting("nav_layout", "")
+    flash(request, "导航已恢复推荐分类：今日 / 研究 / 知识 / 修行 / 领域 / 系统。自定义标签保留。")
+    return RedirectResponse("/settings#navigation-layout", status_code=303)
+
+
 @app.post("/settings", name="settings_post")
 def settings_post(
     request: Request,

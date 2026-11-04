@@ -868,23 +868,27 @@ def register_idle_routes(app, templates, context, flash):
         request: Request,
         layout: str = Form("vertical"),
         focus: str = Form(""),
+        wallpaper: str = Form(""),
         builtin_wallpaper: str = Form(""),
         custom_wallpaper: str = Form(""),
     ):
         set_setting("idle_layout", layout if layout in {"vertical", "horizontal"} else "vertical")
         set_setting("idle_focus", focus.strip()[:160] or "安静积累，下一步只做一件最重要的事。")
-        if builtin_wallpaper:
-            try:
-                select_builtin_wallpaper(builtin_wallpaper)
-            except ValueError as exc:
-                flash(request, str(exc), "error")
-                return RedirectResponse(request.url_for("idle_page"), status_code=303)
-        if custom_wallpaper:
-            try:
+        # 单选框统一为 wallpaper=builtin:key / custom:file，二者互斥，后选的生效。
+        # 旧字段仍兼容，但只在没有统一字段时才用，避免自定义壁纸把内置选择覆盖掉。
+        kind, _, value = wallpaper.partition(":")
+        try:
+            if kind == "custom" and value:
+                select_custom_wallpaper(value)
+            elif kind == "builtin" and value:
+                select_builtin_wallpaper(value)
+            elif not wallpaper and custom_wallpaper:
                 select_custom_wallpaper(custom_wallpaper)
-            except ValueError as exc:
-                flash(request, str(exc), "error")
-                return RedirectResponse(request.url_for("idle_page"), status_code=303)
+            elif not wallpaper and builtin_wallpaper:
+                select_builtin_wallpaper(builtin_wallpaper)
+        except ValueError as exc:
+            flash(request, str(exc), "error")
+            return RedirectResponse(request.url_for("idle_page"), status_code=303)
         flash(request, "挂机界面已保存：只记录专注时间，不会自动增加修为或资产。")
         return RedirectResponse(request.url_for("idle_page"), status_code=303)
 

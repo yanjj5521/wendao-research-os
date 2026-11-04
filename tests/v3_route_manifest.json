@@ -805,6 +805,11 @@
     "name": "settings_ai_share_import"
   },
   {
+    "method": "POST",
+    "path": "/settings/nav/reset",
+    "name": "settings_nav_reset"
+  },
+  {
     "method": "GET",
     "path": "/simulations",
     "name": "simulations_page"

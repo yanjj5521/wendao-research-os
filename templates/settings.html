@@ -101,7 +101,8 @@
     <label><span>导航名称与分组标题（只修改等号右边）</span><textarea name="nav_labels" rows="24">{{ nav_labels_text }}</textarea></label>
     <section class="nav-layout-editor" id="navigation-layout" data-nav-layout-editor>
       <div class="nav-layout-head">
-        <div><span class="eyebrow">Navigation Layout</span><h3>导航顺序与显示</h3><p>拖动调整顺序，眼睛开关收起低频功能。</p></div>
+        <div><span class="eyebrow">Navigation</span><h3>导航顺序与显示</h3><p>拖动调整顺序，眼睛开关收起低频功能。</p></div>
+        <form method="post" action="{{ url_for('settings_nav_reset') }}"><button class="soft-button" type="submit">恢复推荐分类</button></form>
         <button class="ghost-button" type="button" data-nav-reset>恢复默认</button>
       </div>
       <input type="hidden" name="nav_layout" id="navLayoutInput" value="{{ nav_layout_json|e }}">

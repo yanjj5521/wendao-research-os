@@ -28,12 +28,12 @@
     <label><span>此刻提醒</span><input name="focus" maxlength="160" value="{{ idle_focus }}"></label>
     <div class="idle-wallpaper-list">
       {% for key, wallpaper in builtin_wallpapers.items() %}
-      <label class="idle-wallpaper-option {% if idle_wallpaper_kind=='builtin' and selected_builtin==key %}selected{% endif %}" style="--preview:url('{{ wallpaper.path }}')"><input type="radio" name="builtin_wallpaper" value="{{ key }}" {% if idle_wallpaper_kind=='builtin' and selected_builtin==key %}checked{% endif %}><span>{{ wallpaper.name }}</span></label>
+      <label class="idle-wallpaper-option {% if idle_wallpaper_kind=='builtin' and selected_builtin==key %}selected{% endif %}" style="--preview:url('{{ wallpaper.path }}')"><input type="radio" name="wallpaper" value="builtin:{{ key }}" {% if idle_wallpaper_kind=='builtin' and selected_builtin==key %}checked{% endif %}><span>{{ wallpaper.name }}</span></label>
       {% endfor %}
     </div>
     {% if custom_wallpapers %}<div class="idle-wallpaper-list custom-wallpaper-list">
       {% for wallpaper in custom_wallpapers %}
-      <label class="idle-wallpaper-option {% if idle_wallpaper_kind=='custom' and wallpaper.selected %}selected{% endif %}" style="--preview:url('{{ wallpaper.url }}')"><input type="radio" name="custom_wallpaper" value="{{ wallpaper.filename }}" {% if idle_wallpaper_kind=='custom' and wallpaper.selected %}checked{% endif %}><span>我的壁纸 {{ loop.index }}</span></label>
+      <label class="idle-wallpaper-option {% if idle_wallpaper_kind=='custom' and wallpaper.selected %}selected{% endif %}" style="--preview:url('{{ wallpaper.url }}')"><input type="radio" name="wallpaper" value="custom:{{ wallpaper.filename }}" {% if idle_wallpaper_kind=='custom' and wallpaper.selected %}checked{% endif %}><span>我的壁纸 {{ loop.index }}</span></label>
       {% endfor %}
     </div>{% endif %}
     <button class="soft-button">保存界面</button>

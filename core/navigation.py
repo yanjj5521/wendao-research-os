@@ -36,11 +36,11 @@ DEFAULT_NAV_LABELS = {
     "discover": "联网找论文",
     "workspaces": "学习领域管理",
     "settings": "设置与备份",
-    "group_cultivation": "学习节奏",
-    "group_knowledge": "知识积累",
-    "group_workspaces": "学习领域",
-    "group_growth": "成长与陪伴",
-    "group_research": "研究与输出",
+    "group_cultivation": "今日",
+    "group_knowledge": "知识",
+    "group_workspaces": "领域",
+    "group_growth": "修行",
+    "group_research": "研究",
     "group_system": "系统",
     "start": "记录进展",
     "knowledge_export": "一键导出知识库",
@@ -51,17 +51,24 @@ DEFAULT_NAV_LABELS = {
 # user preference, not a permanent product decision: the full set is shown for
 # new installs and can be collapsed again from 设置 → 调整导航.
 NAV_GROUP_DEFAULT_ITEMS = {
-    "cultivation": (
-        "dashboard", "daily", "plans", "review", "workbench", "cultivation", "retreat", "idle",
+    # 今日：每天真正会用的入口，放在最上面
+    "cultivation": ("dashboard", "daily", "plans", "review"),
+    # 研究：从问题到证据的产出链
+    "research": (
+        "projects", "literature_report", "workbench",
+        "experiments", "datasets", "simulations", "integral",
     ),
-    "research": ("literature_report", "projects", "experiments", "datasets", "integral", "simulations"),
+    # 知识：存量与检索
     "knowledge": (
         "library", "search", "note_new", "upload", "folders", "discover",
     ),
-    "workspaces": ("workspace_shortcuts", "workspaces"),
+    # 修行：长期积累与休闲，收在一起避免干扰主线
     "growth": (
-        "career", "profile", "trials", "achievements", "professions", "alchemy", "world", "roam",
+        "cultivation", "retreat", "idle",
+        "professions", "alchemy", "world", "roam",
+        "trials", "achievements", "career", "profile",
     ),
+    "workspaces": ("workspace_shortcuts", "workspaces"),
     "system": ("assistant", "online", "settings"),
 }
 
