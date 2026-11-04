@@ -126,6 +126,10 @@
   <div class="panel-head simple"><div><span class="eyebrow">Headscale 虚拟专网</span><h2>跨网络直连</h2></div><span class="sync-provider-badge {% if not headnet.running %}disabled{% endif %}">{{ '运行中' if headnet.running else '未连接' }}</span></div>
   <p>中心端和成员端都使用程序内置的用户态虚拟网络助手。中心发布后，邀请码会改用 Headscale 分配的虚拟 IP；成员不用处在同一个 Wi-Fi，也不需要安装系统 VPN 网卡。</p>
   {% if not headnet.helper_available %}<p class="text-danger">内置虚拟网络助手未找到。请使用包含 Headscale 支持的 v1.8.3 或更新版本。</p>{% endif %}
+  <div class="button-row">
+    <form method="post" action="{{ url_for('online_headnet_auto') }}"><button class="primary-button">一键自动组网</button></form>
+    <small class="form-help">按当前身份自动选择中心/成员模式，节点名自动生成；成功后下次启动自动恢复。首次使用仍需在下方保存一次控制端地址与预授权密钥。</small>
+  </div>
   <form method="post" action="{{ url_for('online_headnet_save') }}" class="form-grid headnet-form">
     <label>Headscale 控制端地址<input name="control_url" value="{{ headnet.configured_control_url }}" placeholder="https://headscale.example.com" autocomplete="url" required></label>
     <label>预授权密钥<input type="password" name="auth_key" autocomplete="new-password" placeholder="{% if headnet.auth_key_configured %}已安全保存；留空保持不变{% else %}从 Headscale 生成的 preauth key{% endif %}"></label>
@@ -195,7 +199,7 @@
        桌面内嵌窗口点浏览器式下载常常没有反应，所以这里由程序自己取：断点续传 + SHA-256 + 解包结构检查，存好之后告诉你文件位置。</p>
     <div class="button-row">
       {% if latest_release %}
-      <form method="post" action="{{ url_for('online_release_download') }}"><button class="soft-button">下载版本包到本机 · v{{ latest_release.version }}</button></form>
+      <form method="post" action="{{ url_for('online_release_download') }}"><button class="soft-button">{% if latest_release.source == 'local' %}在文件夹中定位版本包 · v{{ latest_release.version }}{% else %}下载版本包到本机 · v{{ latest_release.version }}{% endif %}</button></form>
       {% else %}
         {% if identity.role == 'host' %}<small>本机中心还没有版本包。管理员在「版本中心」上传 Team-Update.zip 后即可取用。</small>
         {% elif identity.role == 'member' %}<small>还没取到对方中心的版本包信息。请确认「B 我是成员」里的地址与 Token 可用，再点「检查新版本」。</small>

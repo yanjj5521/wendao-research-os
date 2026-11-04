@@ -38,6 +38,7 @@ from hub.db import (
     connect_hub,
     enforce_welfare_weekly_limits,
     weekly_quotas,
+    weekly_quota_meta,
     weekly_quota_key,
     WELFARE_LABELS,
     hub_transaction,
@@ -142,6 +143,7 @@ def admin_page(request: Request):
             welfare_limits=WELFARE_SINGLE_LIMITS,
             welfare_labels=WELFARE_LABELS,
             welfare_weekly=weekly_quotas(conn),
+            welfare_meta=weekly_quota_meta(conn),
             welfare_week_key=weekly_quota_key(),
             public_base_url=public_base_url,
             public_base_error=public_base_error,
@@ -274,7 +276,8 @@ def user_toggle(request:Request,user_id:int,csrf_value:str=Form(..., alias="_csr
 def welfare_grant(
     request: Request,
     recipient_id: int = Form(...),
-    xp: int = Form(0), spirit_stone: int = Form(0), spirit_wood: int = Form(0),
+    xp: int = Form(0), cultivation: int = Form(0),
+    spirit_stone: int = Form(0), spirit_wood: int = Form(0),
     qi_grass: int = Form(0), dew_flower: int = Form(0), red_ganoderma: int = Form(0),
     azure_sword: int = Form(0), heart_mirror: int = Form(0), cosmos_bag: int = Form(0),
     mystic_iron: int = Form(0), star_sand: int = Form(0), primordial_stone: int = Form(0),
@@ -288,7 +291,8 @@ def welfare_grant(
         return RedirectResponse("/admin", status_code=303)
     try:
         values = normalize_welfare_values({
-            "xp": xp, "spirit_stone": spirit_stone, "spirit_wood": spirit_wood,
+            "xp": xp, "cultivation": cultivation,
+            "spirit_stone": spirit_stone, "spirit_wood": spirit_wood,
             "qi_grass": qi_grass, "dew_flower": dew_flower, "red_ganoderma": red_ganoderma,
             "azure_sword": azure_sword, "heart_mirror": heart_mirror, "cosmos_bag": cosmos_bag,
             "mystic_iron": mystic_iron, "star_sand": star_sand, "primordial_stone": primordial_stone,

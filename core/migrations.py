@@ -377,11 +377,50 @@ def _repair_hub_account_foreign_keys(conn: sqlite3.Connection) -> None:
         raise RuntimeError(f"中心库迁移后仍有外键冲突：{first}")
 
 
+
+def _upgrade_hub_welfare_v5(conn: sqlite3.Connection) -> None:
+    """中心库 v4→v5：补齐福利表缺失列，并建立每周额度表。
+
+    1.10.0 的建表语句早就写了 13 个福利列，但老库的 ``hub_welfare_grants``
+    只有最初的 5 列；升级后管理员一发放就报 "no column named cultivation"，
+    表现就是"福利发不出去"。这里按实际列名增量补，重复执行安全。
+    """
+    existing = {str(row["name"]) for row in conn.execute("PRAGMA table_info(hub_welfare_grants)")}
+    for name in (
+        "cultivation",
+        "qi_grass",
+        "dew_flower",
+        "red_ganoderma",
+        "azure_sword",
+        "heart_mirror",
+        "cosmos_bag",
+        "primordial_stone",
+    ):
+        if name not in existing:
+            conn.execute(
+                f"ALTER TABLE hub_welfare_grants ADD COLUMN {name} INTEGER NOT NULL DEFAULT 0"
+            )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS hub_welfare_week_quota(
+            week_key TEXT PRIMARY KEY,
+            quotas_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+
+
 HUB_MIGRATIONS: list[Migration] = [
     Migration(
         version=4,
         note="修复中心库旧身份外键：hub_users → accounts",
         runner=_repair_hub_account_foreign_keys,
+    ),
+    Migration(
+        version=5,
+        note="福利表补齐 8 种材料列，并建立每周额度表",
+        runner=_upgrade_hub_welfare_v5,
     ),
 ]
 

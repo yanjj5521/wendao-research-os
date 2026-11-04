@@ -10,6 +10,8 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from core.database import connect, now_iso, total_xp
 from services.economy import ASSETS, balance, balances, transact
+import random
+from services import professions
 from services.game_world import (
     ARTIFACTS,
     BUILDINGS,
@@ -257,17 +259,37 @@ def register_game_routes(
                 )
                 return RedirectResponse(request.url_for("world_page"), status_code=303)
             cost = max(10, (int(spec["price"]) // 2) * max(level, 1))
+            chance = professions.success_chance("artificer", 0.66)
+            succeeded = random.random() < chance
+            charge = cost if succeeded else max(1, cost // 2)
             try:
-                transact(conn, "spirit_stone", -cost, f"淬炼法器：{spec['name']}")
+                transact(conn, "spirit_stone", -charge, f"淬炼法器：{spec['name']}")
             except ValueError:
                 flash(request, f"灵石不足，淬炼需要 {cost} 灵石。", "error")
                 return RedirectResponse(request.url_for("world_page"), status_code=303)
-            conn.execute("UPDATE inventory_items SET level=level+1,updated_at=? WHERE item_key=?", (now_iso(), artifact_key))
-            conn.execute("INSERT INTO activities(action,xp,detail,created_at) VALUES (?,?,?,?)", ("artifact_upgrade", 5, f"{spec['name']}淬炼至 {level+1} 级", now_iso()))
-            queue_event(conn, "artifact_upgrade", {"item_key": artifact_key, "level": level + 1})
+            if succeeded:
+                conn.execute("UPDATE inventory_items SET level=level+1,updated_at=? WHERE item_key=?", (now_iso(), artifact_key))
+                conn.execute("INSERT INTO activities(action,xp,detail,created_at) VALUES (?,?,?,?)", ("artifact_upgrade", 5, f"{spec['name']}淬炼至 {level+1} 级", now_iso()))
+                queue_event(conn, "artifact_upgrade", {"item_key": artifact_key, "level": level + 1})
             conn.commit()
+        if not succeeded:
+            professions.add_exp("artificer", 4)
+            flash(
+                request,
+                f"炉火不匀，{spec['name']}淬炼失手（成功率 {int(chance*100)}%）。"
+                f"消耗 {charge} 灵石，炼器师熟练度 +4。",
+                "error",
+            )
+            return RedirectResponse(request.url_for("world_page"), status_code=303)
         best_effort_sync()
-        flash(request, f"{spec['name']}已淬炼至 {level+1} 级。", "success")
+        outcome = professions.add_exp("artificer", 10)
+        level_up = f"，晋阶 {outcome['tier']}" if outcome.get("leveled") else ""
+        flash(
+            request,
+            f"{spec['name']}已淬炼至 {level+1} 级。炼器师熟练度 +10{level_up}"
+            f"（成功率 {int(chance*100)}%）。",
+            "success",
+        )
         return RedirectResponse(request.url_for("world_page"), status_code=303)
 
     @router.post("/world/artifacts/{artifact_key}/equip", name="world_artifact_equip")
@@ -704,6 +726,9 @@ def register_alchemy_routes(
         recipe = RECIPES.get(recipe_key)
         if not recipe:
             raise HTTPException(status_code=404)
+        chance = professions.success_chance("alchemist", 0.78)
+        succeeded = random.random() < chance
+        yield_count = 0
         with connect() as conn:
             quantities = {
                 int(row["grade"]): int(row["quantity"])
@@ -718,36 +743,62 @@ def register_alchemy_routes(
                 flash(request, "灵草不足，先完成对应等级的特殊任务。", "error")
                 return RedirectResponse(request.url_for("alchemy_page"), status_code=303)
             ts = now_iso()
-            for grade, amount in recipe["costs"].items():
+            # 失败只烧掉一半灵草（向上取整），不让一次失手清空家底。
+            spent = {
+                grade: (amount if succeeded else max(1, (amount + 1) // 2))
+                for grade, amount in recipe["costs"].items()
+            }
+            for grade, amount in spent.items():
                 conn.execute(
                     "UPDATE herb_inventory SET quantity=quantity-?,updated_at=? WHERE grade=?",
                     (amount, ts, grade),
                 )
             conn.execute("DELETE FROM herb_inventory WHERE quantity<=0")
-            conn.execute(
-                """
-                INSERT INTO inventory_items(
-                    item_key,item_type,quantity,level,equipped,acquired_at,updated_at
-                ) VALUES (?,'pill',1,1,0,?,?)
-                ON CONFLICT(item_key) DO UPDATE SET
-                    quantity=inventory_items.quantity+1,updated_at=excluded.updated_at
-                """,
-                (recipe_key, ts, ts),
-            )
-            conn.execute(
-                "UPDATE easter_eggs SET unlocked=1,discovered_at=COALESCE(discovered_at,?) WHERE egg_key='first_pill'",
-                (ts,),
-            )
-            crafted_types = conn.execute(
-                "SELECT COUNT(*) n FROM inventory_items WHERE item_type='pill' AND quantity>0"
-            ).fetchone()["n"]
-            if int(crafted_types) >= 5:
+            if succeeded:
+                yield_count = (
+                    2 if random.random() < (professions.bonus("alchemist") - 1.0) * 0.6 else 1
+                )
                 conn.execute(
-                    "UPDATE easter_eggs SET unlocked=1,discovered_at=COALESCE(discovered_at,?) WHERE egg_key='five_recipes'",
+                    """
+                    INSERT INTO inventory_items(
+                        item_key,item_type,quantity,level,equipped,acquired_at,updated_at
+                    ) VALUES (?,'pill',?,1,0,?,?)
+                    ON CONFLICT(item_key) DO UPDATE SET
+                        quantity=inventory_items.quantity+?,updated_at=excluded.updated_at
+                    """,
+                    (recipe_key, yield_count, ts, ts, yield_count),
+                )
+                conn.execute(
+                    "UPDATE easter_eggs SET unlocked=1,discovered_at=COALESCE(discovered_at,?) WHERE egg_key='first_pill'",
                     (ts,),
                 )
+                crafted_types = conn.execute(
+                    "SELECT COUNT(*) n FROM inventory_items WHERE item_type='pill' AND quantity>0"
+                ).fetchone()["n"]
+                if int(crafted_types) >= 5:
+                    conn.execute(
+                        "UPDATE easter_eggs SET unlocked=1,discovered_at=COALESCE(discovered_at,?) WHERE egg_key='five_recipes'",
+                        (ts,),
+                    )
             conn.commit()
-        flash(request, f"{recipe['name']}炼制成功。", "success")
+        if not succeeded:
+            professions.add_exp("alchemist", 4)
+            flash(
+                request,
+                f"火候不稳，{recipe['name']}炸炉（成丹率 {int(chance * 100)}%）。"
+                "灵草消耗一半，炼丹师熟练度 +4；再炼一炉即可。",
+                "error",
+            )
+            return RedirectResponse(request.url_for("alchemy_page"), status_code=303)
+        outcome = professions.add_exp("alchemist", 12)
+        extra = "，丹成双枚" if yield_count > 1 else ""
+        level_up = f"，晋阶 {outcome['tier']}" if outcome.get("leveled") else ""
+        flash(
+            request,
+            f"{recipe['name']}炼制成功{extra}。炼丹师熟练度 +12{level_up}"
+            f"（成丹率 {int(chance * 100)}%）。",
+            "success",
+        )
         return RedirectResponse(request.url_for("alchemy_page"), status_code=303)
 
     @router.post("/alchemy/pills/{pill_key}/use", name="alchemy_pill_use")

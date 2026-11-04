@@ -88,6 +88,15 @@ def latest_release() -> dict[str, Any] | None:
     return None
 
 
+def local_source(release: dict[str, Any] | None) -> Path | None:
+    """本机中心的版本包原文件（中心身份下"原地打开"用）。"""
+    if not isinstance(release, dict) or release.get("source") != "local":
+        return None
+    from hub.releases import resolve_release_file
+
+    return resolve_release_file(release)
+
+
 def fetch_package(release: dict[str, Any]) -> Path:
     """把版本包取到本机并校验，返回可用的本地路径。"""
     if not isinstance(release, dict) or not release.get("id"):

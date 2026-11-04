@@ -12,6 +12,7 @@ import json
 import os
 import queue
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -271,6 +272,60 @@ def save_config(*, control_url: str, auth_key: str, hostname: str, peer: str, ce
     if auth_key.strip():
         set_setting("headnet_auth_key", auth_key.strip())
     return status()
+
+
+def auto_connect(role: str = "center") -> dict[str, Any]:
+    """一键组网：按身份选模式、按主机名生成节点名，复用已保存的配置。
+
+    目标是让"跨网络直连"从六个字段变成一个按钮：
+    中心只需保存过一次控制端与预授权密钥，之后每次点一下即可；
+    成员只需要额外知道中心的虚拟 IP。
+    """
+    init_db()
+    current = status()
+    if current.get("running"):
+        return {**current, "message": "虚拟网络已在运行，无需重复接入。"}
+    control_url = get_setting("headnet_control_url", "").strip()
+    auth_key = get_setting("headnet_auth_key", "").strip()
+    if not control_url or not auth_key:
+        raise ValueError("还没有保存 Headscale 控制端地址与预授权密钥，请先填写并保存一次。")
+    role = "center" if str(role) == "center" else "member"
+    hostname = get_setting("headnet_hostname", "").strip() or (
+        f"wendao-{role}-{socket.gethostname()[:10].lower()}"
+    )
+    if role == "center":
+        result = start_center(
+            hub_port=int(get_setting("headnet_center_port", "5050") or 5050),
+            hostname_override=hostname,
+        )
+    else:
+        peer = get_setting("headnet_peer", "").strip()
+        if not peer:
+            raise ValueError("作为成员需要中心的虚拟 IP：请向管理员索取后填入「中心虚拟 IP」再试。")
+        result = start_member(
+            peer_override=peer,
+            peer_port=int(get_setting("headnet_peer_port", "5050") or 5050),
+            hostname_override=hostname,
+        )
+    set_setting("headnet_auto", "1")
+    set_setting("headnet_auto_role", role)
+    return {**result, "message": "已自动接入虚拟网络。"}
+
+
+def resume_auto() -> dict[str, Any] | None:
+    """启动时恢复上次的一键组网；任何失败都静默，绝不阻塞主程序。"""
+    try:
+        init_db()
+        if get_setting("headnet_auto", "0") != "1":
+            return None
+        role = get_setting("headnet_auto_role", "member") or "member"
+        return auto_connect(role)
+    except Exception:
+        return None
+
+
+def disable_auto() -> None:
+    set_setting("headnet_auto", "0")
 
 
 def _resolved_config(auth_key_override: str = "") -> tuple[str, str, str, str]:

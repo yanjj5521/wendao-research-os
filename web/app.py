@@ -12,6 +12,7 @@ from features.sync import register_online_routes
 from features.literature_report import register_literature_report_routes
 from features.projects import register_project_routes
 from features.practical_workbench import register_practical_workbench_routes
+from features.professions import register_profession_routes
 from features.review import register_review_routes
 from features.workspaces import register_workspace_routes
 from services.backups import register_backup_jobs
@@ -58,11 +59,23 @@ def register_routes() -> None:
     register_idle_routes(app, templates, context, flash)
     register_literature_report_routes(app, templates, context, flash)
     register_practical_workbench_routes(app, templates, context, flash)
+    register_profession_routes(app, templates, context, flash)
     register_project_routes(app, templates, context, flash)
     register_review_routes(app, templates, context, flash, current_realm)
     register_alchemy_routes(app, templates, context, flash)
     register_workspace_routes(app, templates, context, flash, entry_dict)
     register_backup_jobs(app)
+
+    @app.on_event("startup")
+    def _resume_virtual_network() -> None:
+        """上次开启过一键组网就自动恢复；放在后台线程，不阻塞窗口启动。"""
+        import threading
+
+        from services import headscale_vpn
+
+        threading.Thread(
+            target=headscale_vpn.resume_auto, daemon=True, name="headnet-autostart"
+        ).start()
 
 
 init_db()

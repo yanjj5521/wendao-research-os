@@ -91,72 +91,171 @@ def week_start_iso(now: datetime | None = None) -> str:
     return monday.astimezone().isoformat(timespec="seconds")
 
 
-def weekly_quotas(conn: sqlite3.Connection | None = None, now: datetime | None = None) -> dict[str, int]:
-    """读取（必要时生成）本周每人额度：各类材料/修为在 [下限, 上限] 内随机。
+REALM_LADDER: tuple[tuple[int, str, float], ...] = (
+    (0, "练气", 1.00),
+    (300, "筑基", 1.12),
+    (900, "金丹", 1.25),
+    (2200, "元婴", 1.40),
+    (5000, "化神", 1.55),
+    (10000, "炼虚", 1.70),
+)
 
-    生成本周额度时使用自持短事务写入（double-check 防并发重复生成）；
-    ``conn`` 只用于读取，调用方传只读连接也安全。
+
+def welfare_scale(conn: sqlite3.Connection | None = None) -> dict[str, object]:
+    """本周额度的两个乘数：管理员境界 × 成员人数。
+
+    境界取中心侧累计修为（cultivation 资产），不依赖个人端 39 阶表；
+    成员数只做温和加成（最多 +50%），避免"人一多就无限发"。
     """
+    reader = conn or connect_hub()
+    admin = reader.execute(
+        """
+        SELECT a.id, a.display_name,
+               COALESCE((
+                   SELECT SUM(t.amount) FROM hub_asset_transactions t
+                   WHERE t.user_id=a.id AND t.asset_key='cultivation'
+               ),0) AS cultivation
+        FROM accounts a
+        WHERE a.role='admin' AND a.active=1
+        ORDER BY cultivation DESC, a.id
+        LIMIT 1
+        """
+    ).fetchone()
+    cultivation = int(admin["cultivation"] or 0) if admin else 0
+    realm_name, realm_bonus = REALM_LADDER[0][1], REALM_LADDER[0][2]
+    for threshold, name, factor in REALM_LADDER:
+        if cultivation >= threshold:
+            realm_name, realm_bonus = name, factor
+    members = int(
+        reader.execute(
+            "SELECT COUNT(*) n FROM accounts WHERE role='member' AND active=1"
+        ).fetchone()["n"]
+    )
+    member_bonus = 1.0 + min(0.5, max(0, members - 1) * 0.05)
+    return {
+        "admin_id": int(admin["id"]) if admin else 0,
+        "admin_name": str(admin["display_name"]) if admin else "",
+        "cultivation": cultivation,
+        "realm_name": realm_name,
+        "realm_bonus": round(realm_bonus, 2),
+        "members": members,
+        "member_bonus": round(member_bonus, 2),
+        "total_bonus": round(realm_bonus * member_bonus, 2),
+    }
+
+
+def _load_quota_payload(raw: str) -> tuple[dict[str, int], dict[str, object]]:
+    """兼容旧的扁平 dict 与新的 {"quotas":…, "meta":…}。"""
+    try:
+        payload = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return {}, {}
+    if not isinstance(payload, dict):
+        return {}, {}
+    source = payload.get("quotas") if isinstance(payload.get("quotas"), dict) else payload
+    try:
+        quotas = {k: int(v) for k, v in source.items() if k in WELFARE_SINGLE_LIMITS}
+    except (TypeError, ValueError):
+        quotas = {}
+    # 历史/手工写入的额度可能只包含部分键，缺的按本周下限补齐，避免校验时 KeyError。
+    for key in WELFARE_SINGLE_LIMITS:
+        quotas.setdefault(key, WELFARE_WEEKLY_FLOORS[key])
+    meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+    return quotas, meta
+
+
+def weekly_quotas(conn: sqlite3.Connection | None = None, now: datetime | None = None) -> dict[str, int]:
+    """本周每人额度：基准随机区间 × 管理员境界 × 成员人数。"""
     key = weekly_quota_key(now)
     reader = conn or connect_hub()
     row = reader.execute(
         "SELECT quotas_json FROM hub_welfare_week_quota WHERE week_key=?", (key,)
     ).fetchone()
     if row:
-        try:
-            return {k: int(v) for k, v in json.loads(str(row["quotas_json"])).items()}
-        except (ValueError, TypeError):
-            pass
+        quotas, _meta = _load_quota_payload(str(row["quotas_json"]))
+        if quotas:
+            return quotas
     with hub_transaction(immediate=True) as writer:
         row = writer.execute(
             "SELECT quotas_json FROM hub_welfare_week_quota WHERE week_key=?", (key,)
         ).fetchone()
         if row:
-            try:
-                return {k: int(v) for k, v in json.loads(str(row["quotas_json"])).items()}
-            except (ValueError, TypeError):
-                pass
+            quotas, _meta = _load_quota_payload(str(row["quotas_json"]))
+            if quotas:
+                return quotas
+        scale = welfare_scale(writer)
+        factor = float(scale["total_bonus"])
         quotas = {
-            k: WELFARE_WEEKLY_FLOORS[k]
-            + secrets.randbelow(max(1, WELFARE_WEEKLY_CAPS[k] - WELFARE_WEEKLY_FLOORS[k] + 1))
+            k: max(
+                1,
+                int(
+                    (
+                        WELFARE_WEEKLY_FLOORS[k]
+                        + secrets.randbelow(
+                            max(1, WELFARE_WEEKLY_CAPS[k] - WELFARE_WEEKLY_FLOORS[k] + 1)
+                        )
+                    )
+                    * factor
+                ),
+            )
             for k in WELFARE_SINGLE_LIMITS
+        }
+        payload = {
+            "quotas": quotas,
+            "meta": {**scale, "week_key": key, "generated_at": now_iso()},
         }
         writer.execute(
             "INSERT OR IGNORE INTO hub_welfare_week_quota(week_key,quotas_json,created_at) VALUES (?,?,?)",
-            (key, json.dumps(quotas, ensure_ascii=False), now_iso()),
+            (key, json.dumps(payload, ensure_ascii=False), now_iso()),
         )
     return quotas
+
+
+def weekly_quota_meta(conn: sqlite3.Connection | None = None, now: datetime | None = None) -> dict[str, object]:
+    """管理台展示用：本周额度是怎么算出来的。"""
+    key = weekly_quota_key(now)
+    reader = conn or connect_hub()
+    row = reader.execute(
+        "SELECT quotas_json FROM hub_welfare_week_quota WHERE week_key=?", (key,)
+    ).fetchone()
+    meta: dict[str, object] = {}
+    if row:
+        _quotas, meta = _load_quota_payload(str(row["quotas_json"]))
+    if not meta:
+        meta = {**welfare_scale(reader), "week_key": key, "generated_at": ""}
+    return meta
 
 
 def enforce_welfare_weekly_limits(
     conn: sqlite3.Connection, recipient_id: int, values: dict[str, int], now: datetime | None = None
 ) -> dict[str, int]:
-    """每周额度校验：本周已发 + 本次 > 随机额度 时拒绝，并告知剩余。"""
+    """每周额度校验：本周**累计**已发 + 本次 > 本周额度 时拒绝，并告知剩余。"""
     quotas = weekly_quotas(conn, now)
     start = week_start_iso(now)
     columns = ",".join(WELFARE_SINGLE_LIMITS)
-    row = conn.execute(
+    rows = conn.execute(
         f"""SELECT {columns} FROM hub_welfare_grants
             WHERE recipient_id=? AND created_at>=?""",
         (recipient_id, start),
-    ).fetchone()
-    used_map = (
-        {key: int(row[key] or 0) for key in WELFARE_SINGLE_LIMITS}
-        if row is not None
-        else {key: 0 for key in WELFARE_SINGLE_LIMITS}
-    )
+    ).fetchall()
+    # 一周内可能发过多次，必须求和，不能只看一行。
+    used_map = {
+        key: sum(int(row[key] or 0) for row in rows) for key in WELFARE_SINGLE_LIMITS
+    }
     remaining: dict[str, int] = {}
     for key in WELFARE_SINGLE_LIMITS:
+        requested = int(values.get(key, 0) or 0)
         used = used_map[key]
         left = int(quotas[key]) - used
         remaining[key] = max(0, left)
-        if left < int(values.get(key, 0) or 0):
+        if requested <= 0:
+            continue
+        if left < requested:
             raise ValueError(
                 f"该成员本周 {WELFARE_LABELS[key]} 剩余额度 {max(0, left)}"
-                f"（本周额度 {quotas[key]}，已用 {used}），不足以再发 {int(values.get(key, 0) or 0)}。"
+                f"（本周额度 {quotas[key]}，已用 {used}），不足以再发 {requested}。"
             )
     return remaining
-
 
 
 def _restrict_private_file(path: Path) -> None:

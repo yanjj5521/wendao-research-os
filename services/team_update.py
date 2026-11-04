@@ -105,6 +105,21 @@ def reveal_path(path: Path) -> None:
         webbrowser.open(folder.as_uri())
 
 
+def reveal_file(path: Path) -> None:
+    """在资源管理器里定位并选中该文件（不是打开目录了事）。"""
+    target = Path(path)
+    if not target.is_file():
+        reveal_path(target.parent)
+        return
+    if sys.platform == "win32":
+        try:
+            subprocess.Popen(["explorer", f"/select,{target}"])
+            return
+        except OSError:
+            pass
+    reveal_path(target.parent)
+
+
 def prepare_team_update(*, hub_url: str, token: str, release_id: int, sha256: str) -> Path:
     """Download, bounds-check, hash-verify and backup before returning a package."""
     if not hub_url or not token:

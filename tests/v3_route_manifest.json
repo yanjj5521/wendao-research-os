@@ -411,6 +411,11 @@
   },
   {
     "method": "POST",
+    "path": "/online/headnet/auto",
+    "name": "online_headnet_auto"
+  },
+  {
+    "method": "POST",
     "path": "/online/headnet/save",
     "name": "online_headnet_save"
   },
@@ -623,6 +628,16 @@
     "method": "GET",
     "path": "/portable",
     "name": "portable_export"
+  },
+  {
+    "method": "GET",
+    "path": "/professions",
+    "name": "professions_page"
+  },
+  {
+    "method": "POST",
+    "path": "/professions/{profession_key}/activate",
+    "name": "professions_activate"
   },
   {
     "method": "GET",

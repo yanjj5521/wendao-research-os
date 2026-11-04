@@ -1,4 +1,4 @@
-"""宠物养成与完整冒险循环：领养、养成、探索、战斗、捕捉和商店。"""
+"""灵兽养成与完整冒险循环：领养、养成、探索、战斗、结契和商店。"""
 from __future__ import annotations
 
 import random
@@ -16,9 +16,9 @@ MAX_TEAM = 6
 REST_COST = 8
 
 SHOP_ITEMS: dict[str, dict[str, object]] = {
-    "basic": {"name": "漫游球", "price": 30, "kind": "ball"},
-    "great": {"name": "高级球", "price": 80, "kind": "ball"},
-    "ultra": {"name": "究极球", "price": 180, "kind": "ball"},
+    "basic": {"name": "契灵球", "price": 30, "kind": "ball"},
+    "great": {"name": "上品灵契球", "price": 80, "kind": "ball"},
+    "ultra": {"name": "极品灵契球", "price": 180, "kind": "ball"},
     "berry": {"name": "星莓", "price": 18, "kind": "food"},
 }
 RARITY_REWARD = {"普通": 0, "稀有": 8, "史诗": 16}
@@ -106,7 +106,7 @@ def adopt(data: dict, species_id: str, nickname: str = "") -> dict:
     if species_id in data["pets"]:
         raise ValueError(f"{species.name} 已经是你的伙伴了。")
     if len(data["pets"]) >= MAX_TEAM:
-        raise ValueError(f"宠物队伍已满（{MAX_TEAM} 只）。")
+        raise ValueError(f"灵兽袋已满（{MAX_TEAM} 只）。")
     state = _new_state(species_id, nickname)
     data["pets"][species_id] = state
     _mark(data, species_id, caught=True)
@@ -130,7 +130,7 @@ def set_active(data: dict, pet_id: str) -> dict:
     data = ensure_shape(data)
     _assert_no_battle(data)
     if pet_id not in data["pets"]:
-        raise ValueError("这只宠物不在你的队伍里。")
+        raise ValueError("这只灵兽不在你的队伍里。")
     data["active"] = pet_id
     data["pets"][pet_id]["last_seen"] = _now()
     return data["pets"][pet_id]
@@ -140,7 +140,7 @@ def rename(data: dict, pet_id: str, nickname: str) -> dict:
     data = ensure_shape(data)
     state = data["pets"].get(pet_id)
     if state is None:
-        raise ValueError("这只宠物不在你的队伍里。")
+        raise ValueError("这只灵兽不在你的队伍里。")
     name = (nickname or "").strip()[:12]
     if not name:
         raise ValueError("昵称不能为空。")
@@ -167,7 +167,7 @@ def feed(data: dict, pet_id: str | None = None) -> dict:
     _assert_no_battle(data)
     pet_id = pet_id or data["active"]
     if pet_id not in data["pets"]:
-        raise ValueError("先领养一只宠物吧。")
+        raise ValueError("先与一只灵兽结契吧。")
     state = data["pets"][pet_id]
     if int(state["hunger"]) >= FEED_CAP:
         raise ValueError(f"{state['nickname']} 现在很饱，吃不下更多了。")
@@ -185,7 +185,7 @@ def play(data: dict, pet_id: str | None = None) -> dict:
     _assert_no_battle(data)
     pet_id = pet_id or data["active"]
     if pet_id not in data["pets"]:
-        raise ValueError("先领养一只宠物吧。")
+        raise ValueError("先与一只灵兽结契吧。")
     state = data["pets"][pet_id]
     if int(state["energy"]) < PLAY_ENERGY_MIN:
         raise ValueError(f"{state['nickname']} 累坏了，让它休息一会儿。")
@@ -203,7 +203,7 @@ def use_berry(data: dict, pet_id: str | None = None) -> dict:
     _assert_no_battle(data)
     pet_id = pet_id or data["active"]
     if pet_id not in data["pets"]:
-        raise ValueError("先领养一只宠物吧。")
+        raise ValueError("先与一只灵兽结契吧。")
     if int(data["inventory"].get("berry", 0)) <= 0:
         raise ValueError("星莓已经用完了。")
     state = data["pets"][pet_id]
@@ -325,7 +325,7 @@ def rest_team(data: dict) -> dict:
     data = ensure_shape(data)
     _assert_no_battle(data)
     if not data["pets"]:
-        raise ValueError("先领养一只宠物吧。")
+        raise ValueError("先与一只灵兽结契吧。")
     if int(data["wallet"]["coins"]) < REST_COST:
         raise ValueError("同行币不足，无法休整。")
     data["wallet"]["coins"] -= REST_COST
@@ -390,7 +390,7 @@ def explore(data: dict, map_id: str, rng: random.Random | None = None) -> dict:
         raise ValueError(f"{scene.name} 需要队伍最高等级达到 Lv.{scene.unlock_level}。")
     active = active_state(data)
     if not active:
-        raise ValueError("先领养一只宠物吧。")
+        raise ValueError("先与一只灵兽结契吧。")
     pet_id, state = active
     if int(state["energy"]) < EXPLORE_ENERGY_MIN:
         raise ValueError("当前伙伴体力不足，先休整或换一只伙伴。")
@@ -418,7 +418,7 @@ def explore(data: dict, map_id: str, rng: random.Random | None = None) -> dict:
         "player_id": pet_id,
         "player_hp": player_hp,
         "player_max_hp": player_max_hp,
-        "log": [f"在{scene.name}遇见了野生的{enemy.name}！"],
+        "log": [f"在{scene.name}遇见了野外的{enemy.name}！"],
         "last_capture": None,
     }
     return data["battle"]
@@ -467,20 +467,20 @@ def attack(data: dict, rng: random.Random | None = None) -> dict:
     return battle
 
 
-def capture_wild(data: dict, ball_id: str, rng: random.Random | None = None) -> dict:
+def capture_wild(data: dict, ball_id: str, rng: random.Random | None = None, bonus: float = 1.0) -> dict:
     data = ensure_shape(data)
     battle = data.get("battle")
     if not isinstance(battle, dict) or battle.get("status") != "active":
-        raise ValueError("当前没有可以捕捉的野生宠物。")
+        raise ValueError("当前没有可以结契的野生灵兽。")
     if ball_id not in capture.BALLS:
-        raise ValueError("没有这种精灵球。")
+        raise ValueError("没有这种灵契球。")
     if int(data["inventory"].get(ball_id, 0)) <= 0:
-        raise ValueError("这种精灵球已经用完了。")
+        raise ValueError("这种灵契球已经用完了。")
     species_id = str(battle["species_id"])
     if species_id in data["pets"]:
-        raise ValueError("你已经拥有这只宠物，可以继续战斗获得奖励。")
+        raise ValueError("你已经拥有这只灵兽，可以继续战斗获得奖励。")
     if len(data["pets"]) >= MAX_TEAM:
-        raise ValueError(f"宠物队伍已满（{MAX_TEAM} 只），无法再捕捉。")
+        raise ValueError(f"灵兽袋已满（{MAX_TEAM} 只），无法再结契。")
     rng = rng or random.Random()
     data["inventory"][ball_id] -= 1
     player_species = SPECIES[battle["player_id"]]
@@ -489,6 +489,7 @@ def capture_wild(data: dict, ball_id: str, rng: random.Random | None = None) -> 
         hp_ratio=int(battle["enemy_hp"]) / max(1, int(battle["enemy_max_hp"])),
         rng=rng,
         player_element=player_species.element,
+        status_bonus=max(1.0, float(bonus)),
     )
     battle["last_capture"] = result
     shakes = sum(1 for value in result["shakes"] if value)
@@ -504,7 +505,7 @@ def capture_wild(data: dict, ball_id: str, rng: random.Random | None = None) -> 
         events = grant_exp(data, battle["player_id"], data["pets"][battle["player_id"]], exp)
         battle["status"] = "caught"
         battle["reward"] = {"coins": reward, "exp": exp, "events": events}
-        _battle_log(battle, f"捕捉成功！{SPECIES[species_id].name}加入了队伍。")
+        _battle_log(battle, f"结契成功！{SPECIES[species_id].name}加入了队伍。")
     else:
         _battle_log(battle, f"{SPECIES[species_id].name}挣脱了！")
         _enemy_strike(data, rng)

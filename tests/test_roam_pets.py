@@ -276,13 +276,13 @@ from core.database import init_db
 init_db()
 c = TestClient(app)
 page = c.get("/pets").text
-for marker in ("宠物乐园", "初始三选一", "宠物图鉴", "地图与野外遭遇", "补给商店", "全队休整"):
+for marker in ("灵兽园", "初始三选一", "灵兽谱", "地图与野外遭遇", "补给商店", "全队休整"):
     assert marker in page, marker
 r = c.post("/pets/adopt", data={"species_id": "dewfrog", "nickname": "小露"})
 assert "小露 加入了你的研究旅程" in r.text, r.text[:300]
 page = c.get("/pets").text
 assert "跟随我" not in page or "roam-following" in page
-assert "已捕获 1" in page and "出发探索" in page
+assert ("已捕获 1" in page or "已结契 1" in page) and "出发探索" in page
 from services.roam_pets import storage
 saved = storage.load()
 assert saved["active"] == "dewfrog" and "dewfrog" in saved["pets"]
@@ -296,15 +296,15 @@ assert "已购买 星莓" in r.text and storage.load()["wallet"]["coins"] == coi
 r = c.post("/pets/rest")
 assert "全队休整完毕" in r.text
 r = c.post("/pets/explore", data={"map_id": "plains"})
-assert "遇见了野生的" in r.text, r.text[:500]
+assert "遇见了野外的" in r.text, r.text[:500]
 page = c.get("/pets").text
 assert "战斗中" in page and "/pets/battle/attack" in page
 r = c.post("/pets/battle/attack")
 assert r.status_code == 200 and ("造成" in r.text or "战斗胜利" in r.text or "失败" in r.text)
 r = c.post("/pets/battle/close")
-assert "遭遇已结束" in r.text or "已返回宠物乐园" in r.text
+assert "遭遇已结束" in r.text or "已返回灵兽园" in r.text
 r = c.post("/pets/adopt", data={"species_id": "umbrae", "nickname": "影"})
-assert "需要通过野外捕捉获得" in r.text
+assert "需要通过野外的结契获得" in r.text or "需要通过野外" in r.text
 print("roam web flow pass")
 '''
         with tempfile.TemporaryDirectory(prefix="roam-ui-") as directory:

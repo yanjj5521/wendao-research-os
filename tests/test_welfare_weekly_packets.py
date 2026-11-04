@@ -21,6 +21,7 @@ from datetime import datetime, timedelta
 from fastapi.testclient import TestClient
 from hub.app import app as hub_app
 from hub.db import (
+    welfare_scale,
     WELFARE_SINGLE_LIMITS, WELFARE_WEEKLY_FLOORS, WELFARE_WEEKLY_CAPS,
     balances, connect_hub, init_hub_db, weekly_quotas, transact_asset,
 )
@@ -58,7 +59,10 @@ with connect_hub() as conn:
 # ── 1) 每周额度：随机但落在 [floor, cap]，周内稳定 ──
 with connect_hub() as conn:
     q1 = weekly_quotas(conn)
-assert all(WELFARE_WEEKLY_FLOORS[k] <= q1[k] <= WELFARE_WEEKLY_CAPS[k] for k in q1)
+scaled_cap = WELFARE_WEEKLY_CAPS
+scale = welfare_scale()
+factor = float(scale["total_bonus"])
+assert all(WELFARE_WEEKLY_FLOORS[k] <= q1[k] <= int(WELFARE_WEEKLY_CAPS[k] * factor) + 1 for k in q1)
 with connect_hub() as conn:
     assert weekly_quotas(conn) == q1, "同一周内额度必须稳定，不能反复刷新"
 
@@ -68,7 +72,7 @@ assert "welfare_labels" not in page  # 模板渲染后不残留变量名
 for key, label in (("qi_grass", "青灵草"), ("dew_flower", "凝露花"), ("primordial_stone", "混元石")):
     assert f'name="{key}"' in page, f"福利表单缺少 {key}"
     assert label in page
-assert "每人额度已随机刷新" in page
+assert "额度为每人每周上限" in page and "计算口径" in page
 
 # ── 3) 全类型发放：新列真实入账 ──
 r = admin.post("/admin/welfare", data={
@@ -87,7 +91,11 @@ import json as _json
 with connect_hub() as conn:
     key = conn.execute("SELECT week_key FROM hub_welfare_week_quota ORDER BY week_key DESC LIMIT 1").fetchone()[0]
     quotas = conn.execute("SELECT quotas_json FROM hub_welfare_week_quota WHERE week_key=?", (key,)).fetchone()[0]
-    qd = _json.loads(quotas); qd["xp"] = 10
+    qd = _json.loads(quotas)
+    if isinstance(qd, dict) and isinstance(qd.get("quotas"), dict):
+        qd["quotas"]["xp"] = 10   # 新格式：额度嵌在 quotas 下
+    else:
+        qd["xp"] = 10             # 旧格式：扁平 dict
     conn.execute("UPDATE hub_welfare_week_quota SET quotas_json=? WHERE week_key=?", (_json.dumps(qd), key))
     conn.commit()
 r = admin.post("/admin/welfare", data={

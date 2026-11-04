@@ -1,4 +1,4 @@
-"""宠物乐园：养成、地图探索、战斗、捕捉、商店与桌宠管理。"""
+"""灵兽园：养成、地图探索、战斗、结契、商店与桌宠管理。"""
 from __future__ import annotations
 
 import subprocess
@@ -12,6 +12,7 @@ from services.roam_pets import maps as roam_maps
 from services.roam_pets import service as roam_service
 from services.roam_pets import storage as roam_storage
 from services.roam_pets.catalog import SPECIES, STARTERS, get as get_species
+from services import professions
 from services.roam_pets.capture import BALLS
 from web.runtime import context, flash, templates
 
@@ -98,7 +99,7 @@ def roam_page(request: Request):
 @app.post("/pets/adopt", name="roam_adopt")
 def roam_adopt(request: Request, species_id: str = Form(""), nickname: str = Form("")):
     if species_id not in STARTERS:
-        flash(request, "该伙伴需要通过野外捕捉获得。", "error")
+        flash(request, "该伙伴需要通过野外结契获得。", "error")
         return _redirect(request)
     try:
         state, _ = _update(lambda data: roam_service.adopt(data, species_id, nickname))
@@ -200,7 +201,7 @@ def roam_explore(request: Request, map_id: str = Form("")):
         flash(request, str(exc), "error")
     else:
         enemy = SPECIES[battle["species_id"]]
-        flash(request, f"在{roam_maps.MAPS[map_id].name}遇见了野生的{enemy.name}！", "success")
+        flash(request, f"在{roam_maps.MAPS[map_id].name}遇见了野外的{enemy.name}！", "success")
     return _redirect(request)
 
 
@@ -221,16 +222,23 @@ def roam_battle_attack(request: Request):
 
 @app.post("/pets/battle/capture", name="roam_battle_capture")
 def roam_battle_capture(request: Request, ball_id: str = Form("")):
+    bonus = 1.0 + (professions.bonus("beastmaster") - 1.0) * 0.5
     try:
-        battle, _ = _update(lambda data: roam_service.capture_wild(data, ball_id))
+        battle, _ = _update(lambda data: roam_service.capture_wild(data, ball_id, bonus=bonus))
     except (ValueError, OSError, TimeoutError) as exc:
         flash(request, str(exc), "error")
     else:
         if battle["status"] == "caught":
             enemy = SPECIES[battle["species_id"]]
-            flash(request, f"捕捉成功！{enemy.name} 已加入队伍。", "success")
+            outcome = professions.add_exp("beastmaster", 15)
+            level_up = f"，晋阶 {outcome['tier']}" if outcome.get("leveled") else ""
+            flash(
+                request,
+                f"结契成功！{enemy.name} 已入灵兽袋。御兽师熟练度 +15{level_up}",
+                "success",
+            )
         elif battle["status"] == "lost":
-            flash(request, "精灵球没能留住它，你的伙伴也失去了战斗能力。", "error")
+            flash(request, "灵契球没能留住它，你的伙伴也失去了战斗能力。", "error")
         else:
             attempt = battle.get("last_capture") or {}
             shakes = sum(1 for value in attempt.get("shakes", []) if value)
@@ -245,7 +253,7 @@ def roam_battle_close(request: Request):
     except (ValueError, OSError, TimeoutError) as exc:
         flash(request, str(exc), "error")
     else:
-        flash(request, "已返回宠物乐园。" if status == "fled" else "遭遇已结束。", "success")
+        flash(request, "已返回灵兽园。" if status == "fled" else "遭遇已结束。", "success")
     return _redirect(request)
 
 
@@ -254,7 +262,7 @@ def roam_launch(request: Request, species_id: str = Form("")):
     data = _load()
     target = species_id or data.get("active") or (next(iter(data["pets"]), "") if data["pets"] else "")
     if not target or target not in data["pets"]:
-        flash(request, "先领养一只宠物，再唤出桌宠。", "error")
+        flash(request, "先与一只灵兽结契，再唤出桌宠。", "error")
         return _redirect(request)
     try:
         _launch_window(str(target))

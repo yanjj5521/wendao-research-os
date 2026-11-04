@@ -59,7 +59,7 @@
     <div class="section-head"><div><small>受限赠予</small><h2>发放同行福利</h2></div></div>
     <label>赠与成员<select name="recipient_id" required><option value="">请选择成员</option>{% for u in users if u.role=='member' and u.active %}<option value="{{ u.id }}">{{ u.display_name }} · @{{ u.username }}</option>{% endfor %}</select></label>
     <div class="welfare-inputs">{% for key, label in welfare_labels.items() %}<label>{{ label }}<input type="number" name="{{ key }}" min="0" max="{{ welfare_limits[key] }}" value="0"></label>{% endfor %}</div>
-    <div class="form-help">本周（{{ welfare_week_key }}）每人额度已随机刷新：{% for key, label in welfare_labels.items() %}{{ label }} {{ welfare_weekly[key] }}{% if not loop.last %} · {% endif %}{% endfor %}。超出将拒绝并提示剩余。</div>
+    <div class="form-help">本周（{{ welfare_week_key }}）每人额度：{% for key, label in welfare_labels.items() %}{{ label }} {{ welfare_weekly[key] }}{% if not loop.last %} · {% endif %}{% endfor %}。计算口径：管理员境界 <b>{{ welfare_meta.realm_name }}</b>（×{{ welfare_meta.realm_bonus }}）× 成员 <b>{{ welfare_meta.members }}</b> 人（×{{ welfare_meta.member_bonus }}）。额度为每人每周上限，超出将拒绝并提示剩余。</div>
     <label>赠予说明<input name="reason" maxlength="160" placeholder="例如：完成团队实验 SOP"></label>
     <button class="primary">发放并记录</button>
   </form>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}宠物乐园 · {{ site_name }}{% endblock %}
+{% block title %}灵兽园 · {{ site_name }}{% endblock %}
 {% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/roam.css') }}">{% endblock %}
 {% block content %}
 {% macro element_icon(element) %}{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[element] }}{% endmacro %}
@@ -7,21 +7,21 @@
 <div class="page-head minimal-head roam-head">
   <div>
     <span class="eyebrow">Roam Pets</span>
-    <h1>宠物乐园</h1>
-    <p>领养、养成、探险、战斗与捕捉。队伍最高 Lv.{{ max_level }} · 同行币 ◆{{ wallet.coins }}</p>
+    <h1>灵兽园</h1>
+    <p>领养、养成、探险、战斗与结契。队伍最高 Lv.{{ max_level }} · 同行币 ◆{{ wallet.coins }}</p>
   </div>
   <div class="world-head-actions">
     <form method="post" action="{{ url_for('roam_rest') }}"><button class="soft-button" {% if not owned %}disabled{% endif %}>全队休整 · ◆{{ 8 }}</button></form>
     <form method="post" action="{{ url_for('roam_launch') }}">
       <input type="hidden" name="species_id" value="{{ active_state.species_id if active_state else '' }}">
-      <button class="soft-button" {% if not active_state %}disabled title="先领养一只宠物"{% endif %}>🖥 唤出桌宠</button>
+      <button class="soft-button" {% if not active_state %}disabled title="先与一只灵兽结契"{% endif %}>🖥 唤出桌宠</button>
     </form>
   </div>
 </div>
 
 {% if not owned %}
 <section class="panel roam-adopt">
-  <div class="panel-head simple"><div><span class="eyebrow">Choose Partner</span><h2>初始三选一</h2><p>选择第一只伙伴；其余物种可在野外遇见并捕捉。</p></div></div>
+  <div class="panel-head simple"><div><span class="eyebrow">Choose Partner</span><h2>初始三选一</h2><p>选择第一只伙伴；其余物种可在野外遇见并结契。</p></div></div>
   <div class="roam-starter-grid">
     {% for species in starters %}
     <article class="roam-card starter">
@@ -64,7 +64,7 @@
     {% endif %}
     <form class="roam-rename" method="post" action="{{ url_for('roam_rename') }}">
       <input type="hidden" name="species_id" value="{{ active_state.species_id }}">
-      <input name="nickname" value="{{ active_state.nickname }}" maxlength="12" aria-label="宠物昵称">
+      <input name="nickname" value="{{ active_state.nickname }}" maxlength="12" aria-label="灵兽道号">
       <button class="button">改名</button>
     </form>
   </div>
@@ -73,7 +73,7 @@
 
 {% if battle and battle_enemy %}
 <section class="panel roam-battle">
-  <div class="panel-head simple"><div><span class="eyebrow">Wild Encounter · {{ battle_map.name if battle_map else battle.map_id }}</span><h2>野生的 {{ battle_enemy.name }} <small>Lv.{{ battle.enemy_level }}</small></h2></div><span class="roam-battle-status status-{{ battle.status }}">{{ {'active':'战斗中','won':'胜利','lost':'失败','caught':'已捕捉','fled':'已撤离'}.get(battle.status,battle.status) }}</span></div>
+  <div class="panel-head simple"><div><span class="eyebrow">Wild Encounter · {{ battle_map.name if battle_map else battle.map_id }}</span><h2>野外的 {{ battle_enemy.name }} <small>Lv.{{ battle.enemy_level }}</small></h2></div><span class="roam-battle-status status-{{ battle.status }}">{{ {'active':'战斗中','won':'胜利','lost':'失败','caught':'已结契','fled':'已撤离'}.get(battle.status,battle.status) }}</span></div>
   <div class="roam-battle-grid">
     <article class="roam-combatant">
       <span class="roam-element el-{{ battle_enemy.element }}">{{ {'火':'🔥','水':'💧','草':'🍀','雷':'⚡','光':'✨','暗':'🌙'}[battle_enemy.element] }}</span>
@@ -92,7 +92,7 @@
     <form method="post" action="{{ url_for('roam_battle_close') }}"><button class="button">撤离</button></form>
   </div>
   {% else %}
-  <div class="roam-battle-actions"><form method="post" action="{{ url_for('roam_battle_close') }}"><button class="primary-button">返回宠物乐园</button></form></div>
+  <div class="roam-battle-actions"><form method="post" action="{{ url_for('roam_battle_close') }}"><button class="primary-button">返回灵兽园</button></form></div>
   {% endif %}
 </section>
 {% endif %}
@@ -123,7 +123,7 @@
       {% for item in shop %}
       <form class="roam-shop-item" method="post" action="{{ url_for('roam_buy') }}">
         <input type="hidden" name="item_id" value="{{ item.id }}">
-        <div><b>{{ item.name }}</b><small>{{ '捕捉道具' if item.kind == 'ball' else '恢复道具' }} · 持有 {{ item.count }}</small></div>
+        <div><b>{{ item.name }}</b><small>{{ '结契道具' if item.kind == 'ball' else '恢复道具' }} · 持有 {{ item.count }}</small></div>
         <span>◆{{ item.price }}</span>
         <input type="number" name="quantity" min="1" max="10" value="1" aria-label="数量">
         <button class="button">购买</button>
@@ -135,7 +135,7 @@
     <div class="panel-head simple"><div><span class="eyebrow">Field Notes</span><h2>冒险记录</h2></div></div>
     <div class="roam-journey-grid">
       <div><b>{{ journey.steps }}</b><span>探索次数</span></div>
-      <div><b>{{ journey.captures }}</b><span>成功捕捉</span></div>
+      <div><b>{{ journey.captures }}</b><span>成功结契</span></div>
       <div><b>{{ journey.battles }}</b><span>战斗次数</span></div>
       <div><b>{{ journey.wins }}</b><span>战斗胜利</span></div>
     </div>
@@ -167,7 +167,7 @@
 {% endif %}
 
 <section class="panel">
-  <div class="panel-head simple"><div><span class="eyebrow">Dex</span><h2>宠物图鉴</h2><p>已捕获 {{ dex | selectattr('status','equalto','caught') | list | length }} / {{ species_count }}；遇见后显示资料，捕获后解锁完整描述。</p></div></div>
+  <div class="panel-head simple"><div><span class="eyebrow">Dex</span><h2>灵兽谱</h2><p>已捕获 {{ dex | selectattr('status','equalto','caught') | list | length }} / {{ species_count }}；遇见后显示资料，捕获后解锁完整描述。</p></div></div>
   <div class="roam-dex-grid">
     {% for row in dex %}
     <article class="roam-dex-card status-{{ row.status }}">

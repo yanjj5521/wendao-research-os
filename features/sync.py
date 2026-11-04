@@ -37,6 +37,7 @@ from services.team_update import (
     can_self_update,
     exit_for_update,
     prepare_team_update,
+    reveal_file,
     reveal_path,
     schedule_windows_replace,
 )
@@ -207,12 +208,21 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
                 "error",
             )
             return RedirectResponse(request.url_for("online_page"), status_code=303)
+        source = release_feed.local_source(release)
+        if source is not None:
+            # 中心身份：包本来就在本机，原地定位并选中，不复制第二份。
+            reveal_file(source)
+            flash(
+                request,
+                f"版本包 v{release.get('version', '')} 就在本机中心存储中，已在文件夹中定位：{source}",
+            )
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
         try:
             package = release_feed.fetch_package(release)
         except (OSError, ValueError, RuntimeError) as exc:
             flash(request, f"版本包下载失败：{exc}", "error")
             return RedirectResponse(request.url_for("online_page"), status_code=303)
-        where = "本机中心" if release.get("source") == "local" else str(release.get("center_url") or "中心")
+        where = str(release.get("center_url") or "中心")
         flash(
             request,
             f"版本包 v{release.get('version', '')}（来自{where}）已取到本机并通过 SHA-256 校验：{package}。"
@@ -222,6 +232,12 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
 
     @router.post("/online/releases/reveal", name="online_release_reveal")
     def online_release_reveal(request: Request):
+        release = release_feed.latest_release()
+        source = release_feed.local_source(release)
+        if source is not None:
+            reveal_file(source)
+            flash(request, f"已在本机中心存储中定位版本包：{source}")
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
         folder = STORAGE_ROOT / "team_updates" / "downloads"
         folder.mkdir(parents=True, exist_ok=True)
         reveal_path(folder)
@@ -354,6 +370,26 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
     def online_headnet_stop(request: Request):
         headscale_vpn.stop()
         flash(request, "Headscale 虚拟网络连接已停止。局域网连接不会受影响。")
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/headnet/auto", name="online_headnet_auto")
+    def online_headnet_auto(request: Request):
+        """一键组网：按当前身份自动选中心/成员模式，复用已保存配置。"""
+        identity = hub_identity.resolve()
+        role = "center" if identity["role"] == hub_identity.ROLE_HOST else "member"
+        try:
+            result = headscale_vpn.auto_connect(role)
+        except (OSError, ValueError, RuntimeError, TimeoutError) as exc:
+            flash(request, f"自动组网未完成：{exc}", "error")
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
+        target = result.get("virtual_url") or result.get("local_url") or ""
+        flash(
+            request,
+            f"{result.get('message', '已接入虚拟网络。')}"
+            f"当前以{'中心' if role == 'center' else '成员'}身份接入"
+            + (f"，入口 {target}" if target else "")
+            + "。下次启动会自动恢复。",
+        )
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/hub-host/stop", name="online_hub_host_stop")

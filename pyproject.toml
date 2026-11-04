@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.11.1"
-description = "问道科研 1.11.1：同行会身份分流、管理员与成员的版本包取用、入口按钮标识与 GitHub 发布页直达"
+version = "1.12.0"
+description = "问道科研 1.12.0：福利额度按境界与人数缩放、修仙百艺（炼丹师/炼器师/御兽师）、灵兽体系与一键组网"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

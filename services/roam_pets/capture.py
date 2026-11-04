@@ -1,4 +1,4 @@
-"""捕捉引擎：精灵球概率、三次摇动判定与野外捕捉共用。
+"""结契引擎：灵契球概率、三次摇动判定与野外结契共用。
 
 设计（类似宝可梦/洛克王国）：
     p = capture_base × 球加成 × (2 − hp_ratio) × 元素加成 × 状态加成
@@ -11,9 +11,9 @@ import random
 from .catalog import SPECIES, element_bonus
 
 BALLS: dict[str, dict[str, object]] = {
-    "basic": {"name": "漫游球", "bonus": 1.0, "price": 30},
-    "great": {"name": "高级球", "bonus": 1.6, "price": 80},
-    "ultra": {"name": "究极球", "bonus": 2.4, "price": 180},
+    "basic": {"name": "契灵球", "bonus": 1.0, "price": 30},
+    "great": {"name": "上品灵契球", "bonus": 1.6, "price": 80},
+    "ultra": {"name": "极品灵契球", "bonus": 2.4, "price": 180},
 }
 
 SHAKE_COUNT = 3
@@ -34,7 +34,7 @@ def catch_probability(ball_id: str, species_id: str, hp_ratio: float = 1.0,
 
 def attempt(ball_id: str, species_id: str, hp_ratio: float = 1.0,
             rng: random.Random | None = None, **kwargs) -> dict:
-    """完整一次投掷：三次摇动，全部通过即捕捉成功。返回结构化结果供 UI/日志使用。"""
+    """完整一次投掷：三次摇动，全部通过即结契成功。返回结构化结果供 UI/日志使用。"""
     p = catch_probability(ball_id, species_id, hp_ratio, **kwargs)
     rng = rng or random.Random()
     shakes = [rng.random() < p for _ in range(SHAKE_COUNT)]
