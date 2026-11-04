@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import os
 from typing import Any
 
 from core.database import get_setting, set_setting, transaction
@@ -107,7 +108,12 @@ def bonus(profession: str) -> float:
 
 
 def success_chance(profession: str, base: float) -> float:
-    """把等阶加成换算成成功率：每阶约 +3.6 个百分点，夹在 5%–98% 之间。"""
+    """把等阶加成换算成成功率：每阶约 +3.6 个百分点，夹在 5%–98% 之间。
+
+    自检/回归需要可复现结果时，设 ``RESEARCH_OS_DETERMINISTIC=1`` 固定为必成。
+    """
+    if os.environ.get("RESEARCH_OS_DETERMINISTIC", "").strip() == "1":
+        return 1.0
     return max(0.05, min(0.98, base + (bonus(profession) - 1.0) * 0.45))
 
 

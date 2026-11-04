@@ -2,7 +2,7 @@
 {% block title %}实用工作台 · {{ site_name }}{% endblock %}
 {% block content %}
 <div class="page-head minimal-head">
-  <div><span class="eyebrow">Practical Tools</span><h1>实用工作台</h1><p>只保留能直接交付的三件事：把文字写清、把图处理好、把文献图讲明白。处理结果会自动归档，之后随时修改。</p></div>
+  <div><span class="eyebrow">Practical Tools</span><h1>实用工作台</h1><p>文字、图片、文献图各一条处理链，结果自动归档。</p></div>
   <div class="page-actions"><a class="soft-button" href="{{ url_for('integral_page') }}">积分面积计算</a><a class="soft-button" href="{{ url_for('literature_report_page') }}">文献图 → 汇报 PPT</a><a class="soft-button" href="{{ url_for('experiments_page') }}">实验台账</a></div>
 </div>
 
@@ -14,7 +14,7 @@
 
 <section class="panel english-reading-studio" id="english-reading">
   <div class="panel-head simple"><div><span class="eyebrow">English Reading Gym</span><h2>先自己读懂英文，再借工具校正</h2></div><small>15 分钟一段</small></div>
-  <p>不要先全文翻译。英文顶刊阅读的基本动作是：拆句法 → 找比较/因果 → 对照图和图注 → 用英文复述。这里的结果不是答案，而是下一次可继续修改的训练卡。</p>
+  <p>拆句 → 找比较与因果 → 对照图注 → 英文复述；结果可继续改。</p>
   <form method="post" action="{{ url_for('workbench_reading') }}">
     <label><span>粘贴 Abstract、Results 或 Figure caption 的一小段原文</span><textarea name="reading_text" rows="7" placeholder="建议每次 120–350 个英文词；先读一遍，再把你卡住的原文放进来。">{{ reading_text|default('') }}</textarea></label>
     <button class="primary-button">生成精读训练</button>
@@ -30,7 +30,7 @@
 <div class="workbench-main-grid">
   <section class="panel workbench-text" id="writing">
     <div class="panel-head simple"><div><span class="eyebrow">Text Studio</span><h2>润色文献、图注或讲稿</h2></div><small>{{ provider.label }}</small></div>
-    <p class="form-help">{{ provider.detail }} 离线时会生成严谨的处理提示词，而不会伪造一段“已经润色”的科研文本。</p>
+    <p class="form-help">{{ provider.detail }} 离线时给出处理提示词，不伪造润色结果。</p>
     <form method="post" action="{{ url_for('workbench_polish') }}">
       <label><span>处理方式</span><select name="text_mode">{% for key, item in text_modes.items() %}<option value="{{ key }}" {% if text_mode==key %}selected{% endif %}>{{ item[0] }} · {{ item[1] }}</option>{% endfor %}</select></label>
       <label><span>原文</span><textarea name="source_text" rows="13" placeholder="粘贴一段引言、结果、图注或汇报草稿。请保留原始数字、单位和图号。">{{ source_text }}</textarea></label>
@@ -53,7 +53,7 @@
 
   <aside class="panel workbench-figure" id="figures">
     <div class="panel-head simple"><div><span class="eyebrow">Figure Utility</span><h2>处理图表与图片</h2></div></div>
-    <p>适合论文图、SEM、实验照片和 PPT 图片。不会调色、补图或改数据。</p>
+    <p>适合论文图、SEM、实验照片与 PPT 图片，不调色、不改数据。</p>
     <form method="post" action="{{ url_for('workbench_image') }}" enctype="multipart/form-data">
       <label class="compact-drop"><span>选择图片</span><input type="file" name="image_file" accept="image/png,image/jpeg,image/tiff,image/webp,image/bmp" required><small>PNG / JPG / TIFF / WebP / BMP，最大 30 MB</small></label>
       <label><span>处理方式</span><select name="operation"><option value="trim">裁去统一外留白</option><option value="export">仅统一导出</option></select></label>
@@ -62,14 +62,14 @@
       <button class="primary-button full-button">处理并自动归档</button>
     </form>
     <div class="workbench-figure-check"><strong>提交前 30 秒核对</strong><ol><li>坐标轴、单位、比例尺是否仍清楚？</li><li>图例、统计标记和颜色映射是否完整？</li><li>裁剪是否删掉了必要的对照或边界？</li></ol></div>
-    <details class="workbench-board" open><summary>把多张图排成论文多面板图</summary><p>自动加 A/B/C 标签、保持原始纵横比、统一间距；不在图片内添加图题或图注。</p><form method="post" action="{{ url_for('workbench_figure_board') }}" enctype="multipart/form-data"><label class="compact-drop"><span>选择 2–8 张图片</span><input type="file" name="board_files" accept="image/png,image/jpeg,image/tiff,image/webp,image/bmp" multiple required><small>按选择顺序放入 A、B、C…</small></label><div class="mini-form-grid"><label><span>每面板宽度</span><input type="number" name="panel_width" min="400" max="2400" value="1200"></label><label><span>列数</span><select name="columns"><option value="2">2 列</option><option value="3">3 列</option><option value="1">1 列</option><option value="4">4 列</option></select></label><label><span>间距（px）</span><input type="number" name="gap" min="8" max="160" value="36"></label></div><button class="soft-button full-button">生成多面板图并归档</button></form></details>
+    <details class="workbench-board" open><summary>把多张图排成论文多面板图</summary><p>自动加标签、保持比例、统一间距，不加图题。</p><form method="post" action="{{ url_for('workbench_figure_board') }}" enctype="multipart/form-data"><label class="compact-drop"><span>选择 2–8 张图片</span><input type="file" name="board_files" accept="image/png,image/jpeg,image/tiff,image/webp,image/bmp" multiple required><small>按选择顺序放入 A、B、C…</small></label><div class="mini-form-grid"><label><span>每面板宽度</span><input type="number" name="panel_width" min="400" max="2400" value="1200"></label><label><span>列数</span><select name="columns"><option value="2">2 列</option><option value="3">3 列</option><option value="1">1 列</option><option value="4">4 列</option></select></label><label><span>间距（px）</span><input type="number" name="gap" min="8" max="160" value="36"></label></div><button class="soft-button full-button">生成多面板图并归档</button></form></details>
   </aside>
 </div>
 
 
 <section class="panel cloud-ai-panel" id="cloud-ai-panel">
   <div class="panel-head simple"><div><span class="eyebrow">Cloud LLM</span><h2>云端大模型助手</h2></div><small>免密钥 · 已发布站点可用</small></div>
-  <p class="form-help">直接调用 WorkBuddy 云端大模型，无需配置任何 API 密钥。粘贴的内容会发送到云端服务，请勿放入未公开数据、隐私信息或受限材料；输出仅供参考，采用前请自行核对事实与边界。</p>
+  <p class="form-help">粘贴的内容会发送到云端服务，请勿放入未公开数据或隐私信息；输出需自行核对。</p>
   <div class="form-grid">
     <label><span>任务</span><select data-cloud-task>
       <option value="polish">学术润色</option>

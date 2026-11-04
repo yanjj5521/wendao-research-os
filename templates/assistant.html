@@ -2,10 +2,10 @@
 {% block title %}AI 协作 · {{ site_name }}{% endblock %}
 {% block content %}
 {% if nav_artifact and nav_artifact.key in ['paper_crane','star_compass'] %}
-<aside class="artifact-effect-banner"><span>{{ nav_artifact.icon }}</span><div><strong>{{ nav_artifact.name }}已展开</strong><p>本轮协作结束时，请把“结论—证据—唯一下一行动”粘贴到下方回存区，避免对话成为一次性消耗。</p></div></aside>
+<aside class="artifact-effect-banner"><span>{{ nav_artifact.icon }}</span><div><strong>{{ nav_artifact.name }}已展开</strong><p>结束时把「结论—证据—唯一下一行动」回存到下方。</p></div></aside>
 {% endif %}
 <div class="page-head minimal-head">
-  <div><span class="eyebrow">Context → Dialogue → Evidence</span><h1>AI 协作台</h1><p>先限定领域、项目和用途，再把结果收回知识库或项目推进。AI 负责分析，系统负责继承。</p></div>
+  <div><span class="eyebrow">Context → Dialogue → Evidence</span><h1>AI 协作台</h1><p>先限定领域与用途，再把结果收回知识库。</p></div>
 </div>
 
 <form class="panel assistant-scope" method="get">
@@ -40,7 +40,7 @@
 
 <details class="panel assistant-return" open>
   <summary><span><small>Return to system</small><strong>把 AI 结果重新收进科研系统</strong></span><b>⌄</b></summary>
-  <p>只保存你核对后的结论。原始对话可以留在 ChatGPT；这里保存以后真的要继承的判断、证据和下一步。</p>
+  <p>只保存核对后的结论，原始对话可以留在原处。</p>
   <form method="post" action="{{ url_for('assistant_result_save') }}" class="clean-form">
     <input type="hidden" name="mode" value="{{ mode }}">
     <div class="form-grid two">

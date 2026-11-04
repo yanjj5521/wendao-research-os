@@ -51,7 +51,7 @@
     {% endfor %}
   </div>
   {% if not project_workspaces %}
-  <p class="chain-note">这个项目还没有关联学习领域，前五环暂时无法统计。<a href="{{ url_for('project_page', project_id=project.id) }}#workspaces">先关联一个领域</a>，文献、实验与数据才会被计入。</p>
+  <p class="chain-note">未关联学习领域，前五环无法统计。<a href="{{ url_for('project_page', project_id=project.id) }}#workspaces">先关联一个领域</a>，文献、实验与数据才会被计入。</p>
   {% endif %}
 </section>
 
@@ -124,7 +124,7 @@
 
 <section class="panel project-cases">
   <div class="panel-head simple">
-    <div><span class="eyebrow">Related Cases</span><h2>联网查找相关先例</h2><p>先找“别人做到了什么”，再判断你的差距和验证路线。</p></div>
+    <div><span class="eyebrow">Related Cases</span><h2>联网查找相关先例</h2><p>先查先例，再判断差距与验证路线。</p></div>
     <span class="source-badge">Crossref · 无需账号</span>
   </div>
   <form class="discover-search" method="get" action="{{ url_for('project_page', project_id=project.id) }}">
@@ -169,7 +169,7 @@
         <div class="case-actions"><button class="soft-button">保存判断</button>{% if item.url %}<a href="{{ item.url }}" target="_blank" rel="noopener">打开 DOI/来源 ↗</a>{% endif %}</div>
       </form>
     </details>
-    {% else %}<p class="empty-compact">尚未保存先例。搜索并保存后，它们会长期留在本项目中。</p>{% endfor %}
+    {% else %}<p class="empty-compact">尚无先例，搜索后可长期保存在本项目。</p>{% endfor %}
   </div>
 </section>
 

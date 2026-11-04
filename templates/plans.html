@@ -2,10 +2,10 @@
 {% block title %}近期计划 · {{ site_name }}{% endblock %}
 {% block content %}
 <div class="page-head minimal-head">
-  <div><span class="eyebrow">Flexible Plans</span><h1>近期计划</h1><p>修炼任务管跨天成果，每日计划管3–7天具体行动。二者可在一次文本中导入，但会保存到两套独立记录。</p></div>
+  <div><span class="eyebrow">Flexible Plans</span><h1>近期计划</h1><p>修炼任务管跨天成果，每日计划管 3–7 天行动，分两套记录。</p></div>
 </div>
 {% if nav_artifact and nav_artifact.key == 'measuring_ruler' %}
-<aside class="artifact-effect-banner"><span>⌇</span><div><strong>量天尺正在校核</strong><p>每项任务请确认：变量是什么、单位是否统一、比较基线是谁、最小重复数是否足够。</p></div></aside>
+<aside class="artifact-effect-banner"><span>⌇</span><div><strong>量天尺正在校核</strong><p>每项确认：变量、单位、比较基线、最小重复数。</p></div></aside>
 {% endif %}
 
 {% if selected %}
@@ -35,7 +35,7 @@
   </div>
   <div class="plan-health-copy">
     <h2>{{ plan_health.balanced_days }} / {{ plan_health.days|length }} 天节奏合适</h2>
-    <p>必做完成 {{ plan_health.required_done }} / {{ plan_health.required_total }}；系统只检查数量、时长和最小交付，不替你判断学习质量。</p>
+    <p>必做完成 {{ plan_health.required_done }} / {{ plan_health.required_total }}；只查数量与交付，不判断质量。</p>
     <span class="game-progress"><i style="width:{{ plan_health.completion }}%"></i></span>
     {% if plan_health.warnings %}
     <details><summary>{{ plan_health.warnings|length }} 条可调整建议</summary><ul>{% for warning in plan_health.warnings %}<li>{{ warning }}</li>{% endfor %}</ul></details>
@@ -51,7 +51,7 @@
   <section class="panel">
     <details class="import-box" open>
       <summary>粘贴 AI 计划</summary>
-      <p>无需逐项创建。可粘贴 Markdown，也可直接粘贴网页复制的纯文本；系统会识别 #、项目符号和中文“第一天”。</p>
+      <p>可粘贴 Markdown 或网页纯文本；#、项目符号与“第一天”都能识别。</p>
       <form method="post" action="{{ url_for('plan_import') }}" id="planImportForm">
         <textarea name="plan_text" id="planImportText" rows="15" required placeholder="# 我的计划
 > 用三天推进一个眼前问题
@@ -69,7 +69,7 @@
 
   <section class="panel prompt-panel plan-prompt-panel">
     <div class="panel-head simple"><div><span class="eyebrow">Context-aware Prompt</span><h2>按当前网站状态生成</h2></div><button class="soft-button" type="button" id="copyPromptButton">复制提示词</button></div>
-    <p>这段提示词已经带上未完成任务、最近交付和最近状态。复制给任意大模型即可。</p>
+    <p>提示词已带未完成任务与最近交付，复制给任意模型即可。</p>
     <textarea id="promptText" rows="18" readonly>{{ plan_prompt }}</textarea>
     <div id="copyFeedback" class="copy-feedback" aria-live="polite"></div>
   </section>

@@ -5,7 +5,7 @@
   <div>
     <span class="eyebrow">Learning Domains</span>
     <h1>{{ nav_labels.workspaces }}</h1>
-    <p>一个领域就是一个长期学习方向：可以是一门课、一项技能，也可以是一项研究。名称、流程、组件、是否显示在侧栏都由你决定；学完一个方向就停用，想开新的随时新建，不必删掉旧记录。</p>
+    <p>一个领域就是一个长期方向：课程、技能或研究，名称与流程都由你决定；停用不删记录。</p>
   </div>
 </div>
 
@@ -38,7 +38,7 @@
         <label><span>自己的学习流程（每行一步，最多 6 步）</span><textarea name="workflow" rows="4">{{ item.workflow|join('\n') }}</textarea></label>
         <fieldset class="workspace-tool-picker">
           <legend>装配常用组件</legend>
-          <p>只决定这个领域首页放哪些入口，不会删除任何资料。</p>
+          <p>只决定首页入口，不删除资料。</p>
           <div>
             {% for key, meta in workspace_tools.items() %}
             <label><input type="checkbox" name="tools" value="{{ key }}" {% if key in item.toolset %}checked{% endif %}><span><b>{{ meta[1] }}</b><strong>{{ meta[0] }}</strong><small>{{ meta[2] }}</small></span></label>

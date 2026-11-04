@@ -2,7 +2,7 @@
 {% block title %}{{ nav_labels.cultivation }} · {{ site_name }}{% endblock %}
 {% block content %}
 <div class="page-head minimal-head">
-  <div><span class="eyebrow">Cultivation Record</span><h1>{% if selected_workspace %}{{ selected_workspace.icon }} {{ selected_workspace.name }} · {% endif %}{{ nav_labels.cultivation }}</h1><p>修炼任务记录跨天的能力与成果；每日任务只记录今天要做的下一行动。两者可以关联，但分别完成、分别验收。</p></div>
+  <div><span class="eyebrow">Cultivation Record</span><h1>{% if selected_workspace %}{{ selected_workspace.icon }} {{ selected_workspace.name }} · {% endif %}{{ nav_labels.cultivation }}</h1><p>修炼任务记跨天成果，每日任务记今天行动；可关联，分别验收。</p></div>
   <div class="page-actions">{% if selected_workspace %}<a class="ghost-button" href="{{ url_for('cultivation_page') }}">全部任务</a>{% endif %}<a class="primary-button" href="#new-cultivation-task">建立修炼任务</a></div>
 </div>
 
@@ -21,9 +21,9 @@
 {% endif %}
 
 <section class="task-type-contrast">
-  <article><span>跨天</span><h2>修炼任务</h2><p>“能够独立判读 CV 曲线”“形成可复现 LJ 案例”。完成依据是证据，不是日期。</p></article>
+  <article><span>跨天</span><h2>修炼任务</h2><p>例如“能独立判读 CV 曲线”。完成依据是证据。</p></article>
   <i>→</i>
-  <article><span>当天</span><h2>每日任务</h2><p>“用三句话判读一张 CV 图”“补齐 LJ README”。完成依据是当天交付。</p></article>
+  <article><span>当天</span><h2>每日任务</h2><p>例如“三句话判读一张 CV 图”。完成依据是当天交付。</p></article>
 </section>
 
 <div class="cultivation-task-layout" id="quests">
@@ -51,7 +51,7 @@
       {% endif %}
     </article>
     {% else %}
-    <div class="empty-state"><div>境</div><h3>还没有修炼任务</h3><p>先建立一个跨天、可验收的能力或成果里程碑。</p></div>
+    <div class="empty-state"><div>境</div><h3>还没有修炼任务</h3><p>先建一个可验收的跨天里程碑。</p></div>
     {% endfor %}
   </section>
 

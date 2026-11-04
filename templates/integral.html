@@ -3,7 +3,7 @@
 {% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/integral.css') }}">{% endblock %}
 {% block content %}
 <div class="page-head minimal-head">
-  <div><span class="eyebrow">Numerical Integration</span><h1>积分面积计算</h1><p>读取曲线数据，按梯形法或 Simpson 1/3 公式计算曲线与 x 轴之间的面积，并给出公式、代入过程与正负面积拆分。</p></div>
+  <div><span class="eyebrow">Numerical Integration</span><h1>积分面积计算</h1><p>读取曲线数据，按梯形法或 Simpson 1/3 计算面积，并给出公式与正负面积。</p></div>
   <div class="page-actions"><a class="soft-button" href="{{ url_for('workbench_page') }}">返回实用工作台</a></div>
 </div>
 
@@ -44,7 +44,7 @@
     {% if error %}<div class="integral-error" role="alert"><strong>没有算出来</strong><p>{{ error }}</p></div>{% endif %}
     <div class="integral-help">
       <strong>公式约定</strong>
-      <p>净面积按有向面积计算：曲线在 x 轴上方为正、下方为负。绝对面积 = 正面积 + |负面积|。若只需几何面积，请看“绝对面积”。</p>
+      <p>净面积按有向面积计算：上方为正、下方为负；绝对面积 = 正面积 + |负面积|。</p>
     </div>
   </section>
 

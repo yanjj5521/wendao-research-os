@@ -3,9 +3,8 @@
 {% block content %}
 <div class="page-head minimal-head">
   <div>
-    <span class="eyebrow">Local-first ResearchHub</span>
+    <span class="eyebrow">ResearchHub</span>
     <h1>{{ nav_labels.online }}</h1>
-    <p>同行会就在这个桌面程序里：登录后自动按管理员或成员身份显示不同界面；论文、数据集、笔记及实验附件始终留在个人电脑。</p>
   </div>
   <span class="sync-provider-badge {% if sync_provider == 'disabled' %}disabled{% endif %}">{{ sync_capabilities.label }}</span>
 </div>
@@ -13,7 +12,7 @@
 <section class="panel identity-hero role-{{ identity.role }}" id="identity">
   <div class="panel-head simple">
     <div>
-      <span class="eyebrow">当前身份 · 只会有一种</span>
+      <span class="eyebrow">当前身份</span>
       <h2>{{ identity.label }}</h2>
       <p>{{ identity.detail }}</p>
     </div>
@@ -21,77 +20,47 @@
   </div>
   <div class="button-row">
     <a class="primary-button" href="{{ identity.entry_url }}" {% if identity.entry_kind == 'external' %}target="_blank" rel="noopener"{% endif %}>{{ identity.action_label }}</a>
-    {% if identity.role == 'member' %}<a class="soft-button" href="#identity-connect">不是我连的中心？去改连接</a>{% endif %}
-    {% if identity.center_url %}<small class="form-help">要打开的中心：<code>{{ identity.center_url }}</code></small>{% endif %}
+    {% if identity.role == 'member' %}<a class="soft-button" href="#identity-connect">改连接</a>{% endif %}
   </div>
-  <div class="privacy-note"><b>点之前先看地址：按钮上的地址就是你即将进入的那一份</b>
-    <p><b>A · 我是中心</b>：按钮写本机地址（如 <code>127.0.0.1:5050</code>），进去是你的中心，版本包由你在「版本中心」上传。<br>
-       <b>B · 我是成员</b>：按钮写对方的地址（如 <code>192.168.50.20:5050</code>），进去是他们的中心；本机那份副本是空的，在里面注册或找邀请码一定失败。</p>
-  </div>
-</section>
-
-<section class="sync-contract-hero panel">
-  <div>
-    <span class="eyebrow">Channel ready</span>
-    <h2>一个程序，两种身份</h2>
-    <p>普通成员看到同行、资料卡、福利和更新；管理员额外看到邀请、成员、版本和审计。中心只在需要组队时启动，不让所有人都背负一套服务器流程。</p>
-  </div>
-  <div class="contract-status">
-    <div><small>契约版本</small><strong>{{ contract_version }}</strong></div>
-    <div><small>本地版本</small><strong>{{ local_version }}</strong></div>
-    <div><small>当前是否上传</small><strong>{{ '是' if sync_capabilities.enabled else '否' }}</strong></div>
-  </div>
+  <small class="form-help">按钮上的地址就是你要进入的中心：本机地址＝自己的中心，对方地址＝别人的中心。{% if identity.center_url %}当前：<code>{{ identity.center_url }}</code>{% endif %}</small>
 </section>
 
 <section class="sync-summary">
-  <div class="metric-card sync-health-{{ sync_health.tone }}"><small>保护状态</small><strong>{{ sync_health.label }}</strong><span>{% if sync_health.circuit_open %}本地功能继续工作，自动同步稍后恢复{% else %}失败不会阻塞本地科研流程{% endif %}</span></div>
-  <div class="metric-card"><small>待同步 / 延后</small><strong>{{ queue_stats.pending or 0 }} / {{ queue_stats.deferred or 0 }}</strong><span>按退避时间逐步重试</span></div>
-  <div class="metric-card"><small>已同步 / 暂停</small><strong>{{ queue_stats.synced or 0 }} / {{ queue_stats.paused or 0 }}</strong><span>永久错误等待人工处理</span></div>
-  <div class="metric-card"><small>科研原文件</small><strong>本地</strong><span>不进入联机事件</span></div>
+  <div class="metric-card sync-health-{{ sync_health.tone }}"><small>保护状态</small><strong>{{ sync_health.label }}</strong><span>{{ '稍后自动恢复' if sync_health.circuit_open else '不影响本地使用' }}</span></div>
+  <div class="metric-card"><small>待同步 / 延后</small><strong>{{ queue_stats.pending or 0 }} / {{ queue_stats.deferred or 0 }}</strong><span>自动重试</span></div>
+  <div class="metric-card"><small>已同步 / 暂停</small><strong>{{ queue_stats.synced or 0 }} / {{ queue_stats.paused or 0 }}</strong><span>需人工处理</span></div>
+  <div class="metric-card"><small>本地版本</small><strong>{{ local_version }}</strong><span>契约 {{ contract_version }}</span></div>
 </section>
 
 <div class="content-grid equal">
   <form id="identity-connect" method="post" action="{{ url_for('online_settings_save') }}" class="panel clean-form">
     <div class="panel-head simple"><div><span class="eyebrow">B · 我是成员</span><h2>连接他人的中心</h2></div></div>
     <ol class="connection-steps">
-      <li><b>1</b><span>向中心管理员索取「成员入口」地址与邀请码</span></li>
-      <li><b>2</b><span>用浏览器打开该地址注册并登录，在「我的联机主页」复制 API Token</span></li>
-      <li><b>3</b><span>回到本页填入地址与 Token，点「保存并联机」——此后「进入同行会」直接打开对方中心</span></li>
+      <li><b>1</b><span>向管理员要成员入口与邀请码，在浏览器注册并登录</span></li>
+      <li><b>2</b><span>在「我的联机主页」复制 API Token</span></li>
+      <li><b>3</b><span>回来填地址与 Token，保存并联机</span></li>
     </ol>
     <label>
       <span>当前模式</span>
       <select name="sync_provider">
-        <option value="disabled" {% if sync_provider=='disabled' %}selected{% endif %}>关闭 · 只保留扩展接口</option>
-        <option value="legacy_hub" {% if sync_provider=='legacy_hub' %}selected{% endif %}>ResearchHub · 十人以内联机</option>
-        <option value="cloud_v2" disabled>规模化云端 v2 · 尚未实现</option>
+        <option value="disabled" {% if sync_provider=='disabled' %}selected{% endif %}>关闭</option>
+        <option value="legacy_hub" {% if sync_provider=='legacy_hub' %}selected{% endif %}>ResearchHub · 十人以内</option>
+        <option value="cloud_v2" disabled>云端 v2 · 未实现</option>
       </select>
     </label>
-    <label><span>轻量中心地址</span><input name="hub_url" value="{{ hub_url }}" placeholder="例如 http://192.168.1.20:5050 或 http://100.64.0.10:5050"></label>
+    <label><span>中心地址</span><input name="hub_url" value="{{ hub_url }}" placeholder="http://192.168.1.20:5050"></label>
     <small class="form-help {% if not hub_url_ok %}text-danger{% endif %}">{{ hub_url_policy }}</small>
-    <label><span>轻量中心 Token</span><input type="password" name="hub_api_token" autocomplete="new-password" placeholder="{% if hub_token_configured %}已安全保存；留空保持不变{% else %}从“我的联机主页”复制{% endif %}"></label>
-    <label class="check-label"><input type="checkbox" name="auto_sync" value="1" {% if auto_sync or sync_provider == 'disabled' %}checked{% endif %}>连接成功后自动同步轻量状态</label>
+    <label><span>中心 Token</span><input type="password" name="hub_api_token" autocomplete="new-password" placeholder="{% if hub_token_configured %}已安全保存，留空保持不变{% else %}从「我的联机主页」复制{% endif %}"></label>
+    <label class="check-label"><input type="checkbox" name="auto_sync" value="1" {% if auto_sync or sync_provider == 'disabled' %}checked{% endif %}>自动同步</label>
     <div class="button-row">
       <button class="primary-button" name="connect_now" value="1">保存并联机</button>
       <button class="soft-button" name="connect_now" value="0">只保存</button>
     </div>
-    <small class="form-help">选择“关闭”后不会新建同步队列；启用时，公网地址必须使用 HTTPS，HTTP 只允许本机、局域网或 VPN。</small>
+    <small class="form-help">公网地址必须 HTTPS；HTTP 仅限本机、局域网或 VPN。<a href="{{ url_for('sync_capabilities') }}">能力接口</a></small>
   </form>
 
-  <section class="panel">
-    <div class="panel-head simple"><div><span class="eyebrow">使用边界</span><h2>现在能联什么，不能联什么</h2></div></div>
-    <div class="future-boundary-list">
-      <div><span>1</span><p><strong>已经可用</strong><small>账号、公开主页、灵石、法器、个性化、资料卡与版本提醒。</small></p></div>
-      <div><span>2</span><p><strong>手机入口</strong><small>Android 客户端连接同一个 ResearchHub，随时查看同行会与个人联机主页。</small></p></div>
-      <div><span>3</span><p><strong>断网保护</strong><small>本地操作先完成；断网事件排队、退避重试，不阻塞科研工作。</small></p></div>
-      <div><span>4</span><p><strong>隐私边界</strong><small>论文、实验原始数据、笔记和附件不进入联机中心。</small></p></div>
-    </div>
-    <a class="soft-button" href="{{ url_for('sync_capabilities') }}">查看机器可读能力接口</a>
-  </section>
-</div>
-
-<section class="online-control-grid">
   <article class="panel">
-    <div class="panel-head simple"><div><span class="eyebrow">A · 我是中心</span><h2>本机联机中心 · {{ '运行中' if hub_host.running else '未启动' }}</h2></div></div>
+    <div class="panel-head simple"><div><span class="eyebrow">A · 我是中心</span><h2>本机中心 · {{ '运行中' if hub_host.running else '未启动' }}</h2></div></div>
     {% if hub_host.running %}
     {% if hub_host.access_urls %}
     <div class="hub-access-list">
@@ -100,14 +69,14 @@
       {% endfor %}
     </div>
     {% else %}
-    <p class="text-danger">未检测到局域网或 VPN 地址。可在同行会管理控制台填写固定连接地址。</p>
+    <p class="text-danger">未检测到局域网或 VPN 地址，可在管理控制台填固定地址。</p>
     {% endif %}
-    {% if hub_host.custom_url %}<p>固定成员入口：<code>{{ hub_host.custom_url }}</code></p>{% endif %}
+    {% if hub_host.custom_url %}<p>固定入口：<code>{{ hub_host.custom_url }}</code></p>{% endif %}
     <div class="button-row">
       <a class="primary-button" href="{{ hub_host.local_url }}" target="_blank" rel="noopener">打开联机中心</a>
       <form method="post" action="{{ url_for('online_hub_host_stop') }}"><button class="soft-button">停止中心</button></form>
     </div>
-    <small class="form-help">同一房间可优先使用有线/无线地址；跨局域网时，所有成员先加入同一个 VPN 虚拟网络，再使用 VPN 地址。Windows 防火墙需允许该端口的专用或可信网络访问。</small>
+    <small class="form-help">跨局域网请先让成员加入同一 VPN，再用 VPN 地址；防火墙需放行该端口。</small>
     {% else %}
     <form method="post" action="{{ url_for('online_hub_host_start') }}" class="clean-form">
       <label><span>端口</span><input type="number" name="port" value="5050" min="1024" max="65535"></label>
@@ -115,28 +84,22 @@
     </form>
     {% endif %}
   </article>
-  <article class="panel">
-    <div class="panel-head simple"><div><span class="eyebrow">同行会入口</span><h2>{{ identity.badge }} · 点进去是哪一份</h2></div></div>
-    <p>{% if identity.entry_kind == 'external' %}你连的是别人的中心：入口直接指向 <code>{{ identity.center_url }}</code>，不会再进本机空副本。{% elif identity.role == 'host' %}入口打开本机中心；别人看到的是你发布的成员地址。{% else %}先在上面选好身份，入口才知道该打开哪一份。{% endif %}</p>
-    <a class="primary-button" href="{{ identity.entry_url }}" {% if identity.entry_kind == 'external' %}target="_blank" rel="noopener"{% endif %}>{{ identity.action_label }}</a>
-  </article>
-</section>
+</div>
 
 <section class="panel headnet-panel">
   <div class="panel-head simple"><div><span class="eyebrow">Headscale 虚拟专网</span><h2>跨网络直连</h2></div><span class="sync-provider-badge {% if not headnet.running %}disabled{% endif %}">{{ '运行中' if headnet.running else '未连接' }}</span></div>
-  <p>中心端和成员端都使用程序内置的用户态虚拟网络助手。中心发布后，邀请码会改用 Headscale 分配的虚拟 IP；成员不用处在同一个 Wi-Fi，也不需要安装系统 VPN 网卡。</p>
-  {% if not headnet.helper_available %}<p class="text-danger">内置虚拟网络助手未找到。请使用包含 Headscale 支持的 v1.8.3 或更新版本。</p>{% endif %}
+  {% if not headnet.helper_available %}<p class="text-danger">未找到内置虚拟网络助手，请升级程序。</p>{% endif %}
   <div class="button-row">
     <form method="post" action="{{ url_for('online_headnet_auto') }}"><button class="primary-button">一键自动组网</button></form>
-    <small class="form-help">按当前身份自动选择中心/成员模式，节点名自动生成；成功后下次启动自动恢复。首次使用仍需在下方保存一次控制端地址与预授权密钥。</small>
+    <small class="form-help">按身份自动选模式，下次启动自动恢复；首次需先保存下方配置。</small>
   </div>
   <form method="post" action="{{ url_for('online_headnet_save') }}" class="form-grid headnet-form">
-    <label>Headscale 控制端地址<input name="control_url" value="{{ headnet.configured_control_url }}" placeholder="https://headscale.example.com" autocomplete="url" required></label>
-    <label>预授权密钥<input type="password" name="auth_key" autocomplete="new-password" placeholder="{% if headnet.auth_key_configured %}已安全保存；留空保持不变{% else %}从 Headscale 生成的 preauth key{% endif %}"></label>
-    <label>本节点名称<input name="hostname" value="{{ headnet.hostname }}" placeholder="wendao-hub 或 wendao-member" required></label>
-    <label>中心虚拟 IP / 主机名（成员填写）<input name="peer" value="{{ headnet.peer }}" placeholder="例如 100.64.0.1" autocomplete="off"></label>
-    <label>中心监听端口<input type="number" name="port" value="{{ headnet.center_port or 5050 }}" min="1" max="65535"></label>
-    <label>中心虚拟端口（成员填写）<input type="number" name="peer_port" value="{{ headnet.peer_port or 5050 }}" min="1" max="65535"></label>
+    <label>控制端地址<input name="control_url" value="{{ headnet.configured_control_url }}" placeholder="https://headscale.example.com" autocomplete="url" required></label>
+    <label>预授权密钥<input type="password" name="auth_key" autocomplete="new-password" placeholder="{% if headnet.auth_key_configured %}已保存，留空不变{% else %}Headscale preauth key{% endif %}"></label>
+    <label>节点名称<input name="hostname" value="{{ headnet.hostname }}" placeholder="wendao-hub 或 wendao-member" required></label>
+    <label>中心虚拟 IP / 主机名<input name="peer" value="{{ headnet.peer }}" placeholder="100.64.0.1" autocomplete="off"></label>
+    <label>中心端口<input type="number" name="port" value="{{ headnet.center_port or 5050 }}" min="1" max="65535"></label>
+    <label>中心虚拟端口<input type="number" name="peer_port" value="{{ headnet.peer_port or 5050 }}" min="1" max="65535"></label>
     <div class="button-row">
       <button class="soft-button">保存配置</button>
       <button class="primary-button" formaction="{{ url_for('online_headnet_start_center') }}">作为中心启动</button>
@@ -146,31 +109,25 @@
   {% if headnet.running %}
   <div class="headnet-result">
     <span>{{ '中心节点' if headnet.role == 'center' else '成员代理' }}已连接</span>
-    {% if headnet.virtual_url %}<p>虚拟网络地址：<code>{{ headnet.virtual_url }}</code></p>{% endif %}
-    {% if headnet.local_url %}<p>本机入口：<a class="primary-button" href="{{ headnet.local_url }}" target="_blank" rel="noopener">打开虚拟网络同行会</a> <code>{{ headnet.local_url }}</code></p>{% endif %}
-    <p>节点：<code>{{ headnet.ip }}</code> · 控制端：<code>{{ headnet.control_url }}</code></p>
+    {% if headnet.virtual_url %}<p>虚拟地址：<code>{{ headnet.virtual_url }}</code></p>{% endif %}
+    {% if headnet.local_url %}<p>本机入口：<a class="primary-button" href="{{ headnet.local_url }}" target="_blank" rel="noopener">打开同行会</a> <code>{{ headnet.local_url }}</code></p>{% endif %}
+    <p>节点 <code>{{ headnet.ip }}</code> · <code>{{ headnet.control_url }}</code></p>
   </div>
-  <form method="post" action="{{ url_for('online_headnet_stop') }}"><button class="soft-button">停止 Headscale 虚拟网络</button></form>
+  <form method="post" action="{{ url_for('online_headnet_stop') }}"><button class="soft-button">停止虚拟网络</button></form>
   {% endif %}
-  <small class="form-help">自建 Headscale 必须通过 HTTPS 暴露控制端，并配置可用的 DERP/STUN 中继；所有成员要先在 Headscale 中创建用户并生成各自的预授权密钥。密钥只保存在本机数据库，不会进入同步事件或发布包。<a href="https://github.com/yanjj5521/wendao-research-os/blob/v1.8.3/docs/HEADSCALE.md" target="_blank" rel="noopener">查看部署指南</a></small>
+  <small class="form-help">自建 Headscale 需 HTTPS 控制端与 DERP/STUN 中继；密钥只存本机。<a href="https://github.com/yanjj5521/wendao-research-os/blob/v1.8.3/docs/HEADSCALE.md" target="_blank" rel="noopener">部署指南</a></small>
 </section>
 
 <section class="online-control-grid">
-  
-
   <article class="panel reliability-guard">
-    <div class="panel-head simple"><div><span class="eyebrow">Offline-first guard</span><h2>联机不稳定保护</h2></div><span class="control-seal">稳</span></div>
+    <div class="panel-head simple"><div><span class="eyebrow">Offline-first</span><h2>联机保护</h2></div><span class="control-seal">稳</span></div>
     <div class="guardrail-grid">
-      <div><b>{{ sync_health.policy.auto_timeout_seconds }}s</b><span>自动同步超时</span></div>
-      <div><b>{{ sync_health.policy.failure_threshold }}次</b><span>失败后熔断</span></div>
-      <div><b>5min</b><span>暂停后探测</span></div>
-      <div><b>{{ sync_health.policy.dead_letter_attempts }}次</b><span>转人工处理</span></div>
+      <div><b>{{ sync_health.policy.auto_timeout_seconds }}s</b><span>同步超时</span></div>
+      <div><b>{{ sync_health.policy.failure_threshold }}次</b><span>失败熔断</span></div>
+      <div><b>5min</b><span>暂停探测</span></div>
+      <div><b>{{ sync_health.policy.dead_letter_attempts }}次</b><span>转人工</span></div>
     </div>
-    <ul>
-      <li>每个事件有唯一编号，重复发送不会重复奖励或重复写入。</li>
-      <li>临时断网按指数退避并加入抖动，同时遵守中心的 Retry-After。</li>
-      <li>地址或 Token 错误不会无限重试；事件保留本地，修复后手动恢复。</li>
-    </ul>
+    <small class="form-help">事件幂等、按退避重试；地址或 Token 错误不会无限重试。</small>
     <div class="button-row">
       <form method="post" action="{{ url_for('online_connection_test') }}"><button class="soft-button" {% if sync_provider != 'legacy_hub' %}disabled{% endif %}>检测地址与 Token</button></form>
       {% if queue_stats.paused %}<form method="post" action="{{ url_for('online_retry_paused') }}"><button class="primary-button">恢复 {{ queue_stats.paused }} 个暂停事件</button></form>{% endif %}
@@ -180,62 +137,59 @@
 </section>
 
 <section class="panel legacy-sync-panel">
-  <div class="panel-head simple"><div><span class="eyebrow">Version center</span><h2>更新与同步</h2><p>版本检查、原地更新和轻量状态同步都在同一程序中完成。</p></div><a class="primary-button" href="{{ identity.entry_url }}" {% if identity.entry_kind == 'external' %}target="_blank" rel="noopener"{% endif %}>{{ identity.action_label }}</a></div>
-  <div class="privacy-note"><b>当前数据目录</b><p><code>{{ data_root }}</code>。更新只会替换程序 EXE；数据库、论文、笔记、附件和个人配置不会被更新包覆盖。</p></div>
+  <div class="panel-head simple"><div><span class="eyebrow">更新</span><h2>更新与同步</h2></div><a class="primary-button" href="{{ identity.entry_url }}" {% if identity.entry_kind == 'external' %}target="_blank" rel="noopener"{% endif %}>{{ identity.action_label }}</a></div>
+  <small class="form-help">数据目录 <code>{{ data_root }}</code>；更新只替换程序 EXE。</small>
   <div class="button-row">
     <form method="post" action="{{ url_for('online_update_check') }}"><button class="soft-button">检查新版本</button></form>
     {% if update_available %}
       {% if can_self_update %}
-      <form method="post" action="{{ url_for('online_update_latest') }}"><button class="primary-button">更新到 v{{ latest_release.version }}</button><small>自动校验 SHA-256、备份本地数据库、保留旧 EXE 以便启动失败时回滚。</small></form>
+      <form method="post" action="{{ url_for('online_update_latest') }}"><button class="primary-button">更新到 v{{ latest_release.version }}</button><small>校验 SHA-256、备份数据库、失败可回滚。</small></form>
       {% else %}
-      <small>发现 v{{ latest_release.version }}。自动原地更新只在已打包的 Windows EXE 中启用；源码模式请使用发布包。</small>
+      <small>发现 v{{ latest_release.version }}，自动更新仅在打包版可用。</small>
       {% endif %}
     {% elif latest_release %}
-      <small>当前版本 {{ local_version }} 已是同行会记录的最新版本。</small>
+      <small>已是最新版本。</small>
     {% endif %}
   </div>
-  <div class="privacy-note"><b>版本包下载（管理员与成员都走这条）</b>
-    <p>{% if latest_release %}{% if latest_release.source == 'local' %}来源：本机中心（你是中心，取包等于复制一份到本机并校验）。{% elif latest_release.source == 'center' %}来源：{{ latest_release.center_url }}（成员向中心取包）。{% else %}来源：上次同步缓存（网络不通时的兜底，可能不是最新）。{% endif %}{% endif %}
-       桌面内嵌窗口点浏览器式下载常常没有反应，所以这里由程序自己取：断点续传 + SHA-256 + 解包结构检查，存好之后告诉你文件位置。</p>
-    <div class="button-row">
-      {% if latest_release %}
-      <form method="post" action="{{ url_for('online_release_download') }}"><button class="soft-button">{% if latest_release.source == 'local' %}在文件夹中定位版本包 · v{{ latest_release.version }}{% else %}下载版本包到本机 · v{{ latest_release.version }}{% endif %}</button></form>
-      {% else %}
-        {% if identity.role == 'host' %}<small>本机中心还没有版本包。管理员在「版本中心」上传 Team-Update.zip 后即可取用。</small>
-        {% elif identity.role == 'member' %}<small>还没取到对方中心的版本包信息。请确认「B 我是成员」里的地址与 Token 可用，再点「检查新版本」。</small>
-        {% else %}<small>先在上面选择身份（开中心 / 连接他人中心），才能知道去哪儿取包。</small>{% endif %}
-      {% endif %}
-      <form method="post" action="{{ url_for('online_release_reveal') }}"><button class="soft-button">打开版本包所在文件夹</button></form>
-    </div>
+
+  <div class="button-row">
+    {% if latest_release %}
+    <form method="post" action="{{ url_for('online_release_download') }}"><button class="soft-button">{% if latest_release.source == 'local' %}定位版本包 · v{{ latest_release.version }}{% else %}下载版本包 · v{{ latest_release.version }}{% endif %}</button></form>
+    <small class="form-help">{% if latest_release.source == 'local' %}来自本机中心，直接在文件夹中选中。{% elif latest_release.source == 'center' %}来自 {{ latest_release.center_url }}。{% else %}来自同步缓存，可能不是最新。{% endif %}</small>
+    {% else %}
+      {% if identity.role == 'host' %}<small>本机中心还没有版本包，请在「版本中心」上传。</small>
+      {% elif identity.role == 'member' %}<small>未取到对方版本包，请确认地址与 Token 后检查更新。</small>
+      {% else %}<small>先选择身份，才知道去哪儿取包。</small>{% endif %}
+    {% endif %}
+    <form method="post" action="{{ url_for('online_release_reveal') }}"><button class="soft-button">打开版本包文件夹</button></form>
   </div>
-  <div class="privacy-note"><b>没有同行会？可直接查 GitHub</b><p>只读取公开仓库的正式发布，不上传任何本地资料；下载后仍校验 SHA-256、备份数据库并走同一套替换与回滚流程。</p></div>
+
   <div class="button-row">
     <form method="post" action="{{ url_for('online_update_github_check') }}"><button class="soft-button">检查 GitHub 新版本</button></form>
-    <a class="soft-button" href="{{ github_update.page if github_update and github_update.page else github_releases_url }}" target="_blank" rel="noopener">打开发布页（GitHub）</a>
+    <a class="soft-button" href="{{ github_update.page if github_update and github_update.page else github_releases_url }}" target="_blank" rel="noopener">打开发布页</a>
     {% if github_update and github_update.version and github_update.page %}
-    <a class="soft-button" href="{{ github_update.page }}" target="_blank" rel="noopener">查看 v{{ github_update.version }} 发布说明</a>
+    <a class="soft-button" href="{{ github_update.page }}" target="_blank" rel="noopener">v{{ github_update.version }} 说明</a>
     {% endif %}
     {% if github_update and github_update.version %}
       {% if can_self_update %}
       <form method="post" action="{{ url_for('online_update_github_apply') }}"><button class="primary-button">更新到 v{{ github_update.version }}（GitHub）</button></form>
       {% else %}
-      <small>发现 v{{ github_update.version }}。自动替换只在已打包的 Windows EXE 中启用；源码模式请下载发布包手动替换。</small>
+      <small>发现 v{{ github_update.version }}，自动替换仅在打包版可用。</small>
       {% endif %}
     {% endif %}
   </div>
   {% if update_log_tail %}
-  <details class="privacy-note"><summary>上次自动替换日志（若更新失败，原因在这里）</summary><pre class="form-help">{{ update_log_tail }}</pre></details>
+  <details class="privacy-note"><summary>上次替换日志</summary><pre class="form-help">{{ update_log_tail }}</pre></details>
   {% endif %}
-  {% if github_update_checked_at %}<small class="form-help">上次 GitHub 检查：{{ github_update_checked_at }}（当前 v{{ local_version }}）</small>{% endif %}
-  <div class="privacy-note"><b>手动下载了更新包？先校验完整性再替换</b>
+  {% if github_update_checked_at %}<small class="form-help">上次检查：{{ github_update_checked_at }}</small>{% endif %}
+  <div class="privacy-note"><b>手动更新的包，先校验再替换</b>
     <form method="post" action="{{ url_for('online_verify_package') }}" enctype="multipart/form-data" style="display:grid;gap:8px;margin-top:8px">
       <input type="file" name="package" accept=".zip" required>
-      <input name="expected" placeholder="可选：粘贴 SHA-256 或 SHA256SUMS 中的整行，自动比对">
+      <input name="expected" placeholder="可选：粘贴 SHA-256 或 SHA256SUMS 整行">
       <button class="soft-button">校验文件完整性</button>
-      <small class="form-help">下载被截断的包会导致启动报“pydantic_core._pydantic_core 缺失”；校验一致后再覆盖 EXE。</small>
+      <small class="form-help">截断的包会导致启动失败，校验一致再替换。</small>
     </form>
   </div>
-    <p>ResearchHub 服务十人以内的小团队；本地操作先完成，联机成功与否不会决定资料是否保存。</p>
   <div class="button-row">
     <form method="post" action="{{ url_for('online_connect') }}"><button class="primary-button">连接并合并状态</button></form>
     <form method="post" action="{{ url_for('online_sync_now') }}"><button class="soft-button">立即同步</button></form>
@@ -245,14 +199,14 @@
 
 <section class="content-grid equal">
   <form method="post" action="{{ url_for('online_theme_save') }}" class="panel clean-form">
-    <div class="panel-head simple"><div><span class="eyebrow">Local personalization</span><h2>本地个性化</h2></div></div>
+    <div class="panel-head simple"><div><span class="eyebrow">个性化</span><h2>本地外观</h2></div></div>
     <label><span>强调色</span><select name="accent"><option value="terracotta" {% if theme.accent=='terracotta' %}selected{% endif %}>陶土</option><option value="amber" {% if theme.accent=='amber' %}selected{% endif %}>暖金</option><option value="sage" {% if theme.accent=='sage' %}selected{% endif %}>鼠尾草</option><option value="ink" {% if theme.accent=='ink' %}selected{% endif %}>墨色</option><option value="cobalt" {% if theme.accent=='cobalt' %}selected{% endif %}>钴蓝</option><option value="plum" {% if theme.accent=='plum' %}selected{% endif %}>梅紫</option><option value="coral" {% if theme.accent=='coral' %}selected{% endif %}>珊瑚</option></select></label>
     <label><span>界面密度</span><select name="density"><option value="comfortable" {% if theme.density=='comfortable' %}selected{% endif %}>舒展</option><option value="compact" {% if theme.density=='compact' %}selected{% endif %}>紧凑</option><option value="spacious" {% if theme.density=='spacious' %}selected{% endif %}>宽松</option></select></label>
     <label><span>主页场景</span><select name="scene"><option value="warm" {% if theme.scene=='warm' %}selected{% endif %}>暖色洞府</option><option value="forest" {% if theme.scene=='forest' %}selected{% endif %}>灵植庭院</option><option value="paper" {% if theme.scene=='paper' %}selected{% endif %}>素纸书房</option><option value="dusk" {% if theme.scene=='dusk' %}selected{% endif %}>落日山门</option><option value="aurora" {% if theme.scene=='aurora' %}selected{% endif %}>极光观测台</option><option value="night" {% if theme.scene=='night' %}selected{% endif %}>星夜观测台</option></select></label>
-    <label><span>动效强度</span><select name="motion"><option value="reduced" {% if theme.motion=='reduced' %}selected{% endif %}>安静</option><option value="balanced" {% if theme.motion=='balanced' %}selected{% endif %}>平衡</option><option value="lively" {% if theme.motion=='lively' %}selected{% endif %}>灵动</option></select></label>
-    <label><span>几何语言</span><select name="geometry"><option value="soft" {% if theme.geometry=='soft' %}selected{% endif %}>柔和</option><option value="sharp" {% if theme.geometry=='sharp' %}selected{% endif %}>切角</option><option value="orbital" {% if theme.geometry=='orbital' %}selected{% endif %}>轨道</option></select></label>
+    <label><span>动效</span><select name="motion"><option value="reduced" {% if theme.motion=='reduced' %}selected{% endif %}>安静</option><option value="balanced" {% if theme.motion=='balanced' %}selected{% endif %}>平衡</option><option value="lively" {% if theme.motion=='lively' %}selected{% endif %}>灵动</option></select></label>
+    <label><span>几何</span><select name="geometry"><option value="soft" {% if theme.geometry=='soft' %}selected{% endif %}>柔和</option><option value="sharp" {% if theme.geometry=='sharp' %}selected{% endif %}>切角</option><option value="orbital" {% if theme.geometry=='orbital' %}selected{% endif %}>轨道</option></select></label>
     <label><span>字号</span><select name="font_scale"><option value="compact" {% if theme.font_scale=='compact' %}selected{% endif %}>小</option><option value="normal" {% if theme.font_scale=='normal' %}selected{% endif %}>标准</option><option value="large" {% if theme.font_scale=='large' %}selected{% endif %}>大</option></select></label>
-    <label><span>主页几何效果</span><select name="home_effect"><option value="orbits" {% if theme.home_effect=='orbits' %}selected{% endif %}>研究轨道</option><option value="prism" {% if theme.home_effect=='prism' %}selected{% endif %}>折射棱镜</option><option value="constellation" {% if theme.home_effect=='constellation' %}selected{% endif %}>证据星图</option><option value="none" {% if theme.home_effect=='none' %}selected{% endif %}>关闭</option></select></label>
+    <label><span>主页效果</span><select name="home_effect"><option value="orbits" {% if theme.home_effect=='orbits' %}selected{% endif %}>研究轨道</option><option value="prism" {% if theme.home_effect=='prism' %}selected{% endif %}>折射棱镜</option><option value="constellation" {% if theme.home_effect=='constellation' %}selected{% endif %}>证据星图</option><option value="none" {% if theme.home_effect=='none' %}selected{% endif %}>关闭</option></select></label>
     <label><span>主页短句</span><input name="home_motto" value="{{ theme.home_motto }}"></label>
     <label><span>每日诗句池</span><textarea name="poem_pool" rows="5">{% if theme.poem_pool %}{{ theme.poem_pool|join('\n') }}{% else %}{{ theme.home_poem }}{% endif %}</textarea></label>
     <input type="hidden" name="home_poem" value="{{ theme.home_poem }}">
@@ -260,11 +214,11 @@
   </form>
 
   <section class="panel">
-    <div class="panel-head simple"><div><span class="eyebrow">Portable v8</span><h2>个性化包</h2></div></div>
-    <p>v8 包含个人主页、头像、色彩、场景、动效、几何语言、每日诗句池、39阶境界名、导航布局、复盘开关，以及领域目标、流程与组件；不包含论文、数据、密钥或 Token，并兼容 v1–v7。</p>
-    <a class="soft-button" href="{{ url_for('online_personalization_export') }}">导出 JSON 个性化包</a>
+    <div class="panel-head simple"><div><span class="eyebrow">个性化包</span><h2>导出与导入</h2></div></div>
+    <small class="form-help">含主页、头像、主题、诗句池、境界名、导航与工作区；不含论文、数据与密钥。兼容 v1–v7。</small>
+    <a class="soft-button" href="{{ url_for('online_personalization_export') }}">导出 JSON</a>
     <form method="post" action="{{ url_for('online_personalization_import') }}" enctype="multipart/form-data" class="clean-form import-pack">
-      <label><span>导入个性化包</span><input type="file" name="file" accept=".json" required></label>
+      <label><span>导入</span><input type="file" name="file" accept=".json" required></label>
       <button class="primary-button">导入</button>
     </form>
   </section>
@@ -272,7 +226,7 @@
 
 {% if recent %}
 <section class="panel">
-  <div class="panel-head simple"><div><span class="eyebrow">Legacy queue</span><h2>历史同步队列</h2></div></div>
+  <div class="panel-head simple"><div><span class="eyebrow">队列</span><h2>历史同步队列</h2></div></div>
   <div class="sync-events">{% for e in recent %}<div><span class="status-badge {{ e.status }}">{{ e.status }}</span><b>{{ e.event_type }}</b><small>{{ e.created_at[:16].replace('T',' ') }} · 尝试 {{ e.attempts }} 次</small>{% if e.last_error %}<p>{{ e.last_error }}</p>{% endif %}</div>{% endfor %}</div>
 </section>
 {% endif %}

@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block title %}文献研读与汇报 · {{ site_name }}{% endblock %}
 {% block content %}
-<div class="page-head minimal-head"><div><span class="eyebrow">Figure-first Literature Studio</span><h1>文献阅读与汇报</h1><p>一篇文章先讲清 1–3 张图：它们比较了什么、说明了什么、还不能说明什么。文字只是为图服务。</p></div><div class="page-actions"><a class="soft-button" href="{{ url_for('upload') }}">先归档 PDF</a><a class="soft-button" href="{{ url_for('assistant_page') }}?mode=paper">论文研读助手</a></div></div>
-<section class="panel literature-guide"><div><strong>你的固定读法</strong><p>定问题 → 看图和图注 → 回到方法核对对照 → 用一句带边界的结论讲出来。发表过的文章也只是一份可继续更新的证据。</p></div><div class="literature-stages"><span>1 定问题</span><span>2 选关键图</span><span>3 查对照</span><span>4 讲证据</span><span>5 归档修改</span></div></section>
+<div class="page-head minimal-head"><div><span class="eyebrow">Figure-first Literature Studio</span><h1>文献阅读与汇报</h1><p>先讲清 1–3 张图：比较了什么、说明了什么、还不能说明什么。</p></div><div class="page-actions"><a class="soft-button" href="{{ url_for('upload') }}">先归档 PDF</a><a class="soft-button" href="{{ url_for('assistant_page') }}?mode=paper">论文研读助手</a></div></div>
+<section class="panel literature-guide"><div><strong>你的固定读法</strong><p>定问题 → 看图注 → 核对方法 → 用带边界的结论讲出来。</p></div><div class="literature-stages"><span>1 定问题</span><span>2 选关键图</span><span>3 查对照</span><span>4 讲证据</span><span>5 归档修改</span></div></section>
 
 <form method="post" class="literature-form" action="{{ url_for('literature_report_draft') }}">
   <section class="panel figure-import-panel"><div class="panel-head simple"><div><span class="eyebrow">Step 1 · PDF → 图片</span><h2>先把图带进来</h2></div></div>

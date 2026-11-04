@@ -2,12 +2,12 @@
 {% block title %}炼丹炉 · {{ site_name }}{% endblock %}
 {% block content %}
 <div class="page-head minimal-head">
-  <div><span class="eyebrow">Special Tasks & Alchemy</span><h1>炼丹炉</h1><p>特殊任务必须产生真实交付；灵草和丹药只是这份能力证据的奖励外观。</p></div>
+  <div><span class="eyebrow">Special Tasks & Alchemy</span><h1>炼丹炉</h1><p>特殊任务要真实交付；灵草与丹药只是奖励。</p></div>
   <div class="ai-state"><strong>{{ ai_status.label }}</strong><small>{{ ai_status.detail }}</small></div>
 </div>
 
 <section class="panel task-generator">
-  <div><span class="eyebrow">接取特殊任务</span><h2>让系统根据近期所学出一项可交付挑战</h2><p>难度决定灵草等级，不决定答案是否唯一。</p></div>
+  <div><span class="eyebrow">接取特殊任务</span><h2>让系统根据近期所学出一项可交付挑战</h2><p>难度决定灵草等级。</p></div>
   <form method="post" action="{{ url_for('alchemy_task_generate') }}" class="task-generator-form">
     <label><span>难度</span><select name="difficulty">{% for grade,spec in grades.items() %}<option value="{{ grade }}" {% if grade==2 %}selected{% endif %}>{{ grade }}级 · {{ spec.label }}</option>{% endfor %}</select></label>
     <label><span>想训练的内容（可留空）</span><input name="focus" placeholder="例如：CV曲线解释、量纲检查、论文证据链"></label>
@@ -42,7 +42,7 @@
           {% endif %}
         </div>
       </article>
-      {% else %}<div class="empty-state"><p>还没有特殊任务。生成一项真正能训练科研能力的小挑战。</p></div>{% endfor %}
+      {% else %}<div class="empty-state"><p>还没有特殊任务。</p></div>{% endfor %}
     </div>
   </section>
 
@@ -55,7 +55,7 @@
 </div>
 
 <section class="panel furnace-panel">
-  <div class="panel-head simple"><div><span class="eyebrow">Nine Recipes</span><h2>丹方谱</h2><p>九类丹方对应专注、复盘、证据、方法、综合迁移与突破；只消费真实任务获得的灵草。</p></div><strong>{{ recipes|length }} 方</strong></div>
+  <div class="panel-head simple"><div><span class="eyebrow">Nine Recipes</span><h2>丹方谱</h2><p>九类丹方，只消耗真实任务获得的灵草。</p></div><strong>{{ recipes|length }} 方</strong></div>
   <div class="recipe-grid">
     {% for recipe in recipes %}
     <article class="recipe-card"><span class="pill-orb">丹</span><div><h3>{{ recipe.name }}</h3><p>{{ recipe.desc }}</p><small>{{ recipe.cost_text }}</small></div><form method="post" action="{{ url_for('alchemy_craft', recipe_key=recipe.key) }}"><button class="soft-button">炼制</button></form></article>

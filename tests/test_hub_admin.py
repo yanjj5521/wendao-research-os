@@ -51,7 +51,7 @@ admin.post("/login", data={"username": "admin", "password": password, "_csrf": c
 page = admin.get("/admin")
 assert page.status_code == 200
 for marker in ("运营概览", "成员总数", "近 7 天新增", "今日在线", "导出账号留存 CSV",
-               "member@example.com", "邀请码", "审计", "邀请码只属于这个中心数据库",
+               "member@example.com", "邀请码", "审计", "邀请码只属于本库",
                "成员连接地址", "固定成员入口"):
     assert marker in page.text, marker
 assert "注册地址须与此处同源" not in page.text

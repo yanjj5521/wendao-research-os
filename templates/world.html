@@ -7,8 +7,8 @@
   <div>
     <span class="eyebrow">Research Habitat</span>
     <h1>我的洞府</h1>
-    <p>这里不是与科研分离的小游戏：建筑映射长期资产，法器改变使用方式，灵草来自真实的特殊任务。</p>
-    <p class="form-help">洞府不生产进度——它只把你的学习变成看得见的资产。数值全部来自真实交付，封顶有度，随时可在设置里关闭。</p>
+    <p>建筑映射长期资产，法器改变使用方式，灵草来自真实任务。</p>
+    <p class="form-help">洞府不产生进度，数值全部来自真实交付，可在设置中关闭。</p>
   </div>
   <div class="world-head-actions">
     <a class="soft-button" href="{{ url_for('achievements_page') }}">成就 {{ egg_count }}/{{ eggs|length }} 彩蛋</a>
@@ -79,7 +79,7 @@
 
 <section class="panel artifact-vault">
   <div class="panel-head simple">
-    <div><span class="eyebrow">Useful & Playful</span><h2>法器谱</h2><p>每件法器都写明实际作用；同一时刻只佩戴一件，随时切换。</p></div>
+    <div><span class="eyebrow">Useful & Playful</span><h2>法器谱</h2><p>同时只佩戴一件，可随时切换。</p></div>
   </div>
   <div class="artifact-grid rich-artifact-grid">
     {% for item in artifacts %}

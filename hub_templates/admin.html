@@ -102,13 +102,13 @@
     </form>
     {% if public_base_error %}<p class="form-help text-danger">已保存的固定入口无效：{{ public_base_error }} 当前已回退到自动地址。</p>{% endif %}
     <p class="form-help">当前注册基址：<code>{{ register_base_url }}</code></p>
-    {% if register_base_is_local %}<p class="form-help text-danger">当前是本机回环地址，成员无法访问。请启动联机中心后刷新，或填写双方都能访问的 VPN/公网地址。</p>{% endif %}
-    <p class="form-help">同房间可用有线/无线地址；跨局域网时所有成员先加入同一个 VPN 虚拟网络，再使用 VPN 地址。公网 HTTP 不安全，必须使用 HTTPS；Windows 防火墙还需允许该 TCP 端口。</p>
+    {% if register_base_is_local %}<p class="form-help text-danger">当前是回环地址，成员无法访问。请启动中心或填写双方可达的地址。</p>{% endif %}
+    <p class="form-help">跨局域网先让成员加入同一 VPN 再用 VPN 地址；公网必须 HTTPS；防火墙需放行端口。</p>
   </div>
 
   <div class="panel">
     <div class="section-head"><div><small>邀请</small><h2>邀请码</h2></div></div>
-    <p class="form-help">当前中心实例：<b>{{ instance_id }}</b>。邀请码只属于这个中心数据库；请从下方“打开注册页”进入，换到另一台主机或其他中心的地址会提示邀请码不存在。</p>
+    <p class="form-help">当前中心实例：<b>{{ instance_id }}</b>。邀请码只属于本库，换主机或不在本库的地址会提示不存在。</p>
     <div class="form-help invite-capacity">成员名额：已用 <b>{{ member_used }}</b> / 上限 <b>{{ member_cap }}</b>（剩余 {{ [member_cap - member_used, 0]|max }}）。
       <form method="post" action="{{ url_for('hub_admin_settings') }}" class="invite-capacity-form">
         <input type="hidden" name="_csrf" value="{{ csrf }}">

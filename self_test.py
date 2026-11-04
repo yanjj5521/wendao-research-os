@@ -11,6 +11,9 @@ from datetime import date, timedelta
 from fastapi.testclient import TestClient
 from PIL import Image
 
+# 自检要求可复现：炼丹/炼器的随机成率一律视为必成，避免偶发失败。
+os.environ.setdefault("RESEARCH_OS_DETERMINISTIC", "1")
+
 # The test command must never inherit a researcher's development database merely
 # because it was launched from beside the source tree. Callers can still provide
 # an explicit disposable directory when they need to inspect the generated data.

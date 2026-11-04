@@ -65,7 +65,7 @@ assert "仅限其个人使用" in page
 imported = c.post("/settings/ai/share/import", data={"share_code": code})
 assert "已导入共享模型" in imported.text, imported.text[:300]
 settings_page = c.get("/settings").text
-assert "模型共享与导入" in settings_page and "仅本人使用" in settings_page
+assert "模型共享与导入" in settings_page and "仅限其个人使用" in settings_page
 
 r404 = c.get("/definitely-not-a-page")
 assert r404.status_code == 404

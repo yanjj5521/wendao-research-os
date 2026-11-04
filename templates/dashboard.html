@@ -50,7 +50,7 @@
   <div class="gate-copy">
     <span class="gate-date">{{ today_label }} · 今日一诗 · 每日更换</span>
     <blockquote>{{ ui_home_poem }}</blockquote>
-    <p>{{ realm.name }}{% if streak %} · 连续学习 {{ streak }} 天{% endif %} · 今天学一点，也算数。</p>
+    <p>{{ realm.name }}{% if streak %} · 连续学习 {{ streak }} 天{% endif %} 。</p>
     <div class="gate-actions">
       <a class="primary-button gate-primary" href="{{ url_for('daily_page') }}">开始今日学习 <span>→</span></a>
       <a class="gate-text-link" href="{{ url_for('literature_report_page') }}">读一篇文献</a>
@@ -128,7 +128,7 @@
     <span class="review-modal-mark">忆</span>
     <small>每天只弹一次</small>
     <h2 id="review-modal-title">{{ pending_review.source_date }} 的交付，到了提取时间</h2>
-    <p>系统找到 {{ pending_review.source_count }} 份复盘关键文本。问题只根据这些交付生成，参考证据会在回答后显示。</p>
+    <p>{{ pending_review.source_count }} 份关键文本可复盘；证据在回答后显示。</p>
     <div class="review-modal-actions">
       <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="yesterday"><button class="primary-button large-button">开始 3 分钟复盘</button></form>
       <form method="post" action="{{ url_for('review_snooze') }}"><button class="text-button">今天先不弹</button></form>

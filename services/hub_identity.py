@@ -114,7 +114,7 @@ def resolve(host_status: dict[str, Any] | None = None) -> dict[str, Any]:
             f"你的同行会数据在 {url} 上。点「进入同行会」会直接打开这个中心；"
             "本机这份只是空副本，不要在本机副本里注册或找邀请码。"
         )
-        action_label = f"打开我连接的同行会（{display_address(url)}）"
+        action_label = f"进入同行会（{display_address(url)}）"
     elif role == ROLE_HOST:
         center_url = preferred or local_url
         entry_url = "/team/"
@@ -123,13 +123,13 @@ def resolve(host_status: dict[str, Any] | None = None) -> dict[str, Any]:
         label = "我是中心 · 由本机承载同行会"
         if running:
             detail = "本机中心正在运行；成员用你分发的地址登录，版本包与邀请码都在这里发布。"
-            action_label = f"进入我的同行会中心（{display_address(preferred or local_url) or '本机'}）"
+            action_label = f"进入同行会（{display_address(preferred or local_url) or '本机'}）"
         else:
             detail = (
                 "还没有启动本机中心。启动后「进入同行会」打开的是你自己的中心，"
                 "成员才能用你的地址登录。"
             )
-            action_label = "进入本机中心（尚未启动）"
+            action_label = "进入同行会（未启动）"
     else:
         center_url = ""
         entry_url = "/online#identity"
@@ -137,7 +137,7 @@ def resolve(host_status: dict[str, Any] | None = None) -> dict[str, Any]:
         badge = "未选择"
         label = "还没选择身份"
         detail = "同行会有两种用法：自己开中心当管理员，或连接别人的中心当成员。先选一种。"
-        action_label = "选择我的身份"
+        action_label = "选择身份"
 
     return {
         "role": role,

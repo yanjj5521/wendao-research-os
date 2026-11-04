@@ -5,7 +5,7 @@
   <div>
     <span class="eyebrow">Evidence Challenges</span>
     <h1>{{ nav_labels.trials }}</h1>
-    <p>同一份复盘文本可以训练不同能力：快速提取、机制解释、反证和综合迁移。题目仍只来自你主动保存的关键文本。</p>
+    <p>同一份复盘可练四种能力，题目只来自你保存的关键文本。</p>
   </div>
   <div class="ai-state"><strong>{{ ai_status.label }}</strong><small>{{ ai_status.detail }}</small></div>
 </div>
@@ -27,7 +27,7 @@
   <article class="panel trial-card mode-quick">
     <span class="trial-mark">闪</span><small>约 3 分钟 · 3 题</small>
     <h2>灵光问答</h2>
-    <p>快速提取核心事实与概念，适合开始学习前热身，不追求长篇回答。</p>
+    <p>提取核心事实与概念，适合热身。</p>
     <div class="trial-meta"><span>最近 4 份材料</span><span>+10 修为</span></div>
     <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="quick"><button class="soft-button" {% if source_count < 1 %}disabled{% endif %}>快速进入</button></form>
   </article>
@@ -35,7 +35,7 @@
   <article class="panel trial-card mode-mechanism">
     <span class="trial-mark">因</span><small>约 8 分钟 · 4 题</small>
     <h2>因果迷宫</h2>
-    <p>重建“前提—机制—现象—边界”，并把模糊解释改成能够测量的判断。</p>
+    <p>重建前提—机制—现象—边界。</p>
     <div class="trial-meta"><span>综合 12 份材料</span><span>+18 修为</span></div>
     <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="mechanism"><button class="soft-button" {% if source_count < 1 %}disabled{% endif %}>进入迷宫</button></form>
   </article>
@@ -43,7 +43,7 @@
   <article class="panel trial-card mode-counterexample">
     <span class="trial-mark">反</span><small>约 8 分钟 · 4 题</small>
     <h2>反证之境</h2>
-    <p>构造可能推翻结论的情形、替代解释，以及能区分它们的最小证据。</p>
+    <p>构造反例、替代解释与最小证据。</p>
     <div class="trial-meta"><span>强调边界</span><span>+18 修为</span></div>
     <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="counterexample"><button class="soft-button" {% if source_count < 1 %}disabled{% endif %}>寻找反例</button></form>
   </article>
@@ -51,7 +51,7 @@
   <article class="panel trial-card trial-card-primary mode-beast">
     <span class="trial-mark">境</span><small>约 12 分钟 · 5 题</small>
     <h2>万象秘境</h2>
-    <p>混合回忆、解释、迁移与反证，检查多个知识点能否共同服务一个科研判断。</p>
+    <p>混合四种题型，检查知识能否服务一个判断。</p>
     <div class="trial-meta"><span>{{ source_count }} 份可用材料</span><span>+24 修为</span></div>
     <form method="post" action="{{ url_for('review_start') }}"><input type="hidden" name="mode" value="beast"><button class="primary-button" {% if source_count < 1 %}disabled{% endif %}>进入会试</button></form>
   </article>
@@ -72,11 +72,11 @@
     <small>只在大境界突破前开启</small>
     <h2>五问雷劫</h2>
     {% if realm.tribulation_required and pending_gate %}
-    <p>你已到达 {{ realm.tribulation_title }} 的突破关口。五问均分达到 70 分才会解锁下一大境界。</p>
+    <p>已到 {{ realm.tribulation_title }} 关口，五问均分 70 分解锁下一境界。</p>
     <div class="tribulation-five"><span>一·事实</span><span>二·机制</span><span>三·边界</span><span>四·反证</span><span>五·迁移</span></div>
     <div class="trial-meta"><span>渡劫丹 {{ tribulation_pills }}</span><span>五问均分 ≥ 70</span><span>通过 +40 修为</span></div>
     {% else %}
-    <p>尚未到突破关口。金丹以上且修为达到下一大境界门槛后，它才会自动开启，不能提前刷题。</p>
+    <p>金丹以上且修为达标后自动开启，不能提前刷。</p>
     {% endif %}
   </div>
   {% if realm.tribulation_required and pending_gate %}

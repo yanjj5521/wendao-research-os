@@ -6,7 +6,7 @@
   <div>
     <span class="eyebrow">{{ {'yesterday':'昨日复盘','quick':'灵光问答','mechanism':'因果迷宫','counterexample':'反证之境','beast':'万象秘境','tribulation':'突破雷劫'}.get(session.mode,'复盘') }}</span>
     <h1>{{ session.title }}</h1>
-    <p>先独立回答，再查看交付证据。模型评价只是形成性反馈，最终掌握度由你确认。</p>
+    <p>先独立回答，再看证据；模型反馈仅供参考，掌握度由你确认。</p>
   </div>
   <a class="soft-button" href="{{ url_for('review_page' if session.mode=='yesterday' else 'trials_page') }}">返回{{ '复盘台' if session.mode=='yesterday' else '秘境' }}</a>
 </div>
@@ -83,7 +83,7 @@
 
 {% else %}
 <div class="page-head minimal-head">
-  <div><span class="eyebrow">Retrieval Practice</span><h1>{{ nav_labels.review }}</h1><p>这里只做低压力的主动回忆；秘境试炼与突破雷劫已经独立移出。</p></div>
+  <div><span class="eyebrow">Retrieval Practice</span><h1>{{ nav_labels.review }}</h1><p>只做低压力回忆；试炼与雷劫已独立。</p></div>
   <div class="ai-state"><strong>{{ ai_status.label }}</strong><small>{{ ai_status.detail }}</small></div>
 </div>
 
@@ -107,7 +107,7 @@
   <div class="review-history">
     {% for item in history %}
     <a href="{{ url_for('review_session', session_id=item.id) }}"><span>复</span><div><strong>{{ item.title }}</strong><small>{{ item.created_at|datecn }} · 已答 {{ item.answer_count }} 题 · 均分 {{ item.average_score }}</small></div><b>›</b></a>
-    {% else %}<div class="empty-state"><p>完成第一次关键文本交付后，这里会形成可追踪的复盘记录。</p></div>{% endfor %}
+    {% else %}<div class="empty-state"><p>完成首次关键文本交付后，这里会出现复盘记录。</p></div>{% endfor %}
   </div>
 </section>
 {% endif %}
