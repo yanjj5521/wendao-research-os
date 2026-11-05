@@ -126,7 +126,7 @@ class GithubUpdateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             with patch.object(github_update, "STORAGE_ROOT", Path(tmp)):
                 with patch.object(github_update, "_checksums", return_value={"User.zip": "b" * 64}):
-                    with patch.object(github_update, "fetch_resumable", side_effect=fake_fetch):
+                    with patch.object(github_update, "fetch_fast", side_effect=fake_fetch):
                         with self.assertRaises(github_update.GithubUpdateError):
                             github_update.prepare_github_update(release)
             self.assertFalse((Path(tmp) / "team_updates" / "github_update_9.9.9.zip").exists())
@@ -287,7 +287,7 @@ class PrepareReuseTests(unittest.TestCase):
             with patch.object(github_update, "STORAGE_ROOT", storage), patch.object(
                 github_update, "_checksums", return_value={"User.zip": digest}
             ), patch.object(github_update, "file_sha256", return_value=digest), patch.object(
-                github_update, "fetch_resumable", side_effect=AssertionError("must not download")
+                github_update, "fetch_fast", side_effect=AssertionError("must not download")
             ), patch.object(
                 github_update, "backup_local_db", return_value=storage / "backup.db"
             ):
@@ -317,7 +317,7 @@ class PrepareReuseTests(unittest.TestCase):
             with patch.object(github_update, "STORAGE_ROOT", storage), patch.object(
                 github_update, "_checksums", return_value={"User.zip": digest}
             ), patch.object(github_update, "file_sha256", return_value="e" * 64), patch.object(
-                github_update, "fetch_resumable", side_effect=fake_fetch
+                github_update, "fetch_fast", side_effect=fake_fetch
             ), patch.object(
                 github_update, "backup_local_db", return_value=storage / "backup.db"
             ):

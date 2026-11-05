@@ -78,6 +78,11 @@ def register_routes() -> None:
         threading.Thread(
             target=headscale_vpn.resume_auto, daemon=True, name="headnet-autostart"
         ).start()
+        from services import hub_realm
+
+        threading.Thread(
+            target=hub_realm.sync_if_due, daemon=True, name="realm-autostart"
+        ).start()
 
 
 init_db()

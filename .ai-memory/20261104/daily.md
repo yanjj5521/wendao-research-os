@@ -61,3 +61,26 @@
 - **文件**: services/reading_flow.py, features/reading.py, templates/reading.html, core/schema/personal.py, core/migrations.py
 - **决策**: 只做节奏卡点 + 大纲生成 + 问答准备，不做自动读 PDF；数据本机表，个人库 v7
 - **验证**: 建档→三遍填写→大纲六段→问答保存→推进遍次，完成度 100%
+
+## [19:00] - Bug修复: GitHub 下载失败（代理 + API digest + 镜像回退）
+
+- **文件**: services/github_update.py, services/download.py, web/routes/settings.py, templates/settings.html
+- **决策**: 哈希以 API digest 为准；镜像仅作传输通道，必须过同一 SHA-256；无代理时保持 urlopen 旧路径
+- **验证**: 实测 6.1s 下载 73MB，digest c314e283… 与本地一致；tests/test_aux_features.py 覆盖回退
+
+## [19:10] - 功能实现: 39 阶境界名同步至中心
+
+- **文件**: services/hub_realm.py, hub/routes/api.py, hub/db.py, hub/routes/{pages,admin,common}.py, templates/online.html
+- **决策**: 复用 accounts.metadata_json 存快照，不新增中心库列；展示优先快照
+- **验证**: 推送「金丹三层」后成员页与管理台均显示该名
+
+## [19:20] - 功能实现: PDF 辅助抽取（默认折叠）
+
+- **文件**: services/pdf_sketch.py, features/reading.py, templates/reading.html, core/schema/personal.py, core/migrations.py
+- **决策**: 只抽标题/图表标题/结论；扫描件直接拒绝，不 OCR
+- **验证**: 路由级抽取后页面显示三项并可「填入」
+
+## [19:25] - 验证: 管理员上传 → 成员安装 全链路
+
+- **文件**: tests/test_release_e2e.py
+- **验证**: 真实 HTTP 上传/取包/SHA/结构校验全通过（pytest 244 passed）

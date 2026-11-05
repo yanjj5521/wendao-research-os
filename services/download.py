@@ -10,10 +10,14 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
+import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Sequence
 
 USER_AGENT = "WendaoResearch-updater"
 
@@ -147,3 +151,150 @@ def fetch_resumable(
     os.replace(part, destination)
     meta_path.unlink(missing_ok=True)
     return destination
+
+
+def _opener(proxy: str):
+    if proxy:
+        return urllib.request.build_opener(
+            urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+        )
+    return None
+
+
+def _probe(url: str, *, proxy: str, headers: dict[str, str], timeout: float = 8.0, sample: int = 512 * 1024):
+    """下载前 512 KB 测速：返回 (速度字节/秒, 总大小或 None, 是否支持分段)。"""
+    request = urllib.request.Request(url, headers={**headers, "Range": f"bytes=0-{sample - 1}"})
+    opener = _opener(proxy)
+    started = time.monotonic()
+    try:
+        response = opener.open(request, timeout=timeout) if opener else urllib.request.urlopen(request, timeout=timeout)
+        with response as handle:
+            status = getattr(handle, "status", 200)
+            chunk = handle.read(sample)
+    except (urllib.error.URLError, TimeoutError, OSError):
+        return None
+    elapsed = max(0.05, time.monotonic() - started)
+    if not chunk:
+        return None
+    total = None
+    content_range = ""
+    try:
+        content_range = handle.headers.get("Content-Range", "")  # type: ignore[union-attr]
+    except Exception:
+        content_range = ""
+    if content_range and "/" in content_range:
+        try:
+            total = int(content_range.rsplit("/", 1)[1])
+        except ValueError:
+            total = None
+    supports_range = status == 206
+    return (len(chunk) / elapsed, total, supports_range)
+
+
+def _fetch_parallel(
+    url: str,
+    destination: Path,
+    *,
+    total: int,
+    expected_sha256: str,
+    headers: dict[str, str],
+    proxy: str,
+    timeout: int,
+    workers: int = 2,
+) -> Path:
+    """把文件切成 workers 段并发下载，最后顺序拼接并校验。"""
+    chunk_size = math.ceil(total / workers)
+    parts: list[Path] = []
+    opener = _opener(proxy)
+
+    def download_part(index: int) -> Path:
+        start = index * chunk_size
+        end = min(total - 1, start + chunk_size - 1)
+        part = destination.with_name(f"{destination.name}.part{index}")
+        request = urllib.request.Request(
+            url, headers={**headers, "Range": f"bytes={start}-{end}"}
+        )
+        response = opener.open(request, timeout=timeout) if opener else urllib.request.urlopen(request, timeout=timeout)
+        with response as handle, part.open("wb") as out:
+            while chunk := handle.read(1024 * 1024):
+                out.write(chunk)
+        if part.stat().st_size != end - start + 1:
+            raise DownloadError(f"分段 {index + 1} 大小不符，已回退单连接下载。")
+        return part
+
+    try:
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            parts = list(pool.map(download_part, range(workers)))
+    except Exception:
+        for part in destination.parent.glob(f"{destination.name}.part*"):
+            part.unlink(missing_ok=True)
+        raise
+
+    digest = hashlib.sha256()
+    with destination.open("wb") as out:
+        for part in parts:
+            with part.open("rb") as handle:
+                while chunk := handle.read(1024 * 1024):
+                    digest.update(chunk)
+                    out.write(chunk)
+            part.unlink(missing_ok=True)
+    if digest.hexdigest().lower() != expected_sha256.lower():
+        destination.unlink(missing_ok=True)
+        raise DownloadError("更新包 SHA-256 不匹配，已删除损坏文件。")
+    return destination
+
+
+def fetch_fast(
+    url: str,
+    destination: Path,
+    *,
+    expected_sha256: str,
+    max_bytes: int,
+    timeout: int,
+    headers: dict[str, str] | None = None,
+    proxy: str = "",
+    mirror_urls: Sequence[str] = (),
+) -> Path:
+    """先测速选最快的线路，再尽量 4 路并发；任何异常都回退到可续传的单连接下载。"""
+    expected = (expected_sha256 or "").strip().lower()
+    if len(expected) != 64:
+        raise DownloadError("缺少有效的 SHA-256，已拒绝下载。")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    base_headers = {"User-Agent": USER_AGENT}
+    if headers:
+        base_headers.update(headers)
+
+    best_url = url
+    best_total = None
+    best_speed = -1.0
+    best_range = False
+    for candidate in [url, *mirror_urls]:
+        result = _probe(candidate, proxy=proxy, headers=base_headers)
+        if not result:
+            continue
+        speed, total, supports_range = result
+        if total and total > max_bytes:
+            raise DownloadError("更新包超过上限，已停止下载。")
+        if speed > best_speed:
+            best_url, best_total, best_speed, best_range = candidate, total, speed, supports_range
+
+    if best_speed < 0:
+        # 测速全部失败：交给单连接下载器给出统一的可读错误/续传能力。
+        return fetch_resumable(
+            url, destination, expected_sha256=expected, max_bytes=max_bytes,
+            timeout=timeout, headers=headers, proxy=proxy,
+        )
+
+    if best_range and best_total and best_total > 4 * 1024 * 1024:
+        try:
+            return _fetch_parallel(
+                best_url, destination, total=best_total, expected_sha256=expected,
+                headers=base_headers, proxy=proxy, timeout=timeout, workers=2,
+            )
+        except Exception:
+            pass  # 回退单连接，保留可用性
+
+    return fetch_resumable(
+        best_url, destination, expected_sha256=expected, max_bytes=max_bytes,
+        timeout=timeout, headers=headers, proxy=proxy,
+    )

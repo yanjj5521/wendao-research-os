@@ -20,7 +20,7 @@ from pathlib import Path
 from core.database import get_setting
 from core.runtime_paths import STORAGE_ROOT
 from services.backups import backup_local_db
-from services.download import fetch_resumable
+from services.download import fetch_fast
 
 MAX_UPDATE_BYTES = 500 * 1024 * 1024
 APP_EXE_NAME = "WendaoResearchV3.exe"
@@ -76,7 +76,7 @@ def download_release_package(
     update_dir.mkdir(parents=True, exist_ok=True)
     safe_version = re.sub(r"[^0-9A-Za-z._-]+", "_", version or str(release_id))[:40] or str(release_id)
     target = update_dir / f"WendaoResearch-v{safe_version}-Team-Update.zip"
-    fetch_resumable(
+    fetch_fast(
         f"{hub_url}/api/v1/releases/{release_id}/download",
         target,
         expected_sha256=sha256,
@@ -127,7 +127,7 @@ def prepare_team_update(*, hub_url: str, token: str, release_id: int, sha256: st
     update_dir = STORAGE_ROOT / "team_updates"
     update_dir.mkdir(parents=True, exist_ok=True)
     target = update_dir / f"team_update_{release_id}.zip"
-    fetch_resumable(
+    fetch_fast(
         f"{hub_url.rstrip('/')}/api/v1/releases/{release_id}/download",
         target,
         expected_sha256=sha256,

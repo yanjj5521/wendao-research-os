@@ -7,7 +7,9 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-from core.database import connect, get_setting, total_xp
+from datetime import datetime, timedelta
+
+from core.database import connect, get_setting, set_setting, total_xp
 from core.version import APP_VERSION
 from services import progression
 
@@ -51,3 +53,32 @@ def push(url: str, token: str) -> dict[str, Any]:
         return json.loads(body)
     except json.JSONDecodeError:
         raise ValueError("中心返回了无法解析的数据。") from None
+
+
+def sync_if_due(*, force: bool = False, min_interval: timedelta = timedelta(hours=6)) -> dict[str, Any] | None:
+    """自动同步：境界名或修为变化、或距上次超过 6 小时才推，避免每次点同步都发请求。
+
+    返回推送结果；不需要推送或失败时返回 None（调用方静默）。
+    """
+    url = get_setting("hub_url", "").strip()
+    token = get_setting("hub_api_token", "").strip()
+    if not url or not token:
+        return None
+    current = snapshot()
+    signature = f"{current['realm_name']}|{current['realm_index']}|{current['cultivation']}"
+    if not force and signature == get_setting("hub_realm_signature", ""):
+        return None
+    if not force:
+        try:
+            pushed_at = datetime.fromisoformat(get_setting("hub_realm_pushed_at", ""))
+        except ValueError:
+            pushed_at = None
+        if pushed_at and datetime.now().astimezone() - pushed_at < min_interval:
+            return None
+    try:
+        result = push(url, token)
+    except (OSError, ValueError):
+        return None
+    set_setting("hub_realm_signature", signature)
+    set_setting("hub_realm_pushed_at", datetime.now().astimezone().isoformat(timespec="seconds"))
+    return result

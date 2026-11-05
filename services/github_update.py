@@ -24,7 +24,7 @@ from core.database import get_setting, now_iso, set_setting
 from core.runtime_paths import STORAGE_ROOT
 from core.version import APP_VERSION, is_newer_version
 from services.backups import backup_local_db
-from services.download import DownloadError, file_sha256, fetch_resumable
+from services.download import DownloadError, fetch_fast, file_sha256
 from services.team_update import APP_EXE_NAME, MAX_UPDATE_BYTES
 
 GITHUB_REPO = "yanjj5521/wendao-research-os"
@@ -225,25 +225,21 @@ def prepare_github_update(release: dict[str, object]) -> Path:
         pass
     else:
         proxy = download_proxy()
-        routes = [package_url] + [mirror_url(package_url, prefix) for prefix in MIRROR_PREFIXES]
-        errors: list[str] = []
-        for index, route in enumerate(routes):
-            try:
-                fetch_resumable(
-                    route,
-                    target,
-                    expected_sha256=expected_hash,
-                    max_bytes=MAX_UPDATE_BYTES,
-                    timeout=DOWNLOAD_TIMEOUT,
-                    proxy=proxy,
-                )
-                break
-            except DownloadError as exc:
-                errors.append(f"{'直连' if index == 0 else '镜像' + str(index)}：{exc}")
-                continue
-        else:
-            hint = "；已在设置里填写「GitHub 下载代理」可显著提速。" if not proxy else ""
-            raise GithubUpdateError("下载失败（直连与镜像均不可用）。" + " / ".join(errors) + hint)
+        mirrors = [mirror_url(package_url, prefix) for prefix in MIRROR_PREFIXES]
+        try:
+            # 先测速选最快线路，再 4 路并发；失败自动回退单连接/镜像。
+            fetch_fast(
+                package_url,
+                target,
+                expected_sha256=expected_hash,
+                max_bytes=MAX_UPDATE_BYTES,
+                timeout=DOWNLOAD_TIMEOUT,
+                proxy=proxy,
+                mirror_urls=mirrors,
+            )
+        except DownloadError as exc:
+            hint = "；可在设置里填写「GitHub 下载代理」进一步提速。" if not proxy else ""
+            raise GithubUpdateError(f"{exc}{hint}") from exc
     try:
         _validate_user_package(target)
     except Exception:

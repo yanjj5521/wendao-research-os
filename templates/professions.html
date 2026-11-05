@@ -71,6 +71,12 @@
   {% endfor %}
 </section>
 
+<section class="art-gallery">
+  <a class="art-tile" href="{{ url_for('alchemy_page') }}"><img src="{{ url_for('static', path='/art/alchemy.webp') }}" alt="炼丹炉"><span>炼丹炉 · 灵草入炉</span></a>
+  <a class="art-tile" href="{{ url_for('world_page') }}"><img src="{{ url_for('static', path='/art/forge.webp') }}" alt="炼器炉"><span>炼器炉 · 淬炼法器</span></a>
+  <a class="art-tile" href="{{ url_for('roam_page') }}"><img src="{{ url_for('static', path='/art/spirit-beast.webp') }}" alt="灵兽园"><span>灵兽园 · 结契同行</span></a>
+</section>
+
 <section class="content-grid equal" style="margin-top:18px">
   <div class="panel">
     <div class="panel-head simple"><div><span class="eyebrow">Tier Ladder</span><h2>六阶等阶</h2><p>每一阶都要求真实的成品数量，不是签到天数。</p></div></div>

@@ -378,7 +378,9 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
     def online_realm_push(request: Request):
         """把完整境界名同步到中心展示（只推快照）。"""
         try:
-            result = hub_realm.push(get_setting("hub_url", ""), get_setting("hub_api_token", ""))
+            result = hub_realm.sync_if_due(force=True) or hub_realm.push(
+                get_setting("hub_url", ""), get_setting("hub_api_token", "")
+            )
         except (OSError, ValueError, urllib.error.URLError) as exc:
             flash(request, f"境界同步失败：{exc}", "error")
             return RedirectResponse(request.url_for("online_page"), status_code=303)
@@ -629,13 +631,21 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
             return RedirectResponse(request.url_for("online_page"), status_code=303)
         enqueue_initial_state()
         result = sync_now(force=True)
+        if result["ok"]:
+            hub_realm.sync_if_due()  # 联机成功后顺带把境界推过去，失败静默
         flash(request, result["message"], "success" if result["ok"] else "error")
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/sync", name="online_sync_now")
     def online_sync_now(request: Request):
         result = sync_now(force=True)
-        flash(request, f"{result['message']} 本次确认 {result.get('synced', 0)} 个事件。", "success" if result["ok"] else "error")
+        realm_pushed = hub_realm.sync_if_due() if result["ok"] else None
+        extra = f"境界已同步为「{realm_pushed['realm_name']}」。" if realm_pushed else ""
+        flash(
+            request,
+            f"{result['message']} 本次确认 {result.get('synced', 0)} 个事件。{extra}",
+            "success" if result["ok"] else "error",
+        )
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/test", name="online_connection_test")

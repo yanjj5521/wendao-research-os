@@ -3,6 +3,7 @@
 {% block content %}
 <div class="page-head minimal-head">
   <div><span class="eyebrow">Special Tasks & Alchemy</span><h1>炼丹炉</h1><p>特殊任务要真实交付；灵草与丹药只是奖励。</p></div>
+  <img class="head-art" src="{{ url_for('static', path='/art/alchemy.webp') }}" alt="炼丹炉">
   <div class="ai-state"><strong>{{ ai_status.label }}</strong><small>{{ ai_status.detail }}</small></div>
 </div>
 

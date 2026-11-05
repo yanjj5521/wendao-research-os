@@ -103,10 +103,10 @@ digest = hashlib.sha256(payload).hexdigest()
 
 calls: list[str] = []
 
-def fake_fetch(target_url, destination, *, expected_sha256, max_bytes, timeout, headers=None, proxy=""):
+def fake_fetch(target_url, destination, *, expected_sha256, max_bytes, timeout,
+               headers=None, proxy="", mirror_urls=()):
     calls.append(target_url)
-    if len(calls) == 1:
-        raise DownloadError("直连超时")
+    assert mirror_urls and mirror_urls[0].startswith("https://ghproxy.net/"), mirror_urls
     Path(destination).parent.mkdir(parents=True, exist_ok=True)
     Path(destination).write_bytes(payload)
     return Path(destination)
@@ -118,13 +118,13 @@ release = {
     "package_sha256": digest,
     "checksum_url": "",
 }
-with patch.object(github_update, "fetch_resumable", side_effect=fake_fetch), \
+with patch.object(github_update, "fetch_fast", side_effect=fake_fetch), \
      patch.object(github_update, "backup_local_db", return_value=Path("backup.db")), \
      patch.object(github_update, "_validate_user_package", return_value=None):
     saved = github_update.prepare_github_update(release)
 
-assert len(calls) == 2, calls
-assert calls[0] == url and calls[1].startswith("https://ghproxy.net/"), calls
+assert len(calls) == 1, calls
+assert calls[0] == url, calls
 assert Path(saved).is_file()
 
 # 全部失败时给出可执行提示而不是裸异常
@@ -133,12 +133,12 @@ def always_fail(*args, **kwargs):
     raise DownloadError("网络不可达")
 
 release["package_sha256"] = "0" * 64
-with patch.object(github_update, "fetch_resumable", side_effect=always_fail):
+with patch.object(github_update, "fetch_fast", side_effect=always_fail):
     try:
         github_update.prepare_github_update(release)
         raise AssertionError("全部失败时应抛错")
     except github_update.GithubUpdateError as exc:
-        assert "镜像" in str(exc), str(exc)
+        assert "网络不可达" in str(exc), str(exc)
 print("github pass")
 '''
         with tempfile.TemporaryDirectory(prefix="gh-") as directory:

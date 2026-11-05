@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.12.5"
-description = "问道科研 1.12.5：GitHub 下载修复（代理/镜像）、39 阶境界同步、PDF 辅助抽取"
+version = "1.12.6"
+description = "问道科研 1.12.6：境界自动同步、双线并发高速下载、炼丹炉/炼器炉插画"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

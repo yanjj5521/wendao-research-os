@@ -10,6 +10,7 @@
     <h1>灵兽园</h1>
     <p>灵兽袋 {{ owned|length }}/{{ team_capacity }} · 最高 Lv.{{ max_level }} · 同行币 ◆{{ wallet.coins }}</p>
   </div>
+  <img class="head-art" src="{{ url_for('static', path='/art/spirit-beast.webp') }}" alt="灵兽园">
   <div class="world-head-actions">
     <form method="post" action="{{ url_for('roam_rest') }}"><button class="soft-button" {% if not owned %}disabled{% endif %}>全队休整 · ◆{{ 8 }}</button></form>
     <form method="post" action="{{ url_for('roam_launch') }}">
