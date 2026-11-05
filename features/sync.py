@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import urllib.error
+
 import hashlib
 import json
 import re
@@ -43,7 +45,7 @@ from services.team_update import (
 )
 from services import github_update
 from services.team_update import last_apply_log
-from services import headscale_vpn, hub_host, hub_identity, release_feed
+from services import headscale_vpn, hub_host, hub_identity, hub_realm, release_feed
 
 EXPORT_DIR = STORAGE_ROOT / "sync_exports"
 EXPORT_DIR.mkdir(parents=True, exist_ok=True)
@@ -370,6 +372,17 @@ def register_online_routes(app, templates, context: Callable[..., dict[str, Any]
     def online_headnet_stop(request: Request):
         headscale_vpn.stop()
         flash(request, "Headscale 虚拟网络连接已停止。局域网连接不会受影响。")
+        return RedirectResponse(request.url_for("online_page"), status_code=303)
+
+    @router.post("/online/realm/push", name="online_realm_push")
+    def online_realm_push(request: Request):
+        """把完整境界名同步到中心展示（只推快照）。"""
+        try:
+            result = hub_realm.push(get_setting("hub_url", ""), get_setting("hub_api_token", ""))
+        except (OSError, ValueError, urllib.error.URLError) as exc:
+            flash(request, f"境界同步失败：{exc}", "error")
+            return RedirectResponse(request.url_for("online_page"), status_code=303)
+        flash(request, f"已把境界「{result.get('realm_name', '')}」同步到中心。")
         return RedirectResponse(request.url_for("online_page"), status_code=303)
 
     @router.post("/online/headnet/auto", name="online_headnet_auto")

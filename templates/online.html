@@ -193,6 +193,8 @@
   <div class="button-row">
     <form method="post" action="{{ url_for('online_connect') }}"><button class="primary-button">连接并合并状态</button></form>
     <form method="post" action="{{ url_for('online_sync_now') }}"><button class="soft-button">立即同步</button></form>
+    <form method="post" action="{{ url_for('online_realm_push') }}"><button class="soft-button">同步境界到中心</button></form>
+    <small class="form-help">把本机 39 阶境界名推给中心展示，不改动任何数据。</small>
   </div>
   {% if last_error.message %}<div class="sync-error">{{ last_error.message }}</div>{% endif %}
 </section>

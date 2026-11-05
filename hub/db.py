@@ -166,6 +166,37 @@ def realm_label(cultivation: int | None) -> dict[str, object]:
     }
 
 
+def display_realm(metadata_json: str | None, cultivation: int | None) -> dict[str, object]:
+    """优先用个人端同步来的 39 阶境界名，没有快照时才退回中心 6 档换算。"""
+    name = ""
+    index = 0
+    snapshot_cultivation = None
+    try:
+        meta = json.loads(metadata_json or "{}")
+    except (json.JSONDecodeError, TypeError):
+        meta = {}
+    if isinstance(meta, dict):
+        name = str(meta.get("realm_name", "")).strip()[:40]
+        try:
+            index = max(0, int(meta.get("realm_index", 0) or 0))
+        except (TypeError, ValueError):
+            index = 0
+        try:
+            snapshot_cultivation = int(meta.get("realm_cultivation", 0) or 0)
+        except (TypeError, ValueError):
+            snapshot_cultivation = None
+    if name:
+        return {
+            "name": name,
+            "index": index,
+            "cultivation": snapshot_cultivation if snapshot_cultivation is not None else int(cultivation or 0),
+            "source": "local",
+            "next": None,
+            "progress": 0,
+        }
+    return {**realm_label(cultivation), "source": "center", "index": 0}
+
+
 def _load_quota_payload(raw: str) -> tuple[dict[str, int], dict[str, object]]:
     """兼容旧的扁平 dict 与新的 {"quotas":…, "meta":…}。"""
     try:

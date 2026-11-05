@@ -20,8 +20,8 @@ from hub.db import (
     balances,
     connect_hub,
     get_user_by_token,
+    display_realm,
     now_iso,
-    realm_label,
 )
 from core.navigation import normalize_nav_labels, normalize_nav_layout
 from services.progression import normalize_realm_labels
@@ -322,7 +322,13 @@ def hub_context(request: Request, active: str, **extra: Any) -> dict[str, Any]:
     if user:
         with connect_hub() as conn:
             base["nav_balances"] = balances(conn, int(user["id"]))
-        base["nav_realm"] = realm_label(base["nav_balances"]["cultivation"])
+        with connect_hub() as conn:
+            meta_row = conn.execute(
+                "SELECT metadata_json FROM accounts WHERE id=?", (int(user["id"]),)
+            ).fetchone()
+        base["nav_realm"] = display_realm(
+            meta_row["metadata_json"] if meta_row else "{}", base["nav_balances"]["cultivation"]
+        )
     base.update(extra)
     return base
 

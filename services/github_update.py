@@ -34,6 +34,9 @@ USER_AGENT = "WendaoResearch-updater"
 API_TIMEOUT = 10
 DOWNLOAD_TIMEOUT = 300
 
+PROXY_SETTING = "github_download_proxy"
+# GitHub 资产域名在部分网络下不可达/极慢；镜像只是传输通道，SHA-256 仍以 API 为准。
+MIRROR_PREFIXES = ("https://ghproxy.net/", "https://gh-proxy.com/")
 AUTO_CHECK_SETTING = "github_auto_check"
 AUTO_CHECK_STAMP = "github_auto_check_at"
 AUTO_CHECK_INTERVAL = timedelta(hours=12)
@@ -42,6 +45,16 @@ BADGE_SETTING = "github_update"
 
 class GithubUpdateError(RuntimeError):
     """A user-facing problem with the public update channel."""
+
+
+def download_proxy() -> str:
+    """读取「GitHub 下载代理」；留空表示直连。"""
+    value = get_setting(PROXY_SETTING, "").strip()
+    return value if value.startswith(("http://", "https://")) else ""
+
+
+def mirror_url(url: str, prefix: str) -> str:
+    return f"{prefix}{url}"
 
 
 def _open(url: str, *, timeout: int, accept: str = "") -> object:
@@ -54,10 +67,16 @@ def _open(url: str, *, timeout: int, accept: str = "") -> object:
     headers = {"User-Agent": USER_AGENT}
     if accept:
         headers["Accept"] = accept
+    proxy = download_proxy()
     last: Exception | None = None
     for attempt in range(2):
         request = urllib.request.Request(url, headers=headers)
         try:
+            if proxy:
+                opener = urllib.request.build_opener(
+                    urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+                )
+                return opener.open(request, timeout=timeout)
             return urllib.request.urlopen(request, timeout=timeout)
         except urllib.error.HTTPError as exc:
             if exc.code == 403:
@@ -121,6 +140,7 @@ def latest_release() -> dict[str, object] | None:
         "package_url": package_url,
         "package_size": int(package.get("size", 0) or 0),
         "checksum_url": checksum_url,
+        "package_sha256": str(package.get("digest", "")).removeprefix("sha256:").lower(),
         "newer": is_newer_version(version, APP_VERSION),
     }
 
@@ -189,10 +209,12 @@ def prepare_github_update(release: dict[str, object]) -> Path:
     package_url = str(release.get("package_url", ""))
     if not version or not package_url.startswith(DOWNLOAD_PREFIX):
         raise GithubUpdateError("发布信息不完整，已停止更新。")
-    expected = _checksums(str(release.get("checksum_url", "")))
     package_name = str(release.get("package_name", ""))
-    expected_hash = expected.get(package_name)
-    if not expected_hash:
+    expected_hash = str(release.get("package_sha256", "")).strip().lower()
+    if len(expected_hash) != 64:
+        # API 未给 digest 时才去读 SHA256SUMS.txt（同一个下载域名，可能一起被挡）。
+        expected_hash = _checksums(str(release.get("checksum_url", ""))).get(package_name, "")
+    if len(expected_hash) != 64:
         raise GithubUpdateError("发布包缺少 SHA-256 记录，已拒绝安装。")
 
     update_dir = STORAGE_ROOT / "team_updates"
@@ -202,16 +224,26 @@ def prepare_github_update(release: dict[str, object]) -> Path:
         # script failed afterwards); reuse it instead of re-downloading 60 MB.
         pass
     else:
-        try:
-            fetch_resumable(
-                package_url,
-                target,
-                expected_sha256=expected_hash,
-                max_bytes=MAX_UPDATE_BYTES,
-                timeout=DOWNLOAD_TIMEOUT,
-            )
-        except DownloadError as exc:
-            raise GithubUpdateError(str(exc)) from exc
+        proxy = download_proxy()
+        routes = [package_url] + [mirror_url(package_url, prefix) for prefix in MIRROR_PREFIXES]
+        errors: list[str] = []
+        for index, route in enumerate(routes):
+            try:
+                fetch_resumable(
+                    route,
+                    target,
+                    expected_sha256=expected_hash,
+                    max_bytes=MAX_UPDATE_BYTES,
+                    timeout=DOWNLOAD_TIMEOUT,
+                    proxy=proxy,
+                )
+                break
+            except DownloadError as exc:
+                errors.append(f"{'直连' if index == 0 else '镜像' + str(index)}：{exc}")
+                continue
+        else:
+            hint = "；已在设置里填写「GitHub 下载代理」可显著提速。" if not proxy else ""
+            raise GithubUpdateError("下载失败（直连与镜像均不可用）。" + " / ".join(errors) + hint)
     try:
         _validate_user_package(target)
     except Exception:

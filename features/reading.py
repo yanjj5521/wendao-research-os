@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from fastapi import APIRouter, Form, Request
+import json
+
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 
 from core.database import connect, now_iso
+from services import pdf_sketch
 from services import reading_flow as flow
 
 FIELDS = (
@@ -54,6 +57,10 @@ def register_reading_routes(app, templates, context: Callable[..., dict[str, Any
             "qa": flow.qa_questions(selected) if selected else [],
         }
         if selected:
+            try:
+                payload["extract"] = json.loads(selected.get("extract_json") or "{}")
+            except json.JSONDecodeError:
+                payload["extract"] = {}
             payload.update(
                 checklist=flow.checklist(selected),
                 progress=flow.progress(selected),
@@ -116,6 +123,27 @@ def register_reading_routes(app, templates, context: Callable[..., dict[str, Any
             conn.execute("UPDATE reading_works SET stage=?,updated_at=? WHERE id=?", (target, now_iso(), work_id))
             conn.commit()
         flash(request, f"已推进到「{flow.stage_label(target)}」。")
+        return RedirectResponse(f"{request.url_for('reading_page')}?work_id={work_id}", status_code=303)
+
+    @router.post("/reading/{work_id}/extract", name="reading_extract")
+    async def reading_extract(request: Request, work_id: int, file: UploadFile = File(...)):
+        """只抽标题/图表标题/结论，填不填由人决定。"""
+        work = _load(work_id)
+        if not work:
+            flash(request, "这篇记录不存在。", "error")
+            return RedirectResponse(request.url_for("reading_page"), status_code=303)
+        try:
+            result = pdf_sketch.sketch(await file.read())
+        except ValueError as exc:
+            flash(request, str(exc), "error")
+        else:
+            with connect() as conn:
+                conn.execute(
+                    "UPDATE reading_works SET extract_json=?,updated_at=? WHERE id=?",
+                    (json.dumps(result, ensure_ascii=False), now_iso(), work_id),
+                )
+                conn.commit()
+            flash(request, f"已抽取：标题 1 条、图表标题 {len(result['captions'])} 条、结论 1 段。")
         return RedirectResponse(f"{request.url_for('reading_page')}?work_id={work_id}", status_code=303)
 
     @router.post("/reading/{work_id}/qa", name="reading_qa_save")

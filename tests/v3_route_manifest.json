@@ -456,6 +456,11 @@
   },
   {
     "method": "POST",
+    "path": "/online/realm/push",
+    "name": "online_realm_push"
+  },
+  {
+    "method": "POST",
     "path": "/online/releases/download",
     "name": "online_release_download"
   },
@@ -738,6 +743,11 @@
     "method": "POST",
     "path": "/reading/{work_id}/delete",
     "name": "reading_delete"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/{work_id}/extract",
+    "name": "reading_extract"
   },
   {
     "method": "POST",

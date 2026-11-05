@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.12.4"
-description = "问道科研 1.12.4：同行会显示修为境界、论文三遍读与汇报工作台"
+version = "1.12.5"
+description = "问道科研 1.12.5：GitHub 下载修复（代理/镜像）、39 阶境界同步、PDF 辅助抽取"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

@@ -470,6 +470,17 @@ PERSONAL_MIGRATIONS.append(
 )
 
 
+PERSONAL_MIGRATIONS.append(
+    Migration(
+        version=8,
+        note="论文工作台：保存 PDF 辅助抽取结果",
+        statements=(
+            "ALTER TABLE reading_works ADD COLUMN extract_json TEXT NOT NULL DEFAULT '{}'",
+        ),
+    )
+)
+
+
 def _validate(migrations: Iterable[Migration], target_version: int) -> list[Migration]:
     ordered = sorted(migrations, key=lambda m: m.version)
     seen: set[int] = set()

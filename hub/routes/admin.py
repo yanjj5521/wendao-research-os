@@ -37,7 +37,7 @@ from hub.db import (
     backup_hub_db,
     connect_hub,
     enforce_welfare_weekly_limits,
-    realm_label,
+    display_realm,
     weekly_quotas,
     weekly_quota_meta,
     weekly_quota_key,
@@ -65,11 +65,11 @@ def admin_page(request: Request):
     require_user(request,admin=True)
     with connect_hub() as conn:
         users=[
-            {**dict(row), "realm": realm_label(row["cultivation"])}
+            {**dict(row), "realm": display_realm(row["metadata_json"], row["cultivation"])}
             for row in conn.execute(
                 """
                 SELECT a.id,a.username,a.display_name,a.email,a.role,a.status,a.active,
-                       a.created_at,a.last_login_at,a.last_seen_at,
+                       a.created_at,a.last_login_at,a.last_seen_at,a.metadata_json,
                        (SELECT COALESCE(SUM(amount),0) FROM hub_asset_transactions t
                          WHERE t.user_id=a.id AND t.asset_key='spirit_stone') AS spirit_stone,
                        (SELECT COALESCE(SUM(amount),0) FROM hub_asset_transactions t

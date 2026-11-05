@@ -66,6 +66,7 @@ def fetch_resumable(
     max_bytes: int,
     timeout: int,
     headers: dict[str, str] | None = None,
+    proxy: str = "",
 ) -> Path:
     """Download ``url`` into ``destination``, resuming a previous attempt.
 
@@ -98,9 +99,16 @@ def fetch_resumable(
             request_headers = dict(base_headers)
             if total:
                 request_headers["Range"] = f"bytes={total}-"
-            with urllib.request.urlopen(
-                urllib.request.Request(url, headers=request_headers), timeout=timeout
-            ) as response:
+            request = urllib.request.Request(url, headers=request_headers)
+            # 没配代理时仍走 urlopen：行为与旧版一致，也便于测试替换。
+            if proxy:
+                opener = urllib.request.build_opener(
+                    urllib.request.ProxyHandler({"http": proxy, "https": proxy})
+                )
+                response_ctx = opener.open(request, timeout=timeout)
+            else:
+                response_ctx = urllib.request.urlopen(request, timeout=timeout)
+            with response_ctx as response:
                 status = getattr(response, "status", 200)
                 if total and status != 206:
                     # Server ignored the range: start over rather than append twice.

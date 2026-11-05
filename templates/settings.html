@@ -38,6 +38,8 @@
     <div class="settings-card-head"><span class="settings-icon">🛰️</span><div><span class="eyebrow">Updates</span><h2>版本更新</h2></div></div>
     <label class="check-label"><input type="checkbox" name="github_auto_check" value="1" {% if github_auto_check %}checked{% endif %}>启动时静默检查新版本（只查版本号，不下载）</label>
     <small class="form-help">只读 GitHub 公开发布，不上传本地资料；安装仍需手动确认。</small>
+    <label><span>GitHub 下载代理（可选）</span><input name="github_download_proxy" value="{{ github_proxy }}" placeholder="http://127.0.0.1:7890"></label>
+    <small class="form-help">下载慢或失败时填写本机代理；留空则直连，失败会自动尝试镜像。</small>
     </section>
 
     <section class="settings-card settings-card--wide">

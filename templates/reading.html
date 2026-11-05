@@ -45,6 +45,15 @@
   .qa-item{display:grid;gap:6px;padding:11px 0;border-top:1px dashed rgba(120,90,50,.16)}
   .qa-item:first-of-type{border-top:none}
   .qa-item b{font-size:13px}
+  .reading-extract>summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;font-size:14px;color:#4a463f}
+  .reading-extract>summary::-webkit-details-marker{display:none}
+  .reading-extract>summary small{color:#8a8378;font-size:12px}
+  .reading-extract-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+  .extract-result{display:grid;gap:10px;margin-top:12px}
+  .extract-result>div{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.55);border:1px solid rgba(120,90,50,.12)}
+  .extract-result b{font-size:13px}
+  .extract-result p{margin:4px 0 8px;font-size:13px;line-height:1.65;color:#5c554a}
+  .extract-result ul{margin:4px 0 8px;padding-left:18px;font-size:12.5px;line-height:1.6;color:#5c554a}
   .qa-item small{color:#8a8378;font-size:12px}
   @media(max-width:900px){.reading-grid{grid-template-columns:1fr}.reading-list{position:static}}
 </style>
@@ -98,6 +107,33 @@
             <form method="post" action="{{ url_for('reading_delete', work_id=work.id) }}" onsubmit="return confirm('删除这篇记录？')"><button class="soft-button">删除</button></form>
           </div>
         </div>
+      </section>
+
+      <section class="reading-panel">
+        <details class="reading-extract">
+          <summary><span>PDF 辅助：只抽标题、图表标题、结论</span><small>可选 · 不代读</small></summary>
+          <p class="hint">抽取只做定位，帮你少抄一遍；判断仍由你写。扫描件没有文本层时会直接说明。</p>
+          <form method="post" action="{{ url_for('reading_extract', work_id=work.id) }}" enctype="multipart/form-data" class="reading-extract-form">
+            <input type="file" name="file" accept=".pdf" required>
+            <button class="soft-button">抽取</button>
+          </form>
+          {% if extract and (extract.title or extract.captions or extract.conclusion) %}
+          <div class="extract-result">
+            {% if extract.title %}
+            <div><b>标题</b><p>{{ extract.title }}</p><button type="button" class="copy-btn" data-fill="title" data-value="{{ extract.title }}">填入标题</button></div>
+            {% endif %}
+            {% if extract.captions %}
+            <div><b>图表标题（{{ extract.captions|length }} 条）</b>
+              <ul>{% for line in extract.captions %}<li>{{ line }}</li>{% endfor %}</ul>
+              <button type="button" class="copy-btn" data-fill="context" data-value="{{ extract.captions|join('；') }}">填入 Context</button>
+            </div>
+            {% endif %}
+            {% if extract.conclusion %}
+            <div><b>结论摘录</b><p>{{ extract.conclusion }}</p><button type="button" class="copy-btn" data-fill="results" data-value="{{ extract.conclusion }}">填入主要结果</button></div>
+            {% endif %}
+          </div>
+          {% endif %}
+        </details>
       </section>
 
       <section class="reading-panel">
@@ -193,6 +229,16 @@
 {% endblock %}
 {% block scripts %}
 <script>
+document.querySelectorAll('[data-fill]').forEach((button) => {
+  button.addEventListener('click', () => {
+    const field = document.querySelector(`[name="${button.dataset.fill}"]`);
+    if (!field) return;
+    field.value = button.dataset.value || '';
+    field.focus();
+    button.textContent = '已填入';
+  });
+});
+
 document.querySelector('[data-copy-outline]')?.addEventListener('click', async (event) => {
   const source = document.querySelector('[data-outline-source]');
   if (!source) return;

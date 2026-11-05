@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Body, HTTPException, Request
 
 from hub.common import (
     profile_payload,
@@ -102,6 +102,38 @@ async def api_personalization(request:Request):
     with hub_transaction() as conn:
         conn.execute("UPDATE account_profiles SET theme_json=?,revision=revision+1,updated_at=? WHERE account_id=?",(json.dumps(theme,ensure_ascii=False),now_iso(),user["id"]))
     return {"ok":True,"theme":theme}
+
+
+@router.post("/api/v1/profile/realm")
+def api_profile_realm(request: Request, payload: dict = Body(...)):
+    """接收个人端同步来的境界名（39 阶可自定义），存进 metadata_json。"""
+    user = api_user(request)
+    name = str(payload.get("realm_name", "")).strip()[:40]
+    if not name:
+        raise HTTPException(status_code=400, detail="缺少境界名称")
+    try:
+        index = max(0, int(payload.get("realm_index", 0) or 0))
+    except (TypeError, ValueError):
+        index = 0
+    try:
+        cultivation = max(0, int(payload.get("cultivation", 0) or 0))
+    except (TypeError, ValueError):
+        cultivation = 0
+    with connect_hub() as conn:
+        row = conn.execute("SELECT metadata_json FROM accounts WHERE id=?", (user["id"],)).fetchone()
+        try:
+            meta = json.loads(row["metadata_json"] or "{}") if row else {}
+        except json.JSONDecodeError:
+            meta = {}
+        if not isinstance(meta, dict):
+            meta = {}
+        meta.update({"realm_name": name, "realm_index": index, "realm_cultivation": cultivation})
+        conn.execute(
+            "UPDATE accounts SET metadata_json=?,updated_at=? WHERE id=?",
+            (json.dumps(meta, ensure_ascii=False), now_iso(), user["id"]),
+        )
+        conn.commit()
+    return {"ok": True, "realm_name": name, "realm_index": index}
 
 
 @router.get("/api/v1/releases/latest")

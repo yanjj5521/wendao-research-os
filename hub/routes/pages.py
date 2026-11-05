@@ -13,7 +13,7 @@ from hub.common import (
     templates,
 )
 from hub.db import (
-    realm_label,
+    display_realm,
     connect_hub,
     get_user_by_token,
 )
@@ -39,13 +39,14 @@ def home(request: Request):
         profile = dict(conn.execute("SELECT * FROM account_profiles WHERE account_id=?", (user["id"],)).fetchone())
         members = []
         for row in conn.execute(
-            """SELECT u.id,u.username,u.display_name,u.last_seen_at,p.title,p.bio,p.avatar_symbol,p.skills,p.capabilities,
+            """SELECT u.id,u.username,u.display_name,u.last_seen_at,p.title,p.bio,p.avatar_symbol,p.skills,p.capabilities,u.metadata_json,
                       (SELECT COALESCE(SUM(t.amount),0) FROM hub_asset_transactions t
                         WHERE t.user_id=u.id AND t.asset_key='cultivation') AS cultivation
                FROM accounts u JOIN account_profiles p ON p.account_id=u.id WHERE u.active=1 AND p.public=1 ORDER BY u.role='admin' DESC,u.display_name"""
         ):
             item = dict(row)
-            item["realm"] = realm_label(item["cultivation"])
+            item["realm"] = display_realm(item.get("metadata_json"), item["cultivation"])
+            item.pop("metadata_json", None)
             item["skills_list"] = [x.strip() for x in item["skills"].splitlines() if x.strip()][:5]
             members.append(item)
         release = conn.execute("SELECT * FROM hub_releases WHERE active=1 ORDER BY id DESC LIMIT 1").fetchone()
@@ -75,13 +76,14 @@ def members_page(request: Request):
     with connect_hub() as conn:
         members = []
         for row in conn.execute(
-            """SELECT u.id,u.username,u.display_name,u.role,u.last_seen_at,p.title,p.bio,p.skills,p.capabilities,p.avatar_symbol,
+            """SELECT u.id,u.username,u.display_name,u.role,u.last_seen_at,p.title,p.bio,p.skills,p.capabilities,p.avatar_symbol,u.metadata_json,
                       (SELECT COALESCE(SUM(t.amount),0) FROM hub_asset_transactions t
                         WHERE t.user_id=u.id AND t.asset_key='cultivation') AS cultivation
                FROM accounts u JOIN account_profiles p ON p.account_id=u.id WHERE u.active=1 AND p.public=1 ORDER BY u.display_name"""
         ):
             item = dict(row)
-            item["realm"] = realm_label(item["cultivation"])
+            item["realm"] = display_realm(item.get("metadata_json"), item["cultivation"])
+            item.pop("metadata_json", None)
             item["skills_list"] = [x.strip() for x in item["skills"].splitlines() if x.strip()]
             item["capabilities_list"] = [x.strip() for x in item["capabilities"].splitlines() if x.strip()]
             members.append(item)

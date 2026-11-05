@@ -10,7 +10,7 @@ from __future__ import annotations
 - 新增 `schema_migrations`，为后续版本升级留出可追溯的入口。
 """
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 DATABASE_FILENAME = "wendao.db"
 
 BASE_SCHEMA_SQL = r"""
@@ -718,6 +718,7 @@ CREATE TABLE IF NOT EXISTS reading_works(
     relevance TEXT NOT NULL DEFAULT '',
     pass3_note TEXT NOT NULL DEFAULT '',
     qa_json TEXT NOT NULL DEFAULT '{}',
+    extract_json TEXT NOT NULL DEFAULT '{}',
     scenario TEXT NOT NULL DEFAULT 'group',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL

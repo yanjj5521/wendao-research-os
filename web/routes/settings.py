@@ -88,6 +88,7 @@ def settings_get(request: Request):
             nav_labels_text="\n".join(f"{key}={value}" for key, value in navigation_labels().items()),
             nav_layout_editor=navigation_editor_layout(),
             nav_layout_json=json.dumps(navigation_layout(), ensure_ascii=False),
+            github_proxy=get_setting("github_download_proxy", ""),
             review_popup=get_setting("review_popup", "1") == "1",
             gamification=get_setting("gamification", "on") == "on",
             github_auto_check=get_setting("github_auto_check", "1") == "1",
@@ -138,6 +139,7 @@ def settings_post(
     review_popup: str = Form(""),
     gamification: str = Form(""),
     github_auto_check: str = Form(""),
+    github_download_proxy: str = Form(""),
     poem_pool: str = Form(""),
     home_poem: str = Form(""),
     ui_accent: str = Form("terracotta"),
@@ -193,6 +195,11 @@ def settings_post(
     gamification_on = gamification == "1"
     set_setting("gamification", "on" if gamification_on else "off")
     set_setting("github_auto_check", "1" if github_auto_check == "1" else "0")
+    proxy_value = github_download_proxy.strip()
+    set_setting(
+        "github_download_proxy",
+        proxy_value if proxy_value.startswith(("http://", "https://")) else "",
+    )
     if gamification_on:
         # Turning the switch on must actually reveal something; the decorative
         # items stay off by default in a fresh 1.0 install.

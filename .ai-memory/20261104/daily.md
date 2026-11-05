@@ -49,3 +49,15 @@
 - **文件**: core/navigation.py, web/routes/settings.py, templates/settings.html
 - **决策**: 只改默认分组，不动用户已保存布局；新增「恢复推荐分类」按钮供主动采纳
 - **验证**: 契约测试更新；pytest 238 passed；点击核验全通过
+
+## [14:30] - 功能实现: 同行会显示修为境界
+
+- **文件**: hub/db.py, hub/common.py, hub/routes/{pages,admin}.py, hub_templates/{home,members,me,admin}.html
+- **决策**: realm_label 与福利额度共用 REALM_LADDER；展示点四处，纯展示不影响权限
+- **验证**: tests/test_reading_and_realm.py::test_hub_realm_display
+
+## [14:32] - 功能实现: 论文三遍读与汇报工作台
+
+- **文件**: services/reading_flow.py, features/reading.py, templates/reading.html, core/schema/personal.py, core/migrations.py
+- **决策**: 只做节奏卡点 + 大纲生成 + 问答准备，不做自动读 PDF；数据本机表，个人库 v7
+- **验证**: 建档→三遍填写→大纲六段→问答保存→推进遍次，完成度 100%
