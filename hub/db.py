@@ -144,6 +144,28 @@ def welfare_scale(conn: sqlite3.Connection | None = None) -> dict[str, object]:
     }
 
 
+def realm_label(cultivation: int | None) -> dict[str, object]:
+    """把中心侧累计修为换算成境界，供成员列表/主页展示。
+
+    阈值与福利额度共用 REALM_LADDER，避免出现两套境界标准。
+    """
+    value = max(0, int(cultivation or 0))
+    name, floor, ceiling = REALM_LADDER[0][1], 0, None
+    for index, (threshold, realm, _factor) in enumerate(REALM_LADDER):
+        if value >= threshold:
+            name = realm
+            floor = threshold
+            ceiling = REALM_LADDER[index + 1][0] if index + 1 < len(REALM_LADDER) else None
+    span = (ceiling - floor) if ceiling else 0
+    progress = 100 if not ceiling else int((value - floor) / max(1, span) * 100)
+    return {
+        "name": name,
+        "cultivation": value,
+        "next": ceiling,
+        "progress": max(0, min(100, progress)),
+    }
+
+
 def _load_quota_payload(raw: str) -> tuple[dict[str, int], dict[str, object]]:
     """兼容旧的扁平 dict 与新的 {"quotas":…, "meta":…}。"""
     try:

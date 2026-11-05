@@ -18,6 +18,7 @@ DEFAULT_NAV_LABELS = {
     "retreat": "闭关计时",
     "idle": "挂机静修",
     "literature_report": "文献精读",
+    "reading": "论文三遍读",
     "workbench": "学习工作台",
     "trials": "秘境试炼",
     "achievements": "成就图鉴",
@@ -55,7 +56,7 @@ NAV_GROUP_DEFAULT_ITEMS = {
     "cultivation": ("dashboard", "daily", "plans", "review"),
     # 研究：从问题到证据的产出链
     "research": (
-        "projects", "literature_report", "workbench",
+        "projects", "literature_report", "reading", "workbench",
         "experiments", "datasets", "simulations", "integral",
     ),
     # 知识：存量与检索
@@ -84,6 +85,7 @@ NAV_ITEM_DEFAULT_VISIBLE = {
         "retreat",
         "idle",
         "literature_report",
+        "reading",
         "projects",
         "experiments",
         "datasets",

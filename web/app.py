@@ -13,6 +13,7 @@ from features.literature_report import register_literature_report_routes
 from features.projects import register_project_routes
 from features.practical_workbench import register_practical_workbench_routes
 from features.professions import register_profession_routes
+from features.reading import register_reading_routes
 from features.review import register_review_routes
 from features.workspaces import register_workspace_routes
 from services.backups import register_backup_jobs
@@ -60,6 +61,7 @@ def register_routes() -> None:
     register_literature_report_routes(app, templates, context, flash)
     register_practical_workbench_routes(app, templates, context, flash)
     register_profession_routes(app, templates, context, flash)
+    register_reading_routes(app, templates, context, flash)
     register_project_routes(app, templates, context, flash)
     register_review_routes(app, templates, context, flash, current_realm)
     register_alchemy_routes(app, templates, context, flash)

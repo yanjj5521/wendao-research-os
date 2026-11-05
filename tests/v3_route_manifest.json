@@ -726,6 +726,36 @@
   },
   {
     "method": "GET",
+    "path": "/reading",
+    "name": "reading_page"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/new",
+    "name": "reading_new"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/{work_id}/delete",
+    "name": "reading_delete"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/{work_id}/qa",
+    "name": "reading_qa_save"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/{work_id}/save",
+    "name": "reading_save"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/{work_id}/stage",
+    "name": "reading_stage"
+  },
+  {
+    "method": "GET",
     "path": "/retreat",
     "name": "retreat_page"
   },

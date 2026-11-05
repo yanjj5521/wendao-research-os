@@ -104,7 +104,7 @@ class ModularV3ContractTests(unittest.TestCase):
         self.assertTrue(GAMIFICATION_ITEMS.issubset(visible))
         self.assertEqual(
             NAV_GROUP_DEFAULT_ITEMS["research"],
-            ("projects", "literature_report", "workbench", "experiments", "datasets", "simulations", "integral"),
+            ("projects", "literature_report", "reading", "workbench", "experiments", "datasets", "simulations", "integral"),
         )
         self.assertIn("trials", NAV_GROUP_DEFAULT_ITEMS["growth"])
 

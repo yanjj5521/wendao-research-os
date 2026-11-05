@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+{% block title %}论文三遍读 · {{ site_name }}{% endblock %}
+{% block content %}
+<style>
+  .reading-page{padding:18px 20px 24px;border-radius:26px;color:#3f3a33;background:
+    radial-gradient(880px 300px at 8% -8%,rgba(90,107,140,.08),transparent 60%),
+    radial-gradient(720px 280px at 96% 2%,rgba(184,117,47,.08),transparent 58%),
+    linear-gradient(180deg,#faf7f1,#f4efe6)}
+  .reading-head{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:flex-end;margin-bottom:16px}
+  .reading-head h1{margin:4px 0 6px;font-size:clamp(23px,3vw,30px)}
+  .reading-head p{margin:0;color:#6f685c;font-size:13.5px}
+  .reading-new{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .reading-new input{padding:9px 11px;border-radius:10px;border:1px solid rgba(120,90,50,.18);background:#fffdf8;font:inherit;font-size:13px}
+  .reading-new input[name="title"]{min-width:240px}
+  .reading-grid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
+  .reading-list{display:grid;gap:8px;position:sticky;top:86px}
+  .reading-item{display:block;padding:12px 13px;border-radius:14px;border:1px solid rgba(120,90,50,.12);
+    background:linear-gradient(180deg,#fffdf8,#f8f2e7);text-decoration:none;color:inherit}
+  .reading-item.active{border-color:rgba(184,117,47,.45);background:linear-gradient(180deg,#fdf3e2,#f8e9d4)}
+  .reading-item b{display:block;font-size:13.5px;line-height:1.45}
+  .reading-item small{display:block;margin-top:4px;color:#8a8378;font-size:11.5px}
+  .reading-bar{height:5px;border-radius:999px;background:rgba(0,0,0,.07);margin-top:7px;overflow:hidden}
+  .reading-bar>i{display:block;height:100%;background:linear-gradient(90deg,#b8752f,#d9a45f)}
+  .reading-panel{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,90,50,.13);
+    background:linear-gradient(180deg,#fffdf9,#f9f3e9);box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 8px 22px rgba(92,70,40,.05);margin-bottom:14px}
+  .reading-panel h2{margin:0 0 4px;font-size:17px}
+  .reading-panel .hint{margin:0 0 12px;color:#8a8378;font-size:12.5px;line-height:1.6}
+  .reading-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px}
+  .reading-fields label{display:grid;gap:5px;font-size:12.5px;color:#5c554a}
+  .reading-fields textarea,.reading-fields input,.reading-fields select{
+    padding:9px 10px;border-radius:10px;border:1px solid rgba(120,90,50,.16);background:#fffdf8;font:inherit;font-size:13.5px;color:#3f3a33}
+  .reading-fields textarea{line-height:1.6;resize:vertical}
+  .reading-fields .full{grid-column:1/-1}
+  .step-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+  .step-list li{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#4a463f}
+  .step-list li b{flex:0 0 20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;
+    background:rgba(120,90,50,.1);color:#8a5a1f}
+  .step-list li.done{color:#2f6b52}
+  .step-list li.done b{background:rgba(61,139,110,.16);color:#2f6b52}
+  .outline{display:grid;gap:10px}
+  .outline section p{margin:2px 0;font-size:13px;color:#5c554a;line-height:1.65}
+  .outline h3{margin:0;font-size:14px;color:#8a5a1f}
+  .copy-btn{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(120,90,50,.2);
+    background:#fffdf8;color:#8a5a1f;cursor:pointer}
+  .qa-item{display:grid;gap:6px;padding:11px 0;border-top:1px dashed rgba(120,90,50,.16)}
+  .qa-item:first-of-type{border-top:none}
+  .qa-item b{font-size:13px}
+  .qa-item small{color:#8a8378;font-size:12px}
+  @media(max-width:900px){.reading-grid{grid-template-columns:1fr}.reading-list{position:static}}
+</style>
+
+<div class="reading-page">
+  <div class="reading-head">
+    <div>
+      <span class="eyebrow">Three-Pass Reading</span>
+      <h1>论文三遍读与汇报</h1>
+      <p>第一遍 10 分钟定去留，第二遍 1 小时抓骨架，第三遍只做核心文献。填完即得汇报大纲与问答准备。</p>
+    </div>
+    <form class="reading-new" method="post" action="{{ url_for('reading_new') }}">
+      <input name="title" placeholder="论文标题" required>
+      <input name="venue" placeholder="期刊 / 会议" style="max-width:150px">
+      <input name="year" placeholder="年份" style="max-width:80px">
+      <button class="primary-button">建档</button>
+    </form>
+  </div>
+
+  <div class="reading-grid">
+    <aside class="reading-list">
+      {% for item in works %}
+      <a class="reading-item {% if work and item.id == work.id %}active{% endif %}" href="{{ url_for('reading_page') }}?work_id={{ item.id }}">
+        <b>{{ item.title }}</b>
+        <small>{{ item.stage_label }} · {{ item.venue or '未填出处' }}{% if item.year %} · {{ item.year }}{% endif %}</small>
+        <span class="reading-bar"><i style="width: {{ item.progress }}%"></i></span>
+      </a>
+      {% else %}
+      <div class="reading-item"><b>还没有论文</b><small>先在上面建档，再按三遍推进。</small></div>
+      {% endfor %}
+    </aside>
+
+    <div>
+      {% if not work %}
+      <section class="reading-panel">
+        <h2>怎么用</h2>
+        <p class="hint">建档后按三步填：第一遍只回答五个 C；第二遍补方法、实验、结果、局限；核心文献再做第三遍，记复现细节与弱点。系统据此生成六段式汇报大纲与五类问答提示。</p>
+        <ol class="step-list">
+          <li><b>1</b><span>第一遍 5–10 分钟：只看标题、摘要、图表、结论，决定读不读。</span></li>
+          <li><b>2</b><span>第二遍约 1 小时：画一遍方法总览图，核对数据集与 baseline 是否公平。</span></li>
+          <li><b>3</b><span>第三遍 2–3 小时：公式对到代码，记录论文没写的实现细节与弱点。</span></li>
+          <li><b>4</b><span>按大纲讲 15 分钟，提前写下最可能被问的 3–5 个问题。</span></li>
+        </ol>
+      </section>
+      {% else %}
+      <section class="reading-panel">
+        <div style="display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap">
+          <div><h2>{{ work.title }}</h2><p class="hint" style="margin:4px 0 0">完成度 {{ progress }}% · {{ work.stage_label if work.stage_label is defined else '' }}</p></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <form method="post" action="{{ url_for('reading_stage', work_id=work.id) }}"><button class="soft-button">推进到下一遍</button></form>
+            <form method="post" action="{{ url_for('reading_delete', work_id=work.id) }}" onsubmit="return confirm('删除这篇记录？')"><button class="soft-button">删除</button></form>
+          </div>
+        </div>
+      </section>
+
+      <section class="reading-panel">
+        <h2>第一遍 · 五个 C</h2>
+        <p class="hint">5–10 分钟，只回答这五件事；说不清"它解决什么问题"就存档或不读。</p>
+        <form method="post" action="{{ url_for('reading_save', work_id=work.id) }}">
+          <div class="reading-fields">
+            <label><span>标题</span><input name="title" value="{{ work.title }}" required></label>
+            <label><span>作者</span><input name="authors" value="{{ work.authors }}"></label>
+            <label><span>期刊 / 会议</span><input name="venue" value="{{ work.venue }}"></label>
+            <label><span>年份</span><input name="year" value="{{ work.year }}"></label>
+            <label><span>类型 Category</span><input name="category" value="{{ work.category }}" placeholder="方法 / 系统 / 综述 / 实证"></label>
+            <label><span>结论 Context</span><input name="context" value="{{ work.context }}" placeholder="接在哪条相关工作线上"></label>
+            <label><span>假设是否合理 Correctness</span><input name="correctness" value="{{ work.correctness }}"></label>
+            <label><span>写得清楚吗 Clarity</span><input name="clarity" value="{{ work.clarity }}"></label>
+            <label class="full"><span>主要贡献 Contribution</span><textarea name="contribution" rows="2">{{ work.contribution }}</textarea></label>
+            <label><span>决定</span>
+              <select name="decision">
+                <option value="">未定</option>
+                {% for key, label in decisions %}<option value="{{ key }}" {% if work.decision==key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+              </select>
+            </label>
+            <label><span>场景</span>
+              <select name="scenario">
+                {% for key, item in scenarios.items() %}<option value="{{ key }}" {% if work.scenario==key %}selected{% endif %}>{{ item.label }}</option>{% endfor %}
+              </select>
+            </label>
+          </div>
+
+          <h2 style="margin-top:20px">第二遍 · 抓骨架</h2>
+          <p class="hint">跳过证明，只抓研究问题、方法、实验设计、结果与局限。</p>
+          <div class="reading-fields">
+            <label class="full"><span>一句话说清它怎么做的</span><input name="one_liner" value="{{ work.one_liner }}" placeholder="作者的核心 insight，一句话"></label>
+            <label class="full"><span>方法（能否自己画一遍总览图）</span><textarea name="method_note" rows="3">{{ work.method_note }}</textarea></label>
+            <label><span>数据与对比设置</span><textarea name="data_setup" rows="3">{{ work.data_setup }}</textarea></label>
+            <label><span>主要结果</span><textarea name="results" rows="3">{{ work.results }}</textarea></label>
+            <label><span>局限 / 弱点</span><textarea name="weakness" rows="3">{{ work.weakness }}</textarea></label>
+            <label><span>与我的课题关联</span><textarea name="relevance" rows="3">{{ work.relevance }}</textarea></label>
+          </div>
+
+          <h2 style="margin-top:20px">第三遍 · 虚拟复现（核心文献才做）</h2>
+          <p class="hint">公式对到代码变量；记录论文没写、代码里有的细节；主动找能推翻结论的情形。</p>
+          <div class="reading-fields">
+            <label class="full"><span>复现细节与弱点</span><textarea name="pass3_note" rows="4">{{ work.pass3_note }}</textarea></label>
+          </div>
+          <div style="margin-top:12px"><button class="primary-button">保存</button></div>
+        </form>
+      </section>
+
+      <section class="reading-panel">
+        <h2>行动清单</h2>
+        <ol class="step-list">
+          {% for item in checklist %}
+          <li class="{% if item.done %}done{% endif %}"><b>{{ '✓' if item.done else item.step }}</b><span>{{ item.label }}</span></li>
+          {% endfor %}
+        </ol>
+      </section>
+
+      <section class="reading-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <h2>六段式汇报大纲</h2>
+          <button type="button" class="copy-btn" data-copy-outline>复制大纲</button>
+        </div>
+        <div class="outline">
+          {% for section in outline %}
+          <section>
+            <h3>{{ section.title }}</h3>
+            {% for line in section.lines if line %}<p>{{ line }}</p>{% endfor %}
+          </section>
+          {% endfor %}
+        </div>
+        <textarea data-outline-source hidden>{{ outline_text }}</textarea>
+      </section>
+
+      <section class="reading-panel">
+        <h2>问答准备</h2>
+        <p class="hint">老师通常只问五类；先写关键词，讲的时候再展开。</p>
+        <form method="post" action="{{ url_for('reading_qa_save', work_id=work.id) }}">
+          {% for item in qa %}
+          <div class="qa-item">
+            <b>{{ item.label }}</b>
+            <small>{{ item.question }}</small>
+            <textarea name="qa_{{ item.key }}" rows="2" class="reading-fields" style="width:100%">{{ item.answer }}</textarea>
+          </div>
+          {% endfor %}
+          <div style="margin-top:12px"><button class="primary-button">保存问答</button></div>
+        </form>
+      </section>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelector('[data-copy-outline]')?.addEventListener('click', async (event) => {
+  const source = document.querySelector('[data-outline-source]');
+  if (!source) return;
+  await navigator.clipboard.writeText(source.value);
+  event.currentTarget.textContent = '已复制';
+});
+</script>
+{% endblock %}

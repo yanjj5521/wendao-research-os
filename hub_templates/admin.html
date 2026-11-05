@@ -68,12 +68,13 @@
     <div class="section-head"><div><small>{{ users|length }} 人</small><h2>成员</h2></div></div>
     <div class="table-wrap">
       <table>
-        <tr><th>成员</th><th>邮箱</th><th>角色</th><th>注册时间</th><th>最后登录</th><th>最近在线</th><th>灵石</th><th></th></tr>
+        <tr><th>成员</th><th>邮箱</th><th>角色</th><th>境界</th><th>注册时间</th><th>最后登录</th><th>最近在线</th><th>灵石</th><th></th></tr>
         {% for u in users %}
         <tr>
           <td><b>{{ u.display_name }}</b><small>@{{ u.username }}</small></td>
           <td>{{ u.email or '-' }}</td>
           <td>{{ '管理员' if u.role == 'admin' else '成员' }}</td>
+          <td><b>{{ u.realm.name }}</b><small>{{ u.realm.cultivation }} 修为</small></td>
           <td>{{ (u.created_at or '-')[:10] }}</td>
           <td>{{ (u.last_login_at or '从未')[:16].replace('T',' ') }}</td>
           <td>{{ (u.last_seen_at or '-')[:16].replace('T',' ') }}</td>

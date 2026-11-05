@@ -10,7 +10,7 @@ from __future__ import annotations
 - 新增 `schema_migrations`，为后续版本升级留出可追溯的入口。
 """
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 DATABASE_FILENAME = "wendao.db"
 
 BASE_SCHEMA_SQL = r"""
@@ -696,4 +696,32 @@ CREATE TRIGGER entries_au AFTER UPDATE ON entries BEGIN
                     INSERT INTO entries_fts(rowid, title, summary, content, tags, domain)
                     VALUES (new.id, new.title, new.summary, new.content, new.tags, new.domain);
                 END;
+
+CREATE TABLE IF NOT EXISTS reading_works(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    authors TEXT NOT NULL DEFAULT '',
+    venue TEXT NOT NULL DEFAULT '',
+    year TEXT NOT NULL DEFAULT '',
+    stage TEXT NOT NULL DEFAULT 'pass1',
+    decision TEXT NOT NULL DEFAULT '',
+    category TEXT NOT NULL DEFAULT '',
+    context TEXT NOT NULL DEFAULT '',
+    contribution TEXT NOT NULL DEFAULT '',
+    one_liner TEXT NOT NULL DEFAULT '',
+    correctness TEXT NOT NULL DEFAULT '',
+    clarity TEXT NOT NULL DEFAULT '',
+    method_note TEXT NOT NULL DEFAULT '',
+    data_setup TEXT NOT NULL DEFAULT '',
+    results TEXT NOT NULL DEFAULT '',
+    weakness TEXT NOT NULL DEFAULT '',
+    relevance TEXT NOT NULL DEFAULT '',
+    pass3_note TEXT NOT NULL DEFAULT '',
+    qa_json TEXT NOT NULL DEFAULT '{}',
+    scenario TEXT NOT NULL DEFAULT 'group',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_reading_works_stage ON reading_works(stage, updated_at DESC);
 """

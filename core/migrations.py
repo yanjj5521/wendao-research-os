@@ -432,6 +432,44 @@ HUB_MIGRATIONS: list[Migration] = [
 ]
 
 
+PERSONAL_MIGRATIONS.append(
+    Migration(
+        version=7,
+        note="论文三遍读与汇报工作台：新增 reading_works",
+        statements=(
+            """
+            CREATE TABLE IF NOT EXISTS reading_works(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                authors TEXT NOT NULL DEFAULT '',
+                venue TEXT NOT NULL DEFAULT '',
+                year TEXT NOT NULL DEFAULT '',
+                stage TEXT NOT NULL DEFAULT 'pass1',
+                decision TEXT NOT NULL DEFAULT '',
+                category TEXT NOT NULL DEFAULT '',
+                context TEXT NOT NULL DEFAULT '',
+                contribution TEXT NOT NULL DEFAULT '',
+                one_liner TEXT NOT NULL DEFAULT '',
+                correctness TEXT NOT NULL DEFAULT '',
+                clarity TEXT NOT NULL DEFAULT '',
+                method_note TEXT NOT NULL DEFAULT '',
+                data_setup TEXT NOT NULL DEFAULT '',
+                results TEXT NOT NULL DEFAULT '',
+                weakness TEXT NOT NULL DEFAULT '',
+                relevance TEXT NOT NULL DEFAULT '',
+                pass3_note TEXT NOT NULL DEFAULT '',
+                qa_json TEXT NOT NULL DEFAULT '{}',
+                scenario TEXT NOT NULL DEFAULT 'group',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_reading_works_stage ON reading_works(stage, updated_at DESC)",
+        ),
+    )
+)
+
+
 def _validate(migrations: Iterable[Migration], target_version: int) -> list[Migration]:
     ordered = sorted(migrations, key=lambda m: m.version)
     seen: set[int] = set()
