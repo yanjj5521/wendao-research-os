@@ -227,7 +227,7 @@ def prepare_github_update(release: dict[str, object]) -> Path:
         proxy = download_proxy()
         mirrors = [mirror_url(package_url, prefix) for prefix in MIRROR_PREFIXES]
         try:
-            # 先测速选最快线路，再 4 路并发；失败自动回退单连接/镜像。
+            # 先测速选最快线路，再双路并发；失败自动回退单连接。
             fetch_fast(
                 package_url,
                 target,

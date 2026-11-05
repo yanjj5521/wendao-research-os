@@ -1,17 +1,81 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
+
+from services import download
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class FastDownloadTests(unittest.TestCase):
     """测速选线 + 并发分段：支持 Range 的服务器必须走并发，且哈希要一致。"""
+
+    def test_parallel_stops_oversized_parts_and_preserves_existing_file(self) -> None:
+        class OversizedResponse:
+            status = 206
+
+            def __init__(self, request):
+                match = re.fullmatch(r"bytes=(\d+)-(\d+)", request.get_header("Range"))
+                start, end = map(int, match.groups())
+                self.headers = {"Content-Range": f"bytes {start}-{end}/10"}
+                self.read_bytes = 0
+                responses.append(self)
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, size):
+                self.read_bytes += size
+                return b"x" * size
+
+        responses = []
+        with tempfile.TemporaryDirectory(prefix="bounded-parts-") as directory:
+            target = Path(directory) / "package.zip"
+            target.write_bytes(b"previous verified file")
+            with patch.object(download.urllib.request, "urlopen", side_effect=lambda request, **_: OversizedResponse(request)):
+                with self.assertRaises(download.DownloadError):
+                    download._fetch_parallel(
+                        "https://example.invalid/pkg", target, total=10, max_bytes=10,
+                        expected_sha256="0" * 64, headers={}, proxy="", timeout=1,
+                    )
+            self.assertEqual(target.read_bytes(), b"previous verified file")
+            self.assertTrue(responses)
+            self.assertTrue(all(response.read_bytes <= 6 for response in responses))
+            self.assertEqual(list(Path(directory).iterdir()), [target])
+
+    def test_parallel_rejects_incorrect_content_range(self) -> None:
+        class WrongRange:
+            status = 206
+            headers = {"Content-Range": "bytes 0-9/10"}
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, size):
+                raise AssertionError("A wrong Content-Range must be rejected before reading")
+
+        with tempfile.TemporaryDirectory(prefix="wrong-range-") as directory:
+            target = Path(directory) / "package.zip"
+            with patch.object(download.urllib.request, "urlopen", return_value=WrongRange()):
+                with self.assertRaises(download.DownloadError):
+                    download._fetch_parallel(
+                        "https://example.invalid/pkg", target, total=10, max_bytes=10,
+                        expected_sha256="0" * 64, headers={}, proxy="", timeout=1,
+                    )
+            self.assertFalse(target.exists())
 
     def test_parallel_and_fallback(self) -> None:
         script = r'''
@@ -75,7 +139,6 @@ saved = fetch_fast(url, target, expected_sha256=DIGEST, max_bytes=50 * 1024 * 10
 assert Path(saved).read_bytes() == PAYLOAD
 ranges = [r for r in seen_ranges if r.startswith("bytes=")]
 assert len(ranges) >= 3, seen_ranges  # 1 次测速 + 2 个分段并发
-server.shutdown()
 
 server2, url2 = serve(PlainHandler)
 target2 = work / "plain.zip"
@@ -90,6 +153,7 @@ try:
 except DownloadError:
     pass
 assert not (work / "bad.zip").exists()
+server.shutdown()
 
 # 所有线路不可达时给出 DownloadError，而不是裸异常
 try:

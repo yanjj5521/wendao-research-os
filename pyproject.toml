@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.12.6"
-description = "问道科研 1.12.6：境界自动同步、双线并发高速下载、炼丹炉/炼器炉插画"
+version = "1.12.7"
+description = "问道科研 1.12.7：同步与下载保护、学习插画和动效"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -42,6 +42,7 @@ include = ["core*", "features*", "hub*", "launchers*", "services*", "web*"]
 ]
 "share/wendao-research/static/pet" = ["static/pet/*"]
 "share/wendao-research/static/wallpapers" = ["static/wallpapers/*"]
+"share/wendao-research/static/art" = ["static/art/*"]
 "share/wendao-research/hub_templates" = ["hub_templates/*.html"]
 "share/wendao-research/hub_static" = ["hub_static/*"]
 "share/wendao-research/assets" = ["assets/*"]

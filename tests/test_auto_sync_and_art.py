@@ -33,6 +33,19 @@ assert not pushed
 
 set_setting("hub_url", "http://127.0.0.1:9")
 set_setting("hub_api_token", "token-123")
+# 仅保存地址不能绕过“关闭联机”；手动强制也不能绕过。
+assert hub_realm.sync_if_due() is None
+assert hub_realm.sync_if_due(force=True) is None
+try:
+    hub_realm.sync_if_due(force=True, raise_errors=True)
+    raise AssertionError("关闭联机时手动推送应被拒绝")
+except ValueError:
+    pass
+assert not pushed
+
+set_setting("sync_provider", "legacy_hub")
+set_setting("hub_auto_sync", "0")
+assert hub_realm.sync_if_due(automatic=True) is None
 first = hub_realm.sync_if_due()
 assert first and len(pushed) == 1, pushed
 assert get_setting("hub_realm_signature", ""), "首次同步应记录签名"
@@ -44,6 +57,19 @@ assert len(pushed) == 1
 # 强制推送 → 仍然推送
 assert hub_realm.sync_if_due(force=True)
 assert len(pushed) == 2
+
+# 切换中心或账号后，旧记录既不能阻止首次推送，也不能套用六小时节流。
+set_setting("hub_url", "http://127.0.0.1:10")
+assert hub_realm.sync_if_due() and len(pushed) == 3
+set_setting("hub_api_token", "token-456")
+assert hub_realm.sync_if_due() and len(pushed) == 4
+set_setting("hub_auto_sync", "1")
+assert hub_realm.sync_if_due(automatic=True) is None
+
+# 暂存的无效地址不得由后台线程发送 Token。
+set_setting("hub_url", "ftp://invalid.example")
+assert hub_realm.sync_if_due(automatic=True) is None
+assert len(pushed) == 4
 print("throttle pass")
 '''
         with tempfile.TemporaryDirectory(prefix="realm-sync-") as directory:
@@ -78,6 +104,15 @@ for name in arts:
 for page in ("/alchemy", "/world", "/pets", "/professions"):
     body = client.get(page).text
     assert "art/" in body and ".webp" in body, page
+
+for page, name in (("/daily", "daily-study.svg"), ("/reading", "reading-study.svg")):
+    response = client.get(f"/static/art/{name}")
+    assert response.status_code == 200 and b"<svg" in response.content, name
+    assert name in client.get(page).text, page
+
+motion = client.get("/static/motion-vnext.css").text
+assert "prefers-reduced-motion: reduce" in motion
+assert "body.motion-reduced .study-art" in motion
 
 # 百艺页三张工艺图都要出现
 home = client.get("/professions").text

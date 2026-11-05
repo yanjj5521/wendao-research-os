@@ -124,6 +124,7 @@
 | --- | --- |
 | `templates/` / `hub_templates/` | 个人端与中心端页面模板 |
 | `static/` / `hub_static/` | 两端静态资源（样式、脚本、壁纸） |
+| `static/art/daily-study.svg` / `reading-study.svg` | 今日学习和论文三遍读的原创矢量插画；动态光点在 `static/motion-vnext.css` 中，可随动效设置停用 |
 | `launchers/` | 被 run_local / run_hub 复用的服务启动器 |
 | `tests/` | pytest 契约与行为测试 |
 | `docs/` | 架构、数据层、文案规范、网络连接指南与发布说明 |

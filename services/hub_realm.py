@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import urllib.error
 import urllib.request
@@ -12,6 +13,7 @@ from datetime import datetime, timedelta
 from core.database import connect, get_setting, set_setting, total_xp
 from core.version import APP_VERSION
 from services import progression
+from services.sync_backend import validate_hub_url
 
 
 def snapshot() -> dict[str, Any]:
@@ -55,22 +57,47 @@ def push(url: str, token: str) -> dict[str, Any]:
         raise ValueError("中心返回了无法解析的数据。") from None
 
 
-def sync_if_due(*, force: bool = False, min_interval: timedelta = timedelta(hours=6)) -> dict[str, Any] | None:
-    """自动同步：境界名或修为变化、或距上次超过 6 小时才推，避免每次点同步都发请求。
+def sync_if_due(
+    *,
+    force: bool = False,
+    automatic: bool = False,
+    raise_errors: bool = False,
+    min_interval: timedelta = timedelta(hours=6),
+) -> dict[str, Any] | None:
+    """Sync a changed snapshot, with throttling scoped to the centre and account.
 
-    返回推送结果；不需要推送或失败时返回 None（调用方静默）。
+    Startup calls are automatic and respect the auto-sync preference. Explicit
+    user actions can sync with auto-sync disabled, but never while the whole
+    connection is disabled. Manual actions can request a useful error message.
     """
-    url = get_setting("hub_url", "").strip()
+    if get_setting("sync_provider", "disabled") != "legacy_hub":
+        if raise_errors:
+            raise ValueError("请先启用同行会联机。")
+        return None
+    if automatic and get_setting("hub_auto_sync", "0") != "1":
+        return None
+    url = get_setting("hub_url", "").strip().rstrip("/")
     token = get_setting("hub_api_token", "").strip()
     if not url or not token:
+        if raise_errors:
+            raise ValueError("先保存中心地址与 Token。")
+        return None
+    valid_url, reason = validate_hub_url(url)
+    if not valid_url:
+        if raise_errors:
+            raise ValueError(reason)
         return None
     current = snapshot()
     signature = f"{current['realm_name']}|{current['realm_index']}|{current['cultivation']}"
-    if not force and signature == get_setting("hub_realm_signature", ""):
+    scope = hashlib.sha256(f"{url}\0{token}".encode("utf-8")).hexdigest()
+    same_scope = scope == get_setting("hub_realm_scope", "")
+    if not force and same_scope and signature == get_setting("hub_realm_signature", ""):
         return None
-    if not force:
+    if not force and same_scope:
         try:
             pushed_at = datetime.fromisoformat(get_setting("hub_realm_pushed_at", ""))
+            if pushed_at.tzinfo is None:
+                pushed_at = pushed_at.astimezone()
         except ValueError:
             pushed_at = None
         if pushed_at and datetime.now().astimezone() - pushed_at < min_interval:
@@ -78,7 +105,10 @@ def sync_if_due(*, force: bool = False, min_interval: timedelta = timedelta(hour
     try:
         result = push(url, token)
     except (OSError, ValueError):
+        if raise_errors:
+            raise
         return None
     set_setting("hub_realm_signature", signature)
+    set_setting("hub_realm_scope", scope)
     set_setting("hub_realm_pushed_at", datetime.now().astimezone().isoformat(timespec="seconds"))
     return result

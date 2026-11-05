@@ -51,6 +51,7 @@
 </style>
 
 <div class="daily-page">
+  <div class="study-hero">
   <div class="daily-top">
     <div style="flex:1 1 320px">
       <span class="eyebrow">第 {{ current_day }} / {{ plan.total_days }} 天</span>
@@ -63,6 +64,11 @@
       <div class="daily-bar" role="progressbar" aria-valuenow="{{ progress }}" aria-valuemin="0" aria-valuemax="100"><i style="width:{{ progress }}%"></i></div>
     </div>
     <div class="daily-wallet"><span>◆ {{ wallet.spirit_stone }}</span><span>⌁ {{ wallet.spirit_wood }}</span><span>⬢ {{ wallet.mystic_iron }}</span><span>✦ {{ wallet.star_sand }}</span></div>
+  </div>
+    <figure class="study-art study-art-daily" aria-hidden="true">
+      <img src="{{ url_for('static', path='/art/daily-study.svg') }}" alt="">
+      <span class="study-art-mote"></span>
+    </figure>
   </div>
 
   <section class="mission-stack official-missions">

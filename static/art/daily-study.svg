@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" role="img">
+  <defs>
+    <linearGradient id="paper" x2="1" y2="1"><stop stop-color="#f9f2e3"/><stop offset="1" stop-color="#e9d9bf"/></linearGradient>
+    <linearGradient id="mountain" x2="0" y2="1"><stop stop-color="#849b8a" stop-opacity=".42"/><stop offset="1" stop-color="#d6d4ba" stop-opacity=".15"/></linearGradient>
+    <linearGradient id="book" x2="0" y2="1"><stop stop-color="#fffaf0"/><stop offset="1" stop-color="#e8d6b9"/></linearGradient>
+    <radialGradient id="lamp"><stop stop-color="#ffeeb3"/><stop offset=".55" stop-color="#e4bb69" stop-opacity=".5"/><stop offset="1" stop-color="#e4bb69" stop-opacity="0"/></radialGradient>
+    <pattern id="grain" width="38" height="38" patternUnits="userSpaceOnUse"><circle cx="7" cy="8" r="1" fill="#a58965" opacity=".12"/><circle cx="27" cy="22" r=".8" fill="#a58965" opacity=".12"/></pattern>
+  </defs>
+  <rect width="800" height="480" fill="url(#paper)"/>
+  <circle cx="620" cy="118" r="68" fill="#e8c989" opacity=".33"/>
+  <path d="M0 309 114 180l66 66 84-94 93 130 73-88 80 110 89-79 101 99 100-95v251H0Z" fill="url(#mountain)"/>
+  <path d="M0 337 113 256l57 45 88-83 109 127 94-85 76 69 100-57 163 101v107H0Z" fill="#718b7d" opacity=".14"/>
+  <path d="M0 377c145-28 269-29 401-3s274 25 399-2v108H0Z" fill="#b49a72" opacity=".13"/>
+  <g fill="none" stroke="#657d67" stroke-linecap="round" opacity=".7">
+    <path d="M83 360c10-100 21-190 41-289M112 252 68 199m47 28 44-51M98 314l-49-46m54 22 48-43" stroke-width="6"/>
+    <path d="M91 226c-33-4-45-18-55-33 28 3 45 14 55 33Zm31-28c10-28 29-40 51-47-10 23-28 39-51 47ZM86 296c-25-3-41-14-53-29 25 2 44 11 53 29Zm24-22c12-25 29-36 49-42-10 21-25 35-49 42Z" fill="#7a957d" stroke-width="2"/>
+  </g>
+  <ellipse cx="443" cy="410" rx="270" ry="30" fill="#77624c" opacity=".12"/>
+  <path d="M174 370c105-23 204-20 270 11 70-30 163-33 262-8l-11 32c-90-20-178-18-251 9-82-28-169-29-263-10Z" fill="#765b43" opacity=".8"/>
+  <path d="M185 365c100-22 188-20 259 11v29c-74-28-157-30-254-8Z" fill="url(#book)" stroke="#a28665" stroke-width="3"/>
+  <path d="M444 376c70-31 157-33 256-10l-5 30c-97-20-177-18-251 9Z" fill="url(#book)" stroke="#a28665" stroke-width="3"/>
+  <path d="M444 377v28M215 370c69-11 131-7 197 12m-194-3c73-11 135-6 194 11m58-7c59-19 120-23 195-12m-195 20c65-18 126-21 192-10" fill="none" stroke="#ae987a" stroke-width="3" stroke-linecap="round" opacity=".65"/>
+  <path d="m251 335 143 28-3 9-143-28Z" fill="#74563c"/><path d="m241 333 14 3-5 8-13-3Z" fill="#c29558"/>
+  <ellipse cx="548" cy="296" rx="83" ry="77" fill="url(#lamp)"/>
+  <path d="M527 265h42l8 58h-58Z" fill="#f6d78d" stroke="#8d7047" stroke-width="4"/>
+  <path d="M523 278h50m-47 29h49m-28-41v57m-24-58 25-18 25 18m-54 58h59" fill="none" stroke="#9a7544" stroke-width="3"/>
+  <path d="M542 246c0-8 11-8 11 0" fill="none" stroke="#8d7047" stroke-width="3"/>
+  <g fill="#cfaa65" opacity=".7"><circle cx="598" cy="209" r="4"/><circle cx="480" cy="226" r="3"/><circle cx="657" cy="251" r="3"/><circle cx="431" cy="302" r="2"/></g>
+  <rect width="800" height="480" fill="url(#grain)"/>
+</svg>

@@ -16,6 +16,7 @@ class OnlineSettingsSaveFlow(unittest.TestCase):
     def test_flow(self) -> None:
         script = r'''
 import re
+from unittest.mock import patch
 from fastapi.testclient import TestClient
 from core.database import connect, get_setting, init_db
 init_db()
@@ -73,6 +74,19 @@ r = c.post("/online/settings", data={"sync_provider": "disabled", "hub_url": "",
                                      "auto_sync": "", "connect_now": "0"})
 assert "已保存：联机保持关闭" in flash(r.text)
 assert db("sync_provider") == "disabled"
+
+# 即使保留了地址和 Token，关闭联机时手动按钮也不能绕过开关。
+with patch("features.sync.hub_realm.push") as push:
+    r = c.post("/online/realm/push")
+    assert "请先启用同行会联机" in flash(r.text), flash(r.text)
+    push.assert_not_called()
+
+# “保存并联机”成功时，也要推送当前境界。
+with patch("features.sync.sync_now", return_value={"ok": True, "message": "联机成功", "synced": 0}), \
+        patch("features.sync.hub_realm.sync_if_due") as realm_sync:
+    c.post("/online/settings", data={"sync_provider": "legacy_hub", "hub_url": "http://127.0.0.1:5050",
+                                    "hub_api_token": "tok-connect", "auto_sync": "0", "connect_now": "1"})
+    realm_sync.assert_called_once_with()
 
 r = c.post("/online/settings", data={"sync_provider": "legacy_hub", "hub_url": "ftp://not-supported",
                                      "hub_api_token": "tok-1", "auto_sync": "", "connect_now": "0"})

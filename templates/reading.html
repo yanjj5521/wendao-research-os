@@ -59,6 +59,7 @@
 </style>
 
 <div class="reading-page">
+  <div class="study-hero">
   <div class="reading-head">
     <div>
       <span class="eyebrow">Three-Pass Reading</span>
@@ -71,6 +72,11 @@
       <input name="year" placeholder="年份" style="max-width:80px">
       <button class="primary-button">建档</button>
     </form>
+  </div>
+    <figure class="study-art study-art-reading" aria-hidden="true">
+      <img src="{{ url_for('static', path='/art/reading-study.svg') }}" alt="">
+      <span class="study-art-mote"></span>
+    </figure>
   </div>
 
   <div class="reading-grid">

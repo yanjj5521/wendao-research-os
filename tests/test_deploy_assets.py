@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import unittest
@@ -64,8 +65,6 @@ class HeadscaleDeployAssetTests(unittest.TestCase):
         """模拟 deploy.sh 的 selfsigned 渲染，确认产物是合法 YAML 且证书路径生效。"""
         import yaml
 
-        if shutil.which("bash") is None:
-            self.skipTest("需要 bash")
         script = (DEPLOY / "deploy.sh").read_text(encoding="utf-8")
         self.assertIn("tls_cert_path: /etc/headscale/certs/server.crt", script)
 
@@ -90,10 +89,17 @@ class HeadscaleDeployAssetTests(unittest.TestCase):
         self.assertIn("永不归档", docs) if False else None
 
     def test_bash_script_syntax(self) -> None:
-        if shutil.which("bash") is None:
+        # On Windows, bare "bash" can resolve to the WSL launcher even when
+        # Git Bash is installed; an unconfigured WSL then fails with no stderr.
+        bash = shutil.which("bash")
+        if os.name == "nt":
+            git = shutil.which("git")
+            git_bash = Path(git).resolve().parent.parent / "bin" / "bash.exe" if git else None
+            bash = str(git_bash) if git_bash and git_bash.is_file() else None
+        if bash is None:
             self.skipTest("需要 bash")
         result = subprocess.run(
-            ["bash", "-n", str(DEPLOY / "deploy.sh")], capture_output=True, text=True
+            [bash, "-n", str(DEPLOY / "deploy.sh")], capture_output=True, text=True
         )
         self.assertEqual(result.returncode, 0, result.stderr)
 

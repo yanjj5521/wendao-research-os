@@ -81,7 +81,10 @@ def register_routes() -> None:
         from services import hub_realm
 
         threading.Thread(
-            target=hub_realm.sync_if_due, daemon=True, name="realm-autostart"
+            target=hub_realm.sync_if_due,
+            kwargs={"automatic": True},
+            daemon=True,
+            name="realm-autostart",
         ).start()
 
 

@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import hashlib
 import json
-import math
 import os
+import re
 import time
 import urllib.error
 import urllib.request
@@ -196,6 +196,7 @@ def _fetch_parallel(
     destination: Path,
     *,
     total: int,
+    max_bytes: int,
     expected_sha256: str,
     headers: dict[str, str],
     proxy: str,
@@ -203,45 +204,57 @@ def _fetch_parallel(
     workers: int = 2,
 ) -> Path:
     """把文件切成 workers 段并发下载，最后顺序拼接并校验。"""
-    chunk_size = math.ceil(total / workers)
-    parts: list[Path] = []
+    if total <= 0 or total > max_bytes or workers < 1 or workers > total:
+        raise DownloadError("更新包大小不合法或超过上限。")
+    parts = [destination.with_name(f"{destination.name}.part{index}") for index in range(workers)]
+    assembled = destination.with_name(destination.name + ".parallel.tmp")
     opener = _opener(proxy)
 
     def download_part(index: int) -> Path:
-        start = index * chunk_size
-        end = min(total - 1, start + chunk_size - 1)
-        part = destination.with_name(f"{destination.name}.part{index}")
+        start = total * index // workers
+        end = total * (index + 1) // workers - 1
+        part = parts[index]
         request = urllib.request.Request(
             url, headers={**headers, "Range": f"bytes={start}-{end}"}
         )
         response = opener.open(request, timeout=timeout) if opener else urllib.request.urlopen(request, timeout=timeout)
-        with response as handle, part.open("wb") as out:
-            while chunk := handle.read(1024 * 1024):
-                out.write(chunk)
-        if part.stat().st_size != end - start + 1:
-            raise DownloadError(f"分段 {index + 1} 大小不符，已回退单连接下载。")
+        with response as handle:
+            content_range = str(handle.headers.get("Content-Range", "")).strip()
+            match = re.fullmatch(r"bytes\s+(\d+)-(\d+)/(\d+)", content_range, re.IGNORECASE)
+            if (getattr(handle, "status", 200) != 206 or not match
+                    or tuple(map(int, match.groups())) != (start, end, total)):
+                raise DownloadError(f"分段 {index + 1} 的范围无效，已回退单连接下载。")
+            part_size = end - start + 1
+            written = 0
+            with part.open("wb") as out:
+                while chunk := handle.read(min(1024 * 1024, part_size - written + 1)):
+                    if written + len(chunk) > part_size:
+                        raise DownloadError(f"分段 {index + 1} 超出范围，已停止下载。")
+                    out.write(chunk)
+                    written += len(chunk)
+            if written != part_size:
+                raise DownloadError(f"分段 {index + 1} 大小不符，已回退单连接下载。")
         return part
 
     try:
         with ThreadPoolExecutor(max_workers=workers) as pool:
-            parts = list(pool.map(download_part, range(workers)))
-    except Exception:
-        for part in destination.parent.glob(f"{destination.name}.part*"):
-            part.unlink(missing_ok=True)
-        raise
+            list(pool.map(download_part, range(workers)))
 
-    digest = hashlib.sha256()
-    with destination.open("wb") as out:
+        digest = hashlib.sha256()
+        with assembled.open("wb") as out:
+            for part in parts:
+                with part.open("rb") as handle:
+                    while chunk := handle.read(1024 * 1024):
+                        digest.update(chunk)
+                        out.write(chunk)
+        if digest.hexdigest().lower() != expected_sha256.lower():
+            raise DownloadError("更新包 SHA-256 不匹配，已删除损坏文件。")
+        os.replace(assembled, destination)
+        return destination
+    finally:
         for part in parts:
-            with part.open("rb") as handle:
-                while chunk := handle.read(1024 * 1024):
-                    digest.update(chunk)
-                    out.write(chunk)
             part.unlink(missing_ok=True)
-    if digest.hexdigest().lower() != expected_sha256.lower():
-        destination.unlink(missing_ok=True)
-        raise DownloadError("更新包 SHA-256 不匹配，已删除损坏文件。")
-    return destination
+        assembled.unlink(missing_ok=True)
 
 
 def fetch_fast(
@@ -255,7 +268,7 @@ def fetch_fast(
     proxy: str = "",
     mirror_urls: Sequence[str] = (),
 ) -> Path:
-    """先测速选最快的线路，再尽量 4 路并发；任何异常都回退到可续传的单连接下载。"""
+    """先测速选最快线路，再尝试双路并发；失败时回退到可续传的单连接。"""
     expected = (expected_sha256 or "").strip().lower()
     if len(expected) != 64:
         raise DownloadError("缺少有效的 SHA-256，已拒绝下载。")
@@ -288,7 +301,7 @@ def fetch_fast(
     if best_range and best_total and best_total > 4 * 1024 * 1024:
         try:
             return _fetch_parallel(
-                best_url, destination, total=best_total, expected_sha256=expected,
+                best_url, destination, total=best_total, max_bytes=max_bytes, expected_sha256=expected,
                 headers=base_headers, proxy=proxy, timeout=timeout, workers=2,
             )
         except Exception:
