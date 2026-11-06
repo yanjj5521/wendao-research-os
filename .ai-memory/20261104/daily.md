@@ -84,3 +84,20 @@
 
 - **文件**: tests/test_release_e2e.py
 - **验证**: 真实 HTTP 上传/取包/SHA/结构校验全通过（pytest 244 passed）
+
+## [20:00] - 功能实现: 境界自动同步（联机/立即同步/启动三处 + 6h 节流）
+
+- **文件**: services/hub_realm.py, features/sync.py, web/app.py
+- **验证**: tests/test_auto_sync_and_art.py::test_auto_realm_throttle
+
+## [20:05] - 功能实现: 高速下载（测速选线 + 2 路并发分段）
+
+- **文件**: services/download.py, services/github_update.py, services/release_feed.py, services/team_update.py
+- **决策**: 2 路并发（实测 13.3MB/s，4 路反而 11.9）；失败回退可续传单连接
+- **验证**: tests/test_fast_download.py（Range/无 Range/哈希不符/不可达），真实包 5.2s
+
+## [20:10] - 素材: 炼丹炉/炼器炉/灵兽三张插画并接入四页
+
+- **文件**: static/art/*.webp, templates/{alchemy,world,roam,professions}.html, static/style.css
+- **决策**: 裁掉生成图底部 6%（含水印留白），转 WebP 1280 宽
+- **验证**: 四个页面引用正确、静态资源 200

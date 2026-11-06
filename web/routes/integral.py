@@ -14,7 +14,7 @@ from services.integral import (
 )
 from web.runtime import File, Form, Request, UploadFile, context, templates
 
-app = APIRouter()
+router = APIRouter()
 
 METHOD_LABELS = {
     "auto": "自动（优先 Simpson）",
@@ -39,12 +39,12 @@ def _render(request: Request, **extra):
     )
 
 
-@app.get("/integral", name="integral_page")
+@router.get("/integral", name="integral_page")
 def integral_page(request: Request):
     return _render(request)
 
 
-@app.post("/integral", name="integral_calculate")
+@router.post("/integral", name="integral_calculate")
 async def integral_calculate(
     request: Request,
     file: UploadFile = File(...),

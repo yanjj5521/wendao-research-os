@@ -36,6 +36,7 @@
 
 from __future__ import annotations
 
+from core.clock import now_iso
 import re
 import sqlite3
 from collections.abc import Callable, Iterable
@@ -46,8 +47,6 @@ from pathlib import Path
 KEEP_SNAPSHOTS = 5
 
 
-def now_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 @dataclass(frozen=True)

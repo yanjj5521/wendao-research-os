@@ -13,6 +13,7 @@
 
 from __future__ import annotations
 
+from core.clock import now_iso
 import hashlib
 import json
 import re
@@ -36,10 +37,6 @@ class AccountError(ValueError):
     """账号相关的可预期错误（用户名不合法、口令太短等）。"""
 
 
-def now_iso() -> str:
-    from datetime import datetime
-
-    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def hash_password(

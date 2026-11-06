@@ -30,9 +30,9 @@ from web.runtime import (
     total_xp,
 )
 
-app = APIRouter()
+router = APIRouter()
 
-@app.get("/achievements", response_class=HTMLResponse, name="achievements_page")
+@router.get("/achievements", response_class=HTMLResponse, name="achievements_page")
 def achievements_page(request: Request):
     with connect() as conn:
         items = achievements(conn)
@@ -61,7 +61,7 @@ def achievements_page(request: Request):
         ),
     )
 
-@app.get("/", response_class=HTMLResponse, name="dashboard")
+@router.get("/", response_class=HTMLResponse, name="dashboard")
 def dashboard(request: Request):
     with connect() as conn:
         stats = {
@@ -164,7 +164,7 @@ def dashboard(request: Request):
     return templates.TemplateResponse(request=request, name="dashboard.html", context=data)
 
 
-@app.post("/home/layout", name="home_layout_save")
+@router.post("/home/layout", name="home_layout_save")
 def home_layout_save(request: Request, layout: str = Form("[]")):
     allowed = {"gate", "search", "shortcuts", "workbench", "continuity"}
     try:
@@ -213,7 +213,7 @@ PRISM_ECHOES = (
 )
 
 
-@app.post("/eggs/constellation", name="constellation_egg")
+@router.post("/eggs/constellation", name="constellation_egg")
 def constellation_egg(request: Request):
     with connect() as conn:
         row = conn.execute(
@@ -269,7 +269,7 @@ def constellation_egg(request: Request):
     return redirect("dashboard", request)
 
 
-@app.get("/retreat", response_class=HTMLResponse, name="retreat_page")
+@router.get("/retreat", response_class=HTMLResponse, name="retreat_page")
 def retreat_page(request: Request):
     return templates.TemplateResponse(
         request=request,

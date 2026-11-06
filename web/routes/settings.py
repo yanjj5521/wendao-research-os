@@ -62,9 +62,9 @@ from services.ai_provider import (
     list_profiles,
 )
 
-app = APIRouter()
+router = APIRouter()
 
-@app.get("/settings", response_class=HTMLResponse, name="settings_page")
+@router.get("/settings", response_class=HTMLResponse, name="settings_page")
 def settings_get(request: Request):
     realm_labels = configured_realm_names()
     return templates.TemplateResponse(
@@ -109,7 +109,7 @@ def settings_get(request: Request):
     )
 
 
-@app.post("/settings/nav/reset", name="settings_nav_reset")
+@router.post("/settings/nav/reset", name="settings_nav_reset")
 def settings_nav_reset(request: Request):
     """恢复推荐分类，不覆盖自定义标签。"""
     from fastapi.responses import RedirectResponse
@@ -123,7 +123,7 @@ def settings_nav_reset(request: Request):
     return RedirectResponse("/settings#navigation-layout", status_code=303)
 
 
-@app.post("/settings", name="settings_post")
+@router.post("/settings", name="settings_post")
 def settings_post(
     request: Request,
     site_name: str = Form("科研系统"),
@@ -274,7 +274,7 @@ def settings_post(
     return redirect("settings_page", request)
 
 
-@app.get("/export/json", name="export_json")
+@router.get("/export/json", name="export_json")
 def export_json(request: Request):
     with connect() as conn:
         entries = [dict(row) for row in conn.execute("SELECT * FROM entries ORDER BY id")]
@@ -392,7 +392,7 @@ def _entry_markdown(entry: dict[str, Any], attachment: str = "") -> str:
     return "\n".join(parts).strip() + "\n"
 
 
-@app.get("/knowledge/export", name="knowledge_export")
+@router.get("/knowledge/export", name="knowledge_export")
 def knowledge_export():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     archive = BACKUP_DIR / f"我的科研知识库_{timestamp}.zip"
@@ -568,7 +568,7 @@ def knowledge_export():
     return FileResponse(archive, media_type="application/zip", filename=archive.name)
 
 
-@app.get("/backup", name="backup")
+@router.get("/backup", name="backup")
 def backup(request: Request):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     stage = BACKUP_DIR / f"research_os_backup_{timestamp}"
@@ -603,7 +603,7 @@ def backup(request: Request):
     return FileResponse(archive, media_type="application/zip", filename=Path(archive).name)
 
 
-@app.post("/feedback/save", name="feedback_save")
+@router.post("/feedback/save", name="feedback_save")
 def feedback_save(request: Request, kind: str = Form("bug"), content: str = Form(""), contact: str = Form("")):
     from core.database import connect as _connect
     from services.sync_backend import build_sync_backend
@@ -641,7 +641,7 @@ def feedback_save(request: Request, kind: str = Form("bug"), content: str = Form
     return redirect("settings_page", request)
 
 
-@app.post("/settings/ai/key", name="settings_ai_key")
+@router.post("/settings/ai/key", name="settings_ai_key")
 def settings_ai_key(request: Request, ai_api_key: str = Form(""), clear: str = Form("")):
     if clear == "1":
         set_setting("ai_api_key", "")
@@ -656,7 +656,7 @@ def settings_ai_key(request: Request, ai_api_key: str = Form(""), clear: str = F
     return redirect("settings_page", request)
 
 
-@app.post("/settings/ai/profiles/add", name="settings_ai_profile_add")
+@router.post("/settings/ai/profiles/add", name="settings_ai_profile_add")
 def settings_ai_profile_add(
     request: Request,
     name: str = Form(""),
@@ -675,7 +675,7 @@ def settings_ai_profile_add(
     return redirect("settings_page", request)
 
 
-@app.post("/settings/ai/profiles/{profile_id}/activate", name="settings_ai_profile_activate")
+@router.post("/settings/ai/profiles/{profile_id}/activate", name="settings_ai_profile_activate")
 def settings_ai_profile_activate(request: Request, profile_id: str):
     try:
         profile = activate_profile(profile_id)
@@ -686,14 +686,14 @@ def settings_ai_profile_activate(request: Request, profile_id: str):
     return redirect("settings_page", request)
 
 
-@app.post("/settings/ai/profiles/{profile_id}/delete", name="settings_ai_profile_delete")
+@router.post("/settings/ai/profiles/{profile_id}/delete", name="settings_ai_profile_delete")
 def settings_ai_profile_delete(request: Request, profile_id: str):
     delete_profile(profile_id)
     flash(request, "已删除这条共享模型记录。", "success")
     return redirect("settings_page", request)
 
 
-@app.post("/settings/ai/share", name="settings_ai_share")
+@router.post("/settings/ai/share", name="settings_ai_share")
 def settings_ai_share(request: Request, include_key: str = Form("")):
     want_key = include_key == "1"
     try:
@@ -708,7 +708,7 @@ def settings_ai_share(request: Request, include_key: str = Form("")):
     )
 
 
-@app.post("/settings/ai/share/import", name="settings_ai_share_import")
+@router.post("/settings/ai/share/import", name="settings_ai_share_import")
 def settings_ai_share_import(request: Request, share_code: str = Form("")):
     try:
         profile = import_share_code(share_code)

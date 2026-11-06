@@ -34,7 +34,7 @@ from web.runtime import (
 )
 from services.file_storage import MAX_UPLOAD_BYTES, save_upload_limited
 
-app = APIRouter()
+router = APIRouter()
 
 def _safe_relative_path(value: str) -> Path:
     """Return a portable, traversal-safe relative path while preserving folders."""
@@ -46,17 +46,6 @@ def _safe_relative_path(value: str) -> Path:
             continue
         parts.append(secure_filename(part))
     return Path(*parts) if parts else Path("file")
-
-
-def _folder_stats(path: Path) -> tuple[int, int]:
-    count = 0
-    total = 0
-    if path.exists():
-        for item in path.rglob("*"):
-            if item.is_file():
-                count += 1
-                total += item.stat().st_size
-    return count, total
 
 
 def _foundation_tracks(conn) -> list[dict[str, Any]]:
@@ -152,7 +141,7 @@ def _parse_foundation_text(text: str) -> list[dict[str, Any]]:
     return tracks
 
 
-@app.get("/foundation", response_class=HTMLResponse, name="foundation_page")
+@router.get("/foundation", response_class=HTMLResponse, name="foundation_page")
 def foundation_page(request: Request, edit_track: int | None = None):
     # v3 keeps the long-term foundation tools behind the plan entry point.
     # The clean schema still owns these tables because they are native v3 data.
@@ -176,7 +165,7 @@ def foundation_page(request: Request, edit_track: int | None = None):
     )
 
 
-@app.post("/foundation/sync", name="foundation_sync")
+@router.post("/foundation/sync", name="foundation_sync")
 def foundation_sync(request: Request, master_text: str = Form(...)):
     parsed = _parse_foundation_text(master_text)
     if not parsed:
@@ -217,7 +206,7 @@ def foundation_sync(request: Request, master_text: str = Form(...)):
     return redirect("foundation_page", request)
 
 
-@app.post("/foundation/tracks/new", name="foundation_track_new")
+@router.post("/foundation/tracks/new", name="foundation_track_new")
 def foundation_track_new(request: Request, name: str = Form(...), icon: str = Form("◇")):
     name = name.strip()
     if not name:
@@ -237,7 +226,7 @@ def foundation_track_new(request: Request, name: str = Form(...), icon: str = Fo
     return redirect("foundation_page", request)
 
 
-@app.post("/foundation/tracks/{track_id}/save", name="foundation_track_save")
+@router.post("/foundation/tracks/{track_id}/save", name="foundation_track_save")
 def foundation_track_save(
     request: Request, track_id: int, name: str = Form(...), icon: str = Form("◇"),
     objective: str = Form(""), current_stage: str = Form(""), next_focus: str = Form(""), notes: str = Form(""),
@@ -256,7 +245,7 @@ def foundation_track_save(
     return redirect("foundation_track_page", request, track_id=track_id)
 
 
-@app.post("/foundation/tracks/{track_id}/delete", name="foundation_track_delete")
+@router.post("/foundation/tracks/{track_id}/delete", name="foundation_track_delete")
 def foundation_track_delete(request: Request, track_id: int):
     with connect() as conn:
         row = conn.execute("SELECT name FROM research_tracks WHERE id=?", (track_id,)).fetchone()
@@ -266,7 +255,7 @@ def foundation_track_delete(request: Request, track_id: int):
     return redirect("foundation_page", request)
 
 
-@app.post("/foundation/tracks/{track_id}/tasks/new", name="foundation_task_new")
+@router.post("/foundation/tracks/{track_id}/tasks/new", name="foundation_task_new")
 def foundation_task_new(
     request: Request, track_id: int, title: str = Form(...), description: str = Form(""),
     deliverable: str = Form(""), priority: str = Form("normal"), due_date: str = Form(""),
@@ -283,7 +272,7 @@ def foundation_task_new(
     return redirect("foundation_track_page", request, track_id=track_id)
 
 
-@app.post("/foundation/tasks/{task_id}/save", name="foundation_task_save")
+@router.post("/foundation/tasks/{task_id}/save", name="foundation_task_save")
 def foundation_task_save(
     request: Request, task_id: int, title: str = Form(...), description: str = Form(""),
     deliverable: str = Form(""), status: str = Form("planned"), priority: str = Form("normal"), due_date: str = Form(""),
@@ -299,7 +288,7 @@ def foundation_task_save(
     return redirect("foundation_track_page", request, track_id=row["track_id"] if row else 1)
 
 
-@app.post("/foundation/tasks/{task_id}/toggle", name="foundation_task_toggle")
+@router.post("/foundation/tasks/{task_id}/toggle", name="foundation_task_toggle")
 def foundation_task_toggle(request: Request, task_id: int):
     with connect() as conn:
         row = conn.execute("SELECT status,title,track_id FROM research_plan_items WHERE id=?", (task_id,)).fetchone()
@@ -312,7 +301,7 @@ def foundation_task_toggle(request: Request, task_id: int):
     return redirect("foundation_track_page", request, track_id=row["track_id"] if row else 1)
 
 
-@app.post("/foundation/tasks/{task_id}/delete", name="foundation_task_delete")
+@router.post("/foundation/tasks/{task_id}/delete", name="foundation_task_delete")
 def foundation_task_delete(request: Request, task_id: int):
     with connect() as conn:
         conn.execute("DELETE FROM research_plan_items WHERE id=?", (task_id,))
@@ -321,7 +310,7 @@ def foundation_task_delete(request: Request, task_id: int):
     return redirect("foundation_page", request)
 
 
-@app.post("/foundation/folders/upload", name="foundation_folder_upload")
+@router.post("/foundation/folders/upload", name="foundation_folder_upload")
 def foundation_folder_upload(
     request: Request, folder_name: str = Form(""), description: str = Form(""), track_id: str = Form(""),
     relative_paths: str = Form("[]"), files: list[UploadFile] = File(default=[]),
@@ -384,7 +373,7 @@ def foundation_folder_upload(
     return redirect("foundation_page", request)
 
 
-@app.get("/foundation/folders/{folder_id}", response_class=HTMLResponse, name="foundation_folder_view")
+@router.get("/foundation/folders/{folder_id}", response_class=HTMLResponse, name="foundation_folder_view")
 def foundation_folder_view(request: Request, folder_id: int):
     with connect() as conn:
         folder = conn.execute("SELECT f.*,t.name track_name FROM research_folders f LEFT JOIN research_tracks t ON t.id=f.track_id WHERE f.id=?", (folder_id,)).fetchone()
@@ -394,7 +383,7 @@ def foundation_folder_view(request: Request, folder_id: int):
     return templates.TemplateResponse(request=request, name="foundation_folder.html", context=context(request, "foundation", folder=dict(folder), files=files))
 
 
-@app.get("/foundation/folders/{folder_id}/files/{file_id}", name="foundation_folder_file")
+@router.get("/foundation/folders/{folder_id}/files/{file_id}", name="foundation_folder_file")
 def foundation_folder_file(folder_id: int, file_id: int):
     with connect() as conn:
         row = conn.execute("SELECT f.storage_key,ff.stored_path,ff.original_name,ff.mime_type FROM research_folder_files ff JOIN research_folders f ON f.id=ff.folder_id WHERE ff.id=? AND ff.folder_id=?", (file_id, folder_id)).fetchone()
@@ -407,7 +396,7 @@ def foundation_folder_file(folder_id: int, file_id: int):
     return FileResponse(path, filename=row["original_name"], media_type=row["mime_type"] or None)
 
 
-@app.get("/foundation/folders/{folder_id}/download", name="foundation_folder_download")
+@router.get("/foundation/folders/{folder_id}/download", name="foundation_folder_download")
 def foundation_folder_download(folder_id: int):
     with connect() as conn:
         row = conn.execute("SELECT * FROM research_folders WHERE id=?", (folder_id,)).fetchone()
@@ -422,7 +411,7 @@ def foundation_folder_download(folder_id: int):
     return FileResponse(archive, filename=archive.name, media_type="application/zip")
 
 
-@app.post("/foundation/folders/{folder_id}/delete", name="foundation_folder_delete")
+@router.post("/foundation/folders/{folder_id}/delete", name="foundation_folder_delete")
 def foundation_folder_delete(request: Request, folder_id: int):
     with connect() as conn:
         row = conn.execute("SELECT storage_key,name FROM research_folders WHERE id=?", (folder_id,)).fetchone()

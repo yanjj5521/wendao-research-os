@@ -90,11 +90,6 @@ def choose_port(host: str, preferred: int) -> tuple[int, bool]:
     raise RuntimeError(f"No free hub port was found between {preferred} and {preferred + 19}.")
 
 
-def lan_ip() -> str:
-    rows = member_access_urls(DEFAULT_PORT)
-    return str(rows[0]["address"]) if rows else "this-computer-LAN-IP"
-
-
 def open_browser(port: int) -> None:
     webbrowser.open_new(f"http://{LOCAL_HOST}:{port}")
 

@@ -47,7 +47,7 @@ def register_routes() -> None:
         integral,
         roam,
     ):
-        app.include_router(route_module.app)
+        app.include_router(route_module.router)
 
     register_daily_routes(app, templates, context, flash)
     register_assistant_routes(app, templates, context, flash)

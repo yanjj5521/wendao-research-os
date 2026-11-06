@@ -45,10 +45,6 @@ def _date(value: str) -> str | None:
     return text if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text) else None
 
 
-def _workspace_id(value: str) -> int | None:
-    return int(value) if str(value or "").isdigit() else None
-
-
 def _workspace_ids(values: list[str]) -> list[int]:
     return list(
         dict.fromkeys(

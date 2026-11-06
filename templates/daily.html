@@ -1,54 +1,7 @@
 {% extends "base.html" %}
 {% block title %}每日任务 · {{ site_name }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/css/daily.css') }}">{% endblock %}
 {% block content %}
-<style>
-  .daily-page{--card-gap:14px;padding:20px;border-radius:26px;background:
-  radial-gradient(900px 320px at 12% -8%,rgba(184,117,47,.10),transparent 62%),
-  radial-gradient(700px 300px at 92% 0%,rgba(61,139,110,.07),transparent 58%),
-  linear-gradient(180deg,#faf6ee,#f5efe4)}
-  .daily-top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
-  .daily-top h1{margin:6px 0 8px;font-size:clamp(24px,3vw,32px);line-height:1.25}
-  .daily-top .sub{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;color:#6f685c;font-size:13.5px}
-  .daily-bar{flex:1 1 220px;min-width:180px;height:8px;border-radius:999px;background:rgba(0,0,0,.07);overflow:hidden}
-  .daily-bar>i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#b8752f,#d9a45f);transition:width .4s ease}
-  .daily-wallet{display:flex;gap:8px;font-size:12.5px;color:#6b6154;white-space:nowrap}
-  .daily-wallet span{padding:5px 10px;border-radius:999px;background:rgba(120,90,50,.07);border:1px solid rgba(120,90,50,.09)}
-  .daily-page .mission-card{display:flex;gap:15px;padding:19px 20px 17px;border-radius:18px;border:1px solid rgba(120,90,50,.13);
-  background:linear-gradient(180deg,#fffdf8,#faf4e9);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 10px 26px rgba(92,70,40,.06);margin-bottom:var(--card-gap)}
-  .daily-page .mission-card.done{background:linear-gradient(180deg,#f7fbf7,#eef6f0);border-color:rgba(61,139,110,.26);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
-  .daily-page .mission-state{flex:0 0 34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:14px;color:#8a5a1f;background:rgba(184,117,47,.12)}
-  .daily-page .mission-card.done .mission-state{color:#2f6b52;background:rgba(61,139,110,.14)}
-  .daily-page .mission-copy{flex:1;min-width:0}
-  .daily-page .mission-copy h2{font-size:19px;line-height:1.4;margin:2px 0 8px}
-  .daily-page .mission-meta{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:#8a8378;margin-bottom:6px}
-  .daily-page .mission-copy>p{font-size:14px;line-height:1.7;color:#4a463f;margin:0 0 8px}
-  .daily-page .deliverable{display:block;font-size:12.5px;color:#8a8378;margin-bottom:12px}
-  .daily-page .mission-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-  .daily-page .delivery-box>summary{list-style:none;cursor:pointer}
-  .daily-page .delivery-box>summary::-webkit-details-marker{display:none}
-  .daily-page .delivery-form{display:grid;gap:11px;margin-top:12px;padding:15px;border-radius:14px;
-  background:linear-gradient(180deg,#fdfaf4,#f7f1e6);border:1px solid rgba(120,90,50,.10)}
-  .daily-page .delivery-form label span{font-size:13px;color:#4a463f}
-  .daily-page .delivery-form textarea{font-size:13.5px;line-height:1.65}
-  .daily-page .delivery-pickers{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
-  .daily-page .delivery-success{display:flex;flex-wrap:wrap;gap:12px;align-items:center;font-size:13px;color:#2f6b52}
-  .daily-page .postpone-button{font-size:12.5px;color:#8a8378;border:none;background:none;padding:6px 4px;text-decoration:underline}
-  .daily-foot{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;margin-top:20px}
-  .daily-foot .panel{margin:0;background:linear-gradient(180deg,#fffdf9,#f9f3e9);border-color:rgba(120,90,50,.12);
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 8px 20px rgba(92,70,40,.05)}
-  .daily-note-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-  .daily-note-row select{flex:0 0 88px}
-  .daily-note-row input{flex:1 1 200px}
-  .daily-quick-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;
-    padding:2px 0;background:none;border:none;font:inherit;font-size:14px;color:#4a463f;cursor:pointer;text-align:left}
-  .daily-quick-toggle b{font-size:16px;color:#a07a4e;transition:transform .2s ease}
-  .daily-quick-toggle[aria-expanded="true"] b{transform:rotate(45deg)}
-  .daily-quick .quick-progress-form{display:grid;gap:9px;margin-top:12px}
-  .daily-quick .quick-progress-form[hidden]{display:none}
-  .day-map{gap:6px;margin-top:18px}
-</style>
 
 <div class="daily-page">
   <div class="study-hero">

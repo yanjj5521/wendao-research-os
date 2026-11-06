@@ -40,9 +40,9 @@ from web.runtime import (
 from services.file_storage import save_upload_limited
 from services import withdrawal as withdrawal_service
 
-app = APIRouter()
+router = APIRouter()
 
-@app.get("/library", response_class=HTMLResponse, name="library")
+@router.get("/library", response_class=HTMLResponse, name="library")
 def library(request: Request, kind: str = "", domain: str = "", favorite: str = "", workspace: int = 0):
     sql = "SELECT * FROM entries WHERE status='active'"
     params: list[Any] = []
@@ -81,7 +81,7 @@ def library(request: Request, kind: str = "", domain: str = "", favorite: str = 
     )
 
 
-@app.get("/datasets", response_class=HTMLResponse, name="datasets_page")
+@router.get("/datasets", response_class=HTMLResponse, name="datasets_page")
 def datasets_page(request: Request, workspace: int = 0):
     with connect() as conn:
         selected = conn.execute("SELECT * FROM workspaces WHERE id=?", (workspace,)).fetchone() if workspace else None
@@ -106,7 +106,7 @@ def datasets_page(request: Request, workspace: int = 0):
     )
 
 
-@app.get("/upload", response_class=HTMLResponse, name="upload")
+@router.get("/upload", response_class=HTMLResponse, name="upload")
 def upload_get(request: Request, workspace_id: int = 0):
     with connect() as conn:
         workspaces = [
@@ -120,7 +120,7 @@ def upload_get(request: Request, workspace_id: int = 0):
     )
 
 
-@app.post("/upload", name="upload_post")
+@router.post("/upload", name="upload_post")
 def upload_post(
     request: Request,
     files: list[UploadFile] = File(...),
@@ -208,7 +208,7 @@ def upload_post(
     return redirect("entry_view", request, entry_id=str(created_ids[-1]))
 
 
-@app.get("/notes/new", response_class=HTMLResponse, name="note_new")
+@router.get("/notes/new", response_class=HTMLResponse, name="note_new")
 def note_new_get(request: Request, workspace_id: int = 0):
     with connect() as conn:
         workspaces = [
@@ -228,7 +228,7 @@ def note_new_get(request: Request, workspace_id: int = 0):
     )
 
 
-@app.post("/notes/new", name="note_new_post")
+@router.post("/notes/new", name="note_new_post")
 def note_new_post(
     request: Request,
     title: str = Form(...),
@@ -277,7 +277,7 @@ def note_new_post(
     return redirect("entry_view", request, entry_id=str(entry_id))
 
 
-@app.post("/notes/paste-image", name="note_paste_image")
+@router.post("/notes/paste-image", name="note_paste_image")
 def note_paste_image(file: UploadFile = File(...)):
     if not file.content_type or not file.content_type.startswith("image/"):
         return JSONResponse({"ok": False, "error": "只能粘贴图片"}, status_code=400)
@@ -298,7 +298,7 @@ def note_paste_image(file: UploadFile = File(...)):
     return {"ok": True, "url": f"/media/note-images/{name}"}
 
 
-@app.get("/entry/{entry_id}", response_class=HTMLResponse, name="entry_view")
+@router.get("/entry/{entry_id}", response_class=HTMLResponse, name="entry_view")
 def entry_view(request: Request, entry_id: int):
     with connect() as conn:
         row = conn.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
@@ -324,7 +324,7 @@ def entry_view(request: Request, entry_id: int):
     )
 
 
-@app.get("/entry/{entry_id}/edit", response_class=HTMLResponse, name="entry_edit")
+@router.get("/entry/{entry_id}/edit", response_class=HTMLResponse, name="entry_edit")
 def entry_edit_get(request: Request, entry_id: int):
     with connect() as conn:
         row = conn.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
@@ -347,7 +347,7 @@ def entry_edit_get(request: Request, entry_id: int):
     )
 
 
-@app.post("/entry/{entry_id}/edit", name="entry_edit_post")
+@router.post("/entry/{entry_id}/edit", name="entry_edit_post")
 def entry_edit_post(
     request: Request,
     entry_id: int,
@@ -426,7 +426,7 @@ def entry_edit_post(
     return redirect("entry_view", request, entry_id=str(entry_id))
 
 
-@app.post("/entry/{entry_id}/withdraw", name="entry_withdraw")
+@router.post("/entry/{entry_id}/withdraw", name="entry_withdraw")
 def entry_withdraw(request: Request, entry_id: int, error_type: str = Form(""), description: str = Form("")):
     with connect() as conn:
         try:
@@ -441,7 +441,7 @@ def entry_withdraw(request: Request, entry_id: int, error_type: str = Form(""), 
     return redirect("library", request)
 
 
-@app.post("/withdrawal/{withdrawal_id}/confirm", name="withdrawal_confirm")
+@router.post("/withdrawal/{withdrawal_id}/confirm", name="withdrawal_confirm")
 def withdrawal_confirm(request: Request, withdrawal_id: int):
     with connect() as conn:
         try:
@@ -453,7 +453,7 @@ def withdrawal_confirm(request: Request, withdrawal_id: int):
     return redirect("library", request)
 
 
-@app.post("/withdrawal/{withdrawal_id}/cancel", name="withdrawal_cancel")
+@router.post("/withdrawal/{withdrawal_id}/cancel", name="withdrawal_cancel")
 def withdrawal_cancel(request: Request, withdrawal_id: int):
     with connect() as conn:
         try:
@@ -465,7 +465,7 @@ def withdrawal_cancel(request: Request, withdrawal_id: int):
     return redirect("library", request)
 
 
-@app.post("/entry/{entry_id}/restore", name="entry_restore")
+@router.post("/entry/{entry_id}/restore", name="entry_restore")
 def entry_restore(request: Request, entry_id: int):
     with connect() as conn:
         try:
@@ -477,7 +477,7 @@ def entry_restore(request: Request, entry_id: int):
     return redirect("library", request)
 
 
-@app.post("/entry/{entry_id}/delete", name="entry_delete")
+@router.post("/entry/{entry_id}/delete", name="entry_delete")
 def entry_delete(request: Request, entry_id: int):
     with connect() as conn:
         row = conn.execute("SELECT title, file_path FROM entries WHERE id=?", (entry_id,)).fetchone()
@@ -495,7 +495,7 @@ def entry_delete(request: Request, entry_id: int):
     return redirect("library", request)
 
 
-@app.post("/entry/{entry_id}/favorite", name="entry_favorite")
+@router.post("/entry/{entry_id}/favorite", name="entry_favorite")
 def entry_favorite(request: Request, entry_id: int):
     with connect() as conn:
         row = conn.execute("SELECT favorite FROM entries WHERE id=?", (entry_id,)).fetchone()
@@ -507,7 +507,7 @@ def entry_favorite(request: Request, entry_id: int):
     return RedirectResponse(url=referer or str(request.url_for("entry_view", entry_id=entry_id)), status_code=303)
 
 
-@app.get("/search", response_class=HTMLResponse, name="search")
+@router.get("/search", response_class=HTMLResponse, name="search")
 def search(request: Request, q: str = "", kind: str = "", domain: str = ""):
     q = q.strip()
     entries: list[dict[str, Any]] = []
@@ -578,7 +578,7 @@ def search(request: Request, q: str = "", kind: str = "", domain: str = ""):
     )
 
 
-@app.get("/files/{entry_id}", name="entry_file")
+@router.get("/files/{entry_id}", name="entry_file")
 def entry_file(request: Request, entry_id: int, inline: int = 0):
     with connect() as conn:
         row = conn.execute("SELECT file_path, original_name, mime_type FROM entries WHERE id=?", (entry_id,)).fetchone()
@@ -597,7 +597,7 @@ def entry_file(request: Request, entry_id: int, inline: int = 0):
     )
 
 
-@app.post("/quests/new", name="quest_new")
+@router.post("/quests/new", name="quest_new")
 def quest_new(
     request: Request,
     title: str = Form(...),
@@ -636,7 +636,7 @@ def quest_new(
     return RedirectResponse(url=str(request.url_for("cultivation_page")) + "#quests", status_code=303)
 
 
-@app.post("/quests/{quest_id}/toggle", name="quest_toggle")
+@router.post("/quests/{quest_id}/toggle", name="quest_toggle")
 def quest_toggle(request: Request, quest_id: int, evidence: str = Form("")):
     with connect() as conn:
         quest = conn.execute("SELECT * FROM quests WHERE id=?", (quest_id,)).fetchone()
@@ -679,7 +679,7 @@ def quest_toggle(request: Request, quest_id: int, evidence: str = Form("")):
         conn.commit()
     return RedirectResponse(url=request.headers.get("referer") or str(request.url_for("dashboard")), status_code=303)
 
-@app.post("/quests/{quest_id}/delete", name="quest_delete")
+@router.post("/quests/{quest_id}/delete", name="quest_delete")
 def quest_delete(request: Request, quest_id: int):
     with connect() as conn:
         conn.execute("DELETE FROM quests WHERE id=?", (quest_id,))

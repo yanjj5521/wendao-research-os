@@ -16,7 +16,7 @@ from services import professions
 from services.roam_pets.capture import BALLS
 from web.runtime import context, flash, templates
 
-app = APIRouter()
+router = APIRouter()
 _ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -34,7 +34,7 @@ def _redirect(request: Request) -> RedirectResponse:
     return RedirectResponse(request.url_for("roam_page"), status_code=303)
 
 
-@app.get("/pets", response_class=HTMLResponse, name="roam_page")
+@router.get("/pets", response_class=HTMLResponse, name="roam_page")
 def roam_page(request: Request):
     data = _load()
     active = roam_service.active_state(data)
@@ -97,7 +97,7 @@ def roam_page(request: Request):
     )
 
 
-@app.post("/pets/adopt", name="roam_adopt")
+@router.post("/pets/adopt", name="roam_adopt")
 def roam_adopt(request: Request, species_id: str = Form(""), nickname: str = Form("")):
     if species_id not in STARTERS:
         flash(request, "该伙伴需要通过野外结契获得。", "error")
@@ -111,7 +111,7 @@ def roam_adopt(request: Request, species_id: str = Form(""), nickname: str = For
     return _redirect(request)
 
 
-@app.post("/pets/active", name="roam_set_active")
+@router.post("/pets/active", name="roam_set_active")
 def roam_set_active(request: Request, species_id: str = Form("")):
     try:
         state, _ = _update(lambda data: roam_service.set_active(data, species_id))
@@ -122,7 +122,7 @@ def roam_set_active(request: Request, species_id: str = Form("")):
     return _redirect(request)
 
 
-@app.post("/pets/rename", name="roam_rename")
+@router.post("/pets/rename", name="roam_rename")
 def roam_rename(request: Request, species_id: str = Form(""), nickname: str = Form("")):
     try:
         state, _ = _update(lambda data: roam_service.rename(data, species_id, nickname))
@@ -133,7 +133,7 @@ def roam_rename(request: Request, species_id: str = Form(""), nickname: str = Fo
     return _redirect(request)
 
 
-@app.post("/pets/feed", name="roam_feed")
+@router.post("/pets/feed", name="roam_feed")
 def roam_feed(request: Request, species_id: str = Form("")):
     try:
         result, _ = _update(lambda data: roam_service.feed(data, species_id or None))
@@ -146,7 +146,7 @@ def roam_feed(request: Request, species_id: str = Form("")):
     return _redirect(request)
 
 
-@app.post("/pets/play", name="roam_play")
+@router.post("/pets/play", name="roam_play")
 def roam_play(request: Request, species_id: str = Form("")):
     try:
         result, _ = _update(lambda data: roam_service.play(data, species_id or None))
@@ -159,7 +159,7 @@ def roam_play(request: Request, species_id: str = Form("")):
     return _redirect(request)
 
 
-@app.post("/pets/berry", name="roam_use_berry")
+@router.post("/pets/berry", name="roam_use_berry")
 def roam_use_berry(request: Request, species_id: str = Form("")):
     try:
         result, _ = _update(lambda data: roam_service.use_berry(data, species_id or None))
@@ -172,7 +172,7 @@ def roam_use_berry(request: Request, species_id: str = Form("")):
     return _redirect(request)
 
 
-@app.post("/pets/shop", name="roam_buy")
+@router.post("/pets/shop", name="roam_buy")
 def roam_buy(request: Request, item_id: str = Form(""), quantity: int = Form(1)):
     try:
         result, _ = _update(lambda data: roam_service.buy_item(data, item_id, quantity))
@@ -183,7 +183,7 @@ def roam_buy(request: Request, item_id: str = Form(""), quantity: int = Form(1))
     return _redirect(request)
 
 
-@app.post("/pets/rest", name="roam_rest")
+@router.post("/pets/rest", name="roam_rest")
 def roam_rest(request: Request):
     try:
         result, _ = _update(roam_service.rest_team)
@@ -194,7 +194,7 @@ def roam_rest(request: Request):
     return _redirect(request)
 
 
-@app.post("/pets/explore", name="roam_explore")
+@router.post("/pets/explore", name="roam_explore")
 def roam_explore(request: Request, map_id: str = Form("")):
     try:
         battle, _ = _update(lambda data: roam_service.explore(data, map_id))
@@ -206,7 +206,7 @@ def roam_explore(request: Request, map_id: str = Form("")):
     return _redirect(request)
 
 
-@app.post("/pets/battle/attack", name="roam_battle_attack")
+@router.post("/pets/battle/attack", name="roam_battle_attack")
 def roam_battle_attack(request: Request):
     try:
         battle, _ = _update(roam_service.attack)
@@ -221,7 +221,7 @@ def roam_battle_attack(request: Request):
             flash(request, battle["log"][-1], "success")
     return _redirect(request)
 
-@app.post("/pets/battle/capture", name="roam_battle_capture")
+@router.post("/pets/battle/capture", name="roam_battle_capture")
 def roam_battle_capture(request: Request, ball_id: str = Form("")):
     bonus = 1.0 + (professions.bonus("beastmaster") - 1.0) * 0.5
     try:
@@ -247,7 +247,7 @@ def roam_battle_capture(request: Request, ball_id: str = Form("")):
     return _redirect(request)
 
 
-@app.post("/pets/battle/close", name="roam_battle_close")
+@router.post("/pets/battle/close", name="roam_battle_close")
 def roam_battle_close(request: Request):
     try:
         status, _ = _update(roam_service.close_battle)
@@ -258,7 +258,7 @@ def roam_battle_close(request: Request):
     return _redirect(request)
 
 
-@app.post("/pets/launch", name="roam_launch")
+@router.post("/pets/launch", name="roam_launch")
 def roam_launch(request: Request, species_id: str = Form("")):
     data = _load()
     target = species_id or data.get("active") or (next(iter(data["pets"]), "") if data["pets"] else "")

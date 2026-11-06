@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from core.clock import now_iso
 import json
 import secrets
 import sqlite3
@@ -319,8 +320,6 @@ def _restrict_private_file(path: Path) -> None:
         pass
 
 
-def now_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def connect_hub() -> sqlite3.Connection:

@@ -56,9 +56,9 @@ from web.runtime import (
 )
 from services.file_storage import MAX_UPLOAD_BYTES, save_upload_limited
 
-app = APIRouter()
+router = APIRouter()
 
-@app.get("/experiments", response_class=HTMLResponse, name="experiments_page")
+@router.get("/experiments", response_class=HTMLResponse, name="experiments_page")
 def experiments_page(request: Request, edit: int = 0, status: str = "", workspace: int = 0):
     with connect() as conn:
         params: list[Any] = []
@@ -91,7 +91,7 @@ def experiments_page(request: Request, edit: int = 0, status: str = "", workspac
     )
 
 
-@app.post("/experiments/save", name="experiment_save")
+@router.post("/experiments/save", name="experiment_save")
 def experiment_save(
     request: Request,
     experiment_id: int = Form(0), sample_id: str = Form(...), experiment_date: str = Form(""), title: str = Form(""), status: str = Form("planned"),
@@ -130,7 +130,7 @@ def experiment_save(
     return RedirectResponse(f"{url}?workspace={workspace_value}" if workspace_value else url, status_code=303)
 
 
-@app.post("/experiments/{experiment_id}/delete", name="experiment_delete")
+@router.post("/experiments/{experiment_id}/delete", name="experiment_delete")
 def experiment_delete(request: Request, experiment_id: int):
     with connect() as conn:
         row = conn.execute("SELECT sample_id,workspace_id FROM experiments WHERE id=?", (experiment_id,)).fetchone()
@@ -148,7 +148,7 @@ EXPERIMENT_EXPORT_FIELDS = (
 )
 
 
-@app.get("/experiments/export.csv", name="experiments_export")
+@router.get("/experiments/export.csv", name="experiments_export")
 def experiments_export(workspace: int = 0):
     columns = ", ".join(EXPERIMENT_EXPORT_FIELDS)
     with connect() as conn:
@@ -172,7 +172,7 @@ def experiments_export(workspace: int = 0):
     return FileResponse(path, media_type="text/csv", filename=path.name)
 
 
-@app.get("/simulations", response_class=HTMLResponse, name="simulations_page")
+@router.get("/simulations", response_class=HTMLResponse, name="simulations_page")
 def simulations_page(request: Request, workspace: int = 0):
     with connect() as conn:
         items = []
@@ -201,7 +201,7 @@ def simulations_page(request: Request, workspace: int = 0):
     )
 
 
-@app.post("/simulations/new", name="simulation_new")
+@router.post("/simulations/new", name="simulation_new")
 def simulation_new(
     request: Request, case_name: str = Form(...), project_name: str = Form(""), ensemble: str = Form(""), forcefield: str = Form(""),
     temperature: str = Form(""), timestep: str = Form(""), run_command: str = Form(""), notes: str = Form(""), tags: str = Form(""),
@@ -254,7 +254,7 @@ def simulation_new(
     return RedirectResponse(f"{url}?workspace={workspace_value}" if workspace_value else url, status_code=303)
 
 
-@app.post("/simulations/{simulation_id}/update", name="simulation_update")
+@router.post("/simulations/{simulation_id}/update", name="simulation_update")
 def simulation_update(
     request: Request,
     simulation_id: int,
@@ -275,7 +275,7 @@ def simulation_update(
     return RedirectResponse(f"{url}?workspace={workspace_value}" if workspace_value else url, status_code=303)
 
 
-@app.post("/simulations/{simulation_id}/delete", name="simulation_delete")
+@router.post("/simulations/{simulation_id}/delete", name="simulation_delete")
 def simulation_delete(request: Request, simulation_id: int):
     with connect() as conn:
         row = conn.execute("SELECT folder_path,case_name,workspace_id FROM simulations WHERE id=?", (simulation_id,)).fetchone()
@@ -288,7 +288,7 @@ def simulation_delete(request: Request, simulation_id: int):
     return RedirectResponse(f"{url}?workspace={row['workspace_id']}" if row and row["workspace_id"] else url, status_code=303)
 
 
-@app.get("/simulations/{simulation_id}/files/{file_id}", name="simulation_file")
+@router.get("/simulations/{simulation_id}/files/{file_id}", name="simulation_file")
 def simulation_file(simulation_id: int, file_id: int):
     with connect() as conn:
         row = conn.execute("SELECT s.folder_path,f.file_path,f.original_name FROM simulation_files f JOIN simulations s ON s.id=f.simulation_id WHERE f.id=? AND f.simulation_id=?", (file_id, simulation_id)).fetchone()
@@ -301,7 +301,7 @@ def simulation_file(simulation_id: int, file_id: int):
     return FileResponse(path, filename=row["original_name"])
 
 
-@app.get("/cultivation", response_class=HTMLResponse, name="cultivation_page")
+@router.get("/cultivation", response_class=HTMLResponse, name="cultivation_page")
 def cultivation_page(request: Request, workspace: int = 0):
     with connect() as conn:
         selected_workspace = conn.execute(
@@ -396,7 +396,7 @@ def cultivation_page(request: Request, workspace: int = 0):
 
 
 
-@app.get("/portable", name="portable_export")
+@router.get("/portable", name="portable_export")
 def portable_export():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     archive = BACKUP_DIR / f"ResearchCultivationOS_portable_{timestamp}.zip"
@@ -466,7 +466,7 @@ def portable_export():
     return FileResponse(archive, media_type="application/zip", filename=archive.name)
 
 
-@app.get("/api/stats", name="api_stats")
+@router.get("/api/stats", name="api_stats")
 def api_stats():
     with connect() as conn:
         xp = total_xp(conn)

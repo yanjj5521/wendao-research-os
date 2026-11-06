@@ -1,13 +1,12 @@
 from __future__ import annotations
 
+from core.clock import now_iso
 import json
 import os
 import sqlite3
 from collections.abc import Iterable
 from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from core import migrations as migration_engine
 from core.bootstrap import seed_clean_database
@@ -245,8 +244,6 @@ def adopt_legacy_database_file() -> Path | None:
         source.close()
 
 
-def now_iso() -> str:
-    return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def connect() -> sqlite3.Connection:
@@ -385,5 +382,3 @@ def total_xp(connection: sqlite3.Connection | None = None) -> int:
             connection.close()
 
 
-def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
-    return dict(row) if row else None

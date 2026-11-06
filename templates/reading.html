@@ -1,62 +1,7 @@
 {% extends "base.html" %}
 {% block title %}论文三遍读 · {{ site_name }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/css/reading.css') }}">{% endblock %}
 {% block content %}
-<style>
-  .reading-page{padding:18px 20px 24px;border-radius:26px;color:#3f3a33;background:
-    radial-gradient(880px 300px at 8% -8%,rgba(90,107,140,.08),transparent 60%),
-    radial-gradient(720px 280px at 96% 2%,rgba(184,117,47,.08),transparent 58%),
-    linear-gradient(180deg,#faf7f1,#f4efe6)}
-  .reading-head{display:flex;flex-wrap:wrap;gap:14px;justify-content:space-between;align-items:flex-end;margin-bottom:16px}
-  .reading-head h1{margin:4px 0 6px;font-size:clamp(23px,3vw,30px)}
-  .reading-head p{margin:0;color:#6f685c;font-size:13.5px}
-  .reading-new{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  .reading-new input{padding:9px 11px;border-radius:10px;border:1px solid rgba(120,90,50,.18);background:#fffdf8;font:inherit;font-size:13px}
-  .reading-new input[name="title"]{min-width:240px}
-  .reading-grid{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
-  .reading-list{display:grid;gap:8px;position:sticky;top:86px}
-  .reading-item{display:block;padding:12px 13px;border-radius:14px;border:1px solid rgba(120,90,50,.12);
-    background:linear-gradient(180deg,#fffdf8,#f8f2e7);text-decoration:none;color:inherit}
-  .reading-item.active{border-color:rgba(184,117,47,.45);background:linear-gradient(180deg,#fdf3e2,#f8e9d4)}
-  .reading-item b{display:block;font-size:13.5px;line-height:1.45}
-  .reading-item small{display:block;margin-top:4px;color:#8a8378;font-size:11.5px}
-  .reading-bar{height:5px;border-radius:999px;background:rgba(0,0,0,.07);margin-top:7px;overflow:hidden}
-  .reading-bar>i{display:block;height:100%;background:linear-gradient(90deg,#b8752f,#d9a45f)}
-  .reading-panel{padding:16px 18px;border-radius:18px;border:1px solid rgba(120,90,50,.13);
-    background:linear-gradient(180deg,#fffdf9,#f9f3e9);box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 8px 22px rgba(92,70,40,.05);margin-bottom:14px}
-  .reading-panel h2{margin:0 0 4px;font-size:17px}
-  .reading-panel .hint{margin:0 0 12px;color:#8a8378;font-size:12.5px;line-height:1.6}
-  .reading-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px 14px}
-  .reading-fields label{display:grid;gap:5px;font-size:12.5px;color:#5c554a}
-  .reading-fields textarea,.reading-fields input,.reading-fields select{
-    padding:9px 10px;border-radius:10px;border:1px solid rgba(120,90,50,.16);background:#fffdf8;font:inherit;font-size:13.5px;color:#3f3a33}
-  .reading-fields textarea{line-height:1.6;resize:vertical}
-  .reading-fields .full{grid-column:1/-1}
-  .step-list{display:grid;gap:7px;margin:0;padding:0;list-style:none}
-  .step-list li{display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#4a463f}
-  .step-list li b{flex:0 0 20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:11px;
-    background:rgba(120,90,50,.1);color:#8a5a1f}
-  .step-list li.done{color:#2f6b52}
-  .step-list li.done b{background:rgba(61,139,110,.16);color:#2f6b52}
-  .outline{display:grid;gap:10px}
-  .outline section p{margin:2px 0;font-size:13px;color:#5c554a;line-height:1.65}
-  .outline h3{margin:0;font-size:14px;color:#8a5a1f}
-  .copy-btn{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(120,90,50,.2);
-    background:#fffdf8;color:#8a5a1f;cursor:pointer}
-  .qa-item{display:grid;gap:6px;padding:11px 0;border-top:1px dashed rgba(120,90,50,.16)}
-  .qa-item:first-of-type{border-top:none}
-  .qa-item b{font-size:13px}
-  .reading-extract>summary{display:flex;justify-content:space-between;align-items:center;cursor:pointer;list-style:none;font-size:14px;color:#4a463f}
-  .reading-extract>summary::-webkit-details-marker{display:none}
-  .reading-extract>summary small{color:#8a8378;font-size:12px}
-  .reading-extract-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
-  .extract-result{display:grid;gap:10px;margin-top:12px}
-  .extract-result>div{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.55);border:1px solid rgba(120,90,50,.12)}
-  .extract-result b{font-size:13px}
-  .extract-result p{margin:4px 0 8px;font-size:13px;line-height:1.65;color:#5c554a}
-  .extract-result ul{margin:4px 0 8px;padding-left:18px;font-size:12.5px;line-height:1.6;color:#5c554a}
-  .qa-item small{color:#8a8378;font-size:12px}
-  @media(max-width:900px){.reading-grid{grid-template-columns:1fr}.reading-list{position:static}}
-</style>
 
 <div class="reading-page">
   <div class="study-hero">

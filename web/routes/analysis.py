@@ -20,7 +20,7 @@ from web.runtime import (
     urllib,
 )
 
-app = APIRouter()
+router = APIRouter()
 
 def _number(value: str | None) -> float | None:
     if value is None or str(value).strip() == "":
@@ -46,7 +46,7 @@ def _ollama_card(title: str, content: str) -> dict[str, Any]:
     return card
 
 
-@app.post("/entry/{entry_id}/analyze", name="entry_analyze")
+@router.post("/entry/{entry_id}/analyze", name="entry_analyze")
 def entry_analyze(request: Request, entry_id: int):
     with connect() as conn:
         row = conn.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
@@ -74,7 +74,7 @@ def entry_analyze(request: Request, entry_id: int):
     flash(request, "论文研读卡已生成。")
     return redirect("entry_view", request, entry_id=str(entry_id))
 
-@app.post("/entry/{entry_id}/analysis-to-note", name="analysis_to_note")
+@router.post("/entry/{entry_id}/analysis-to-note", name="analysis_to_note")
 def analysis_to_note(request: Request, entry_id: int):
     with connect() as conn:
         row = conn.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
@@ -96,7 +96,7 @@ def analysis_to_note(request: Request, entry_id: int):
     return redirect("entry_view", request, entry_id=str(note_id))
 
 
-@app.post("/entry/{entry_id}/reindex", name="entry_reindex")
+@router.post("/entry/{entry_id}/reindex", name="entry_reindex")
 def entry_reindex(request: Request, entry_id: int):
     with connect() as conn:
         row = conn.execute("SELECT * FROM entries WHERE id=?", (entry_id,)).fetchone()
