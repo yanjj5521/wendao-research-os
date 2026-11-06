@@ -38,6 +38,18 @@ def _is_frozen() -> bool:
     return bool(getattr(sys, "frozen", False))
 
 
+def _safe_print(message: str) -> None:
+    """Keep CLI output usable when the parent uses a non-Chinese code page."""
+    stream = sys.stdout
+    if stream is None:
+        return
+    try:
+        print(message, file=stream)
+    except UnicodeEncodeError:
+        encoding = stream.encoding or "ascii"
+        print(message.encode(encoding, errors="backslashreplace").decode(encoding), file=stream)
+
+
 def _installer_script() -> Path | None:
     """Locate install_windows.ps1 inside the bundle, beside the exe, or in source."""
     candidates: list[Path] = []
@@ -172,10 +184,10 @@ def _command_version(argv: list[str]) -> int:
     from core.runtime_paths import DATA_ROOT
     from core.version import APP_VERSION
 
-    print(f"问道科研 {APP_VERSION}")
-    print(f"运行方式：{'打包 EXE' if _is_frozen() else '源码'}")
-    print(f"程序位置：{Path(sys.executable).resolve() if _is_frozen() else _repo_root()}")
-    print(f"数据目录：{DATA_ROOT}")
+    _safe_print(f"问道科研 {APP_VERSION}")
+    _safe_print(f"运行方式：{'打包 EXE' if _is_frozen() else '源码'}")
+    _safe_print(f"程序位置：{Path(sys.executable).resolve() if _is_frozen() else _repo_root()}")
+    _safe_print(f"数据目录：{DATA_ROOT}")
     return 0
 
 

@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
@@ -42,23 +44,56 @@ def verify_executable(executable: Path) -> None:
     防止"pydantic_core._pydantic_core 缺失"这类只会在用户机器上暴露的
     打包缺件问题流出发布包。
     """
-    try:
-        result = subprocess.run(
-            [str(executable), "version"],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-            timeout=180,
-        )
-    except subprocess.TimeoutExpired as exc:
-        raise SystemExit(f"构建自检失败：{executable.name} 启动超时。") from exc
-    output = (result.stdout or "") + (result.stderr or "")
-    if result.returncode != 0 or "ModuleNotFoundError" in output or VERSION not in output:
+    # A frozen one-file app starts a child process. If the child keeps an
+    # inherited pipe open after a timeout, subprocess.run's cleanup can hang
+    # indefinitely. Files and a bounded process-tree kill avoid that deadlock.
+    with tempfile.TemporaryDirectory(prefix="wendao-build-check-", ignore_cleanup_errors=True) as temp:
+        temp_root = Path(temp)
+        stdout_path = temp_root / "stdout.txt"
+        stderr_path = temp_root / "stderr.txt"
+        environment = os.environ.copy()
+        environment["RESEARCH_OS_DATA_DIR"] = str(temp_root / "data")
+        environment["PYTHONUTF8"] = "1"
+        environment["PYTHONIOENCODING"] = "utf-8"
+        with stdout_path.open("wb") as stdout, stderr_path.open("wb") as stderr:
+            process = subprocess.Popen(
+                [str(executable), "version"],
+                cwd=ROOT,
+                env=environment,
+                stdin=subprocess.DEVNULL,
+                stdout=stdout,
+                stderr=stderr,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+            )
+            try:
+                returncode = process.wait(timeout=180)
+            except subprocess.TimeoutExpired as exc:
+                if os.name == "nt":
+                    try:
+                        subprocess.run(
+                            ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.DEVNULL,
+                            timeout=10,
+                            check=False,
+                        )
+                    except (OSError, subprocess.TimeoutExpired):
+                        pass
+                if process.poll() is None:
+                    process.kill()
+                try:
+                    process.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    pass
+                raise SystemExit(f"构建自检失败：{executable.name} 启动超时。") from exc
+        output = stdout_path.read_text(encoding="utf-8", errors="replace")
+        output += stderr_path.read_text(encoding="utf-8", errors="replace")
+    if returncode != 0 or "ModuleNotFoundError" in output or VERSION not in output:
         tail = chr(10).join(output.splitlines()[-12:])
         message = chr(10).join(
             [
                 "构建自检失败：打包后的 EXE 无法正常启动（依赖可能缺失）。",
-                f"退出码：{result.returncode}",
+                f"退出码：{returncode}",
                 tail,
                 "提示：检查 spec 是否 collect 了 pydantic_core 等编译依赖。",
             ]

@@ -26,6 +26,22 @@ class VersionTests(unittest.TestCase):
         self.assertFalse(is_newer_version("1.2.9", "1.3.0"))
         self.assertFalse(is_newer_version(APP_VERSION, APP_VERSION))
 
+    def test_version_command_handles_ascii_output(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="wendao-version-ascii-") as directory:
+            environment = os.environ.copy()
+            environment["RESEARCH_OS_DATA_DIR"] = directory
+            environment["PYTHONIOENCODING"] = "ascii"
+            environment["PYTHONUTF8"] = "0"
+            result = subprocess.run(
+                [sys.executable, "run_local.py", "version"],
+                cwd=ROOT,
+                env=environment,
+                capture_output=True,
+                timeout=30,
+            )
+        self.assertEqual(result.returncode, 0, result.stderr.decode("ascii", errors="replace"))
+        self.assertIn(APP_VERSION.encode("ascii"), result.stdout)
+
     def test_running_instance_must_match_data_and_version(self) -> None:
         import run_local
 
@@ -54,6 +70,26 @@ class VersionTests(unittest.TestCase):
             self.assertTrue(run_local.is_research_os(5000, "same", "1.3.0"))
         with patch("run_local.urllib.request.urlopen", return_value=old_version):
             self.assertFalse(run_local.is_research_os(5000, "same", "1.3.0"))
+
+
+class BuildVerificationTests(unittest.TestCase):
+    def test_version_check_fails_without_hanging_on_timeout(self) -> None:
+        from unittest.mock import MagicMock
+        from tools import build
+
+        process = MagicMock()
+        process.pid = 12345
+        process.wait.side_effect = [subprocess.TimeoutExpired("version", 180), 0]
+        process.poll.return_value = None
+        with patch.object(build.subprocess, "Popen", return_value=process), \
+                patch.object(build.subprocess, "run") as taskkill:
+            with self.assertRaisesRegex(SystemExit, "启动超时"):
+                build.verify_executable(Path("fake.exe"))
+        process.kill.assert_called_once()
+        if os.name == "nt":
+            taskkill.assert_called_once()
+        else:
+            taskkill.assert_not_called()
 
 
 class UpdateContractTests(unittest.TestCase):
