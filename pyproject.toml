@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.12.8"
-description = "问道科研 1.12.8：多用户并发稳定性与运行速度专项"
+version = "1.12.9"
+description = "问道科研 1.12.9：体积压缩（去 PyMuPDF/openpyxl）、导航整合与文案精简"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -19,9 +19,7 @@ dependencies = [
   "pypdf>=5,<7",
   "python-docx>=1.1,<2",
   "python-pptx>=1.0,<2",
-  "openpyxl>=3.1,<4",
   "Pillow>=11,<13",
-  "PyMuPDF>=1.24,<2",
   "pywebview>=5.4,<6",
 ]
 

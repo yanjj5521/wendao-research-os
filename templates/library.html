@@ -3,7 +3,7 @@
 {% block content %}
 <div class="page-head">
   <div><span class="eyebrow">Personal Knowledge Base</span><h1>{% if selected_workspace %}{{ selected_workspace.icon }} {{ selected_workspace.name }}资料{% else %}我的知识库{% endif %}</h1><p>文献、实验、图像、代码和思考统一归档；先留下，再在真正需要时整理。</p></div>
-  <div class="page-actions"><a class="ghost-button" href="{{ url_for('knowledge_export') }}">↓ 一键导出</a><a class="ghost-button" href="{{ url_for('note_new') }}{% if selected_workspace %}?workspace_id={{ selected_workspace.id }}{% endif %}">＋ 新记录</a><a class="primary-button" href="{{ url_for('upload') }}{% if selected_workspace %}?workspace_id={{ selected_workspace.id }}{% endif %}">↑ 上传文件</a></div>
+  <div class="page-actions"><a class="ghost-button" href="{{ url_for('knowledge_export') }}">↓ 一键导出</a><a class="ghost-button" href="{{ url_for('note_new') }}{% if selected_workspace %}?workspace_id={{ selected_workspace.id }}{% endif %}">＋ 新记录（写笔记）</a><a class="primary-button" href="{{ url_for('upload') }}{% if selected_workspace %}?workspace_id={{ selected_workspace.id }}{% endif %}">↑ 上传文件</a></div>
 </div>
 <form class="filter-bar" method="get">
   {% if selected_workspace %}<input type="hidden" name="workspace" value="{{ selected_workspace.id }}">{% endif %}

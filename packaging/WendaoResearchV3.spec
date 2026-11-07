@@ -55,7 +55,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["pytest"],
+    excludes=["pytest", "unittest", "pydoc_data", "tkinter", "fitz", "pymupdf", "openpyxl"],
     noarchive=False,
     optimize=1,
 )

@@ -38,7 +38,7 @@ assert 'name="password"' not in team.text, "未选身份时不应出现登录表
 online = client.get("/online")
 assert online.status_code == 200
 assert "还没选择身份" in online.text
-assert "按钮上的地址就是你要进入的中心" in online.text
+assert "本机地址＝自己的中心，对方地址＝别人的中心" in online.text
 assert "选择身份" in online.text
 
 # --- 2) 成员身份：入口指向对方中心，本机副本被拦住 ---
@@ -58,7 +58,7 @@ assert "http://192.168.50.20:5050" in online.text
 assert "进入同行会（192.168.50.20:5050）" in online.text
 assert "改连接" in online.text, "成员需要一条明确的改连接入口"
 assert "打开发布页" in online.text, "寻找新版本的地方要能直接跳到发布页"
-assert "按钮上的地址" in online.text
+assert "本机地址＝自己的中心" in online.text
 
 enter = client.get("/online/enter", follow_redirects=False)
 assert enter.status_code == 303, enter.status_code

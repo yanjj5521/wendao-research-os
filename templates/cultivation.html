@@ -63,7 +63,7 @@
     <label><span>难度</span><select name="difficulty"><option value="1">小成 · 固定25修为</option><option value="2">进阶 · 固定50修为</option><option value="3">突破 · 固定90修为</option></select></label>
     <label><span>所属领域（可选）</span><select name="workspace_id"><option value="">不关联</option>{% for workspace in workspaces %}<option value="{{ workspace.id }}" {% if selected_workspace and selected_workspace.id == workspace.id %}selected{% endif %}>{{ workspace.name }}</option>{% endfor %}</select></label>
     <button class="primary-button full-button">加入修炼记录</button>
-    <small class="form-help">经验值不能输入，也不会从 AI 计划中读取；所有人使用同一套固定难度表。</small>
+    <small class="form-help">经验值不由 AI 计划生成；难度表全站统一。</small>
   </form>
 </div>
 

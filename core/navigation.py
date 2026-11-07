@@ -73,8 +73,12 @@ NAV_GROUP_DEFAULT_ITEMS = {
     "system": ("assistant", "online", "settings"),
 }
 
+# 「写笔记」「上传资料」默认并入知识库页顶按钮（库页已有两个入口），
+# 不在导航单独占位；页面与路由保持不变，可在 设置 → 调整导航 重新打开。
+_NAV_MERGED_INTO_LIBRARY = ("note_new", "upload")
+
 NAV_ITEM_DEFAULT_VISIBLE = {
-    key: True
+    key: key not in _NAV_MERGED_INTO_LIBRARY
     for key in (
         "dashboard",
         "daily",

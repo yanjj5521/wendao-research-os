@@ -101,3 +101,10 @@
 - **文件**: static/art/*.webp, templates/{alchemy,world,roam,professions}.html, static/style.css
 - **决策**: 裁掉生成图底部 6%（含水印留白），转 WebP 1280 宽
 - **验证**: 四个页面引用正确、静态资源 200
+
+## [11:50 11-07] - 重构: 多用户并发稳定性与速度专项（1.12.8）
+
+- **文件**: core/database.py, hub/db.py, hub/routes/{admin,market}.py, hub/app.py, core/schema/hub.py, core/migrations.py
+- **决策**: 读连接永不升级为写事务（额度生成按 conn.in_transaction 分流）；资金类路由一律 immediate；
+  设置 1s TTL 缓存写穿透；total_xp 用 MAX(id) 守卫
+- **验证**: tests/test_concurrency.py（新）+ pytest 251 passed + 四套自检 + click_audit

@@ -8,7 +8,7 @@
   <section class="panel figure-import-panel"><div class="panel-head simple"><div><span class="eyebrow">Step 1 · PDF → 图片</span><h2>先把图带进来</h2></div></div>
     {% if paper_choices %}
     <div class="figure-import-row"><label>已归档 PDF<select name="paper_id"><option value="0">选择一篇论文</option>{% for paper in paper_choices %}<option value="{{ paper.id }}" {% if selected_paper_id==paper.id %}selected{% endif %}>{{ paper.title }}</option>{% endfor %}</select></label><button class="primary-button" formaction="{{ url_for('literature_report_extract') }}">提取候选图</button></div>
-    <small class="form-help">会优先抽取 PDF 内嵌图片；对矢量图会补充渲染含 Figure 的页面。选图不是自动判断结论，真正要看的仍是坐标、对照和图注。</small>
+    <small class="form-help">抽取 PDF 内嵌图片；矢量图无法自动渲染，需要时截图后从“上传资料”入库。选图不替你判断，坐标、对照与图注仍要自己核对。</small>
     {% else %}<div class="empty-compact">知识库里还没有 PDF。<a href="{{ url_for('upload') }}">先上传一篇论文</a>，它会留在本地并可全文检索。</div>{% endif %}
     {% if figures %}<div class="figure-picker">{% for figure in figures %}<label class="figure-choice"><input type="checkbox" name="figure_urls" value="{{ figure }}" {% if figure in selected_figure_urls %}checked{% endif %}><img src="{{ figure }}" alt="文献候选图 {{ loop.index }}"><span>作为汇报图 {{ loop.index }}</span></label>{% endfor %}</div>{% endif %}
   </section>

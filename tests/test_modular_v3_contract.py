@@ -92,8 +92,11 @@ class ModularV3ContractTests(unittest.TestCase):
             for item in group["items"]
             if item["visible"]
         }
-        self.assertEqual(visible, set(NAV_ITEM_DEFAULT_VISIBLE))
-        self.assertTrue(all(NAV_ITEM_DEFAULT_VISIBLE.values()))
+        expected = {k for k, v in NAV_ITEM_DEFAULT_VISIBLE.items() if v}
+        self.assertEqual(visible, expected)
+        # 「写笔记 / 上传资料」默认并入知识库入口，不再单独占导航位
+        self.assertFalse(NAV_ITEM_DEFAULT_VISIBLE["note_new"])
+        self.assertFalse(NAV_ITEM_DEFAULT_VISIBLE["upload"])
         for key in (
             "dashboard", "daily", "plans", "review", "literature_report",
             "projects", "experiments", "datasets", "integral", "simulations", "library",

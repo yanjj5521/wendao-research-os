@@ -96,61 +96,6 @@ def _paper_file(entry_id: int) -> tuple[Path, dict[str, object]]:
     return path, dict(row)
 
 
-def _extract_figures(entry_id: int) -> list[str]:
-    """Extract embedded raster figures; render pages as a useful fallback for vector plots."""
-    pdf_path, _ = _paper_file(entry_id)
-    try:
-        import fitz  # PyMuPDF
-    except ImportError as exc:
-        raise RuntimeError("当前构建缺少 PyMuPDF，无法从 PDF 提取图片。") from exc
-
-    target = FIGURE_ROOT / f"entry_{entry_id}"
-    target.mkdir(parents=True, exist_ok=True)
-    for old in target.glob("*"):
-        if old.is_file():
-            old.unlink()
-    urls: list[str] = []
-    document = fitz.open(pdf_path)
-    try:
-        seen_xrefs: set[int] = set()
-        for page_index, page in enumerate(document):
-            for image_index, meta in enumerate(page.get_images(full=True), start=1):
-                if len(urls) >= MAX_FIGURES:
-                    break
-                xref = int(meta[0])
-                if xref in seen_xrefs:
-                    continue
-                seen_xrefs.add(xref)
-                payload = document.extract_image(xref)
-                data = payload.get("image", b"")
-                if len(data) < 12_000:  # ignore icons, rules and tiny logos
-                    continue
-                ext = str(payload.get("ext", "png")).lower()
-                if ext not in {"png", "jpg", "jpeg", "webp"}:
-                    ext = "png"
-                name = f"embedded_p{page_index + 1}_{image_index}.{ext}"
-                (target / name).write_bytes(data)
-                urls.append(f"/media/note-images/literature_figures/entry_{entry_id}/{name}")
-            if len(urls) >= MAX_FIGURES:
-                break
-
-        # Many science figures are vector drawings. Render figure-labelled pages so
-        # the user always gets a slide-ready candidate rather than an empty gallery.
-        if len(urls) < 4:
-            for page_index, page in enumerate(document):
-                text = page.get_text("text")[:700].lower()
-                if "fig." not in text and "figure" not in text:
-                    continue
-                name = f"page_p{page_index + 1}.png"
-                page.get_pixmap(matrix=fitz.Matrix(1.55, 1.55), alpha=False).save(target / name)
-                urls.append(f"/media/note-images/literature_figures/entry_{entry_id}/{name}")
-                if len(urls) >= MAX_FIGURES:
-                    break
-    finally:
-        document.close()
-    return urls
-
-
 def _safe_figure_paths(entry_id: int, figure_urls: list[str]) -> list[tuple[str, Path]]:
     prefix = f"/media/note-images/literature_figures/entry_{entry_id}/"
     root = (FIGURE_ROOT / f"entry_{entry_id}").resolve()
@@ -166,6 +111,51 @@ def _safe_figure_paths(entry_id: int, figure_urls: list[str]) -> list[tuple[str,
         seen.add(url)
         result.append((url, path))
     return result[:8]
+
+
+def _extract_figures(entry_id: int) -> list[str]:
+    """抽取 PDF 内嵌位图图表（pypdf）。
+
+    说明：为控制安装体积，构建不含 PyMuPDF；矢量图无法在服务端渲染成位图，
+    遇到以矢量为主的论文时，建议用系统截图工具截取后从"上传资料"入库。
+    """
+    pdf_path, _ = _paper_file(entry_id)
+    from pypdf import PdfReader
+
+    target = FIGURE_ROOT / f"entry_{entry_id}"
+    target.mkdir(parents=True, exist_ok=True)
+    for old in target.glob("*"):
+        if old.is_file():
+            old.unlink()
+    urls: list[str] = []
+    try:
+        reader = PdfReader(pdf_path)
+    except Exception as exc:
+        raise RuntimeError("无法解析这个 PDF，可能已损坏或加密。") from exc
+    seen_names: set[str] = set()
+    for page_index, page in enumerate(reader.pages[:40]):
+        if len(urls) >= MAX_FIGURES:
+            break
+        try:
+            images = list(page.images)
+        except Exception:
+            continue
+        for image_index, image in enumerate(images, start=1):
+            if len(urls) >= MAX_FIGURES:
+                break
+            data = image.data
+            if len(data) < 12_000:  # 忽略图标、分隔线与小 logo
+                continue
+            key = f"{page_index}:{len(data)}"
+            if key in seen_names:
+                continue
+            seen_names.add(key)
+            suffix = Path(image.name).suffix.lower().lstrip(".")
+            ext = suffix if suffix in {"png", "jpg", "jpeg", "webp"} else "png"
+            name = f"embedded_p{page_index + 1}_{image_index}.{ext}"
+            (target / name).write_bytes(data)
+            urls.append(f"/media/note-images/literature_figures/entry_{entry_id}/{name}")
+    return urls
 
 
 def _available_figures(entry_id: int) -> list[str]:

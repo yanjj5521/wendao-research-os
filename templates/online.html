@@ -22,7 +22,7 @@
     <a class="primary-button" href="{{ identity.entry_url }}" {% if identity.entry_kind == 'external' %}target="_blank" rel="noopener"{% endif %}>{{ identity.action_label }}</a>
     {% if identity.role == 'member' %}<a class="soft-button" href="#identity-connect">改连接</a>{% endif %}
   </div>
-  <small class="form-help">按钮上的地址就是你要进入的中心：本机地址＝自己的中心，对方地址＝别人的中心。{% if identity.center_url %}当前：<code>{{ identity.center_url }}</code>{% endif %}</small>
+  <small class="form-help">本机地址＝自己的中心，对方地址＝别人的中心。{% if identity.center_url %}当前：<code>{{ identity.center_url }}</code>{% endif %}</small>
 </section>
 
 <section class="sync-summary">
@@ -91,7 +91,7 @@
   {% if not headnet.helper_available %}<p class="text-danger">未找到内置虚拟网络助手，请升级程序。</p>{% endif %}
   <div class="button-row">
     <form method="post" action="{{ url_for('online_headnet_auto') }}"><button class="primary-button">一键自动组网</button></form>
-    <small class="form-help">按身份自动选模式，下次启动自动恢复；首次需先保存下方配置。</small>
+    <small class="form-help">按身份自动选模式，下次启动自动恢复。</small>
   </div>
   <form method="post" action="{{ url_for('online_headnet_save') }}" class="form-grid headnet-form">
     <label>控制端地址<input name="control_url" value="{{ headnet.configured_control_url }}" placeholder="https://headscale.example.com" autocomplete="url" required></label>
@@ -127,7 +127,7 @@
       <div><b>5min</b><span>暂停探测</span></div>
       <div><b>{{ sync_health.policy.dead_letter_attempts }}次</b><span>转人工</span></div>
     </div>
-    <small class="form-help">事件幂等、按退避重试；地址或 Token 错误不会无限重试。</small>
+    <small class="form-help">事件幂等，按退避重试。</small>
     <div class="button-row">
       <form method="post" action="{{ url_for('online_connection_test') }}"><button class="soft-button" {% if sync_provider != 'legacy_hub' %}disabled{% endif %}>检测地址与 Token</button></form>
       {% if queue_stats.paused %}<form method="post" action="{{ url_for('online_retry_paused') }}"><button class="primary-button">恢复 {{ queue_stats.paused }} 个暂停事件</button></form>{% endif %}
