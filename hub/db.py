@@ -229,7 +229,9 @@ def weekly_quotas(conn: sqlite3.Connection | None = None, now: datetime | None =
         quotas, _meta = _load_quota_payload(str(row["quotas_json"]))
         if quotas:
             return quotas
-    with hub_transaction(immediate=True) as writer:
+
+    def _generate(writer: sqlite3.Connection) -> dict[str, int]:
+        """在**当前事务**里生成并落库；并发首写者以 INSERT OR IGNORE 后的库内值为准。"""
         row = writer.execute(
             "SELECT quotas_json FROM hub_welfare_week_quota WHERE week_key=?", (key,)
         ).fetchone()
@@ -239,7 +241,7 @@ def weekly_quotas(conn: sqlite3.Connection | None = None, now: datetime | None =
                 return quotas
         scale = welfare_scale(writer)
         factor = float(scale["total_bonus"])
-        quotas = {
+        generated = {
             k: max(
                 1,
                 int(
@@ -255,14 +257,27 @@ def weekly_quotas(conn: sqlite3.Connection | None = None, now: datetime | None =
             for k in WELFARE_SINGLE_LIMITS
         }
         payload = {
-            "quotas": quotas,
+            "quotas": generated,
             "meta": {**scale, "week_key": key, "generated_at": now_iso()},
         }
         writer.execute(
             "INSERT OR IGNORE INTO hub_welfare_week_quota(week_key,quotas_json,created_at) VALUES (?,?,?)",
             (key, json.dumps(payload, ensure_ascii=False), now_iso()),
         )
-    return quotas
+        final = writer.execute(
+            "SELECT quotas_json FROM hub_welfare_week_quota WHERE week_key=?", (key,)
+        ).fetchone()
+        quotas, _meta = _load_quota_payload(str(final["quotas_json"])) if final else (generated, {})
+        return quotas or generated
+
+    # 写入路径与读连接严格分离：读连接上的 INSERT 会把页面连接升级成写事务，
+    # 一旦与其它写者相遇就互等至 busy_timeout。规则：
+    #   * 调用方已开启写事务（conn.in_transaction）→ 复用该连接，同事务原子生成；
+    #   * 否则（页面/只读连接）→ 用独立的 immediate 事务生成，绝不污染读连接。
+    if conn is not None and conn.in_transaction:
+        return _generate(conn)
+    with hub_transaction(immediate=True) as writer:
+        return _generate(writer)
 
 
 def weekly_quota_meta(conn: sqlite3.Connection | None = None, now: datetime | None = None) -> dict[str, object]:

@@ -12,7 +12,7 @@ from __future__ import annotations
 三者分开后，改口令策略不必动身份表，账号量大时也能各走各的索引。
 """
 
-HUB_SCHEMA_VERSION = 6
+HUB_SCHEMA_VERSION = 7
 
 HUB_SCHEMA_SQL = r"""
 -- 身份：只放"这个人是谁"，不放任何凭据
@@ -263,6 +263,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
             );
             CREATE INDEX IF NOT EXISTS idx_hub_events_user_created ON hub_sync_events(user_id,created_at DESC);
             CREATE INDEX IF NOT EXISTS idx_hub_assets_user_created ON hub_asset_transactions(user_id,created_at DESC);
+            CREATE INDEX IF NOT EXISTS idx_hub_assets_user_asset ON hub_asset_transactions(user_id,asset_key);
             CREATE INDEX IF NOT EXISTS idx_hub_releases_created ON hub_releases(created_at DESC);
             CREATE TABLE IF NOT EXISTS hub_welfare_week_quota(
                 week_key TEXT PRIMARY KEY,

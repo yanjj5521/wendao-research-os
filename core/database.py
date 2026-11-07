@@ -4,6 +4,8 @@ from core.clock import now_iso
 import json
 import os
 import sqlite3
+import threading
+import time
 from collections.abc import Iterable
 from contextlib import contextmanager
 from pathlib import Path
@@ -333,13 +335,33 @@ def init_db() -> None:
         migration_engine.ensure_base_record(connection, SCHEMA_VERSION)
 
 
+# 每个页面请求会读十余次设置；每次都开连接（含 4 条 PRAGMA）是最大的每请求 I/O。
+# 这里做进程内缓存：短 TTL 兜底，set_setting 写穿透，测试与迁移可直接调 clear_settings_cache()。
+_SETTINGS_TTL_SECONDS = 1.0
+_settings_cache: dict[str, tuple[float, str]] = {}
+_settings_lock = threading.Lock()
+
+
+def clear_settings_cache() -> None:
+    with _settings_lock:
+        _settings_cache.clear()
+
+
 def get_setting(key: str, default: str = "") -> str:
+    now = time.monotonic()
+    with _settings_lock:
+        hit = _settings_cache.get(key)
+        if hit and now - hit[0] < _SETTINGS_TTL_SECONDS:
+            return hit[1]
     with connect() as connection:
         row = connection.execute(
             "SELECT value FROM settings WHERE key=?",
             (key,),
         ).fetchone()
-        return str(row["value"]) if row else default
+        value = str(row["value"]) if row else default
+    with _settings_lock:
+        _settings_cache[key] = (time.monotonic(), value)
+    return value
 
 
 def set_setting(key: str, value: str) -> None:
@@ -351,6 +373,7 @@ def set_setting(key: str, value: str) -> None:
             """,
             (key, value),
         )
+    clear_settings_cache()
 
 
 def log_activity(
@@ -369,14 +392,30 @@ def log_activity(
         )
 
 
+_xp_cache: tuple[int, int] = (-1, 0)  # (max_activity_rowid, 总修为)
+
+
 def total_xp(connection: sqlite3.Connection | None = None) -> int:
+    """总修为。以 activities 的 max(rowid) 为失效守卫：没有新记录时直接复用。
+
+    MAX(rowid) 是 O(1)，避免了每个页面请求都对持续增长的 activities 做全表 SUM；
+    记录只增不删（无 DELETE FROM activities），因此行号守卫是完备的。
+    """
+    global _xp_cache
     owns_connection = connection is None
     connection = connection or connect()
     try:
+        marker = int(
+            connection.execute("SELECT COALESCE(MAX(id),0) AS m FROM activities").fetchone()["m"]
+        )
+        if marker == _xp_cache[0]:
+            return _xp_cache[1]
         row = connection.execute(
             "SELECT COALESCE(SUM(xp),0) AS xp FROM activities"
         ).fetchone()
-        return int(row["xp"])
+        value = int(row["xp"])
+        _xp_cache = (marker, value)
+        return value
     finally:
         if owns_connection:
             connection.close()

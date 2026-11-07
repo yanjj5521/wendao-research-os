@@ -189,7 +189,7 @@ def update_network(
     if error:
         flash(request, error, "error")
         return RedirectResponse("/admin", status_code=303)
-    with hub_transaction() as conn:
+    with hub_transaction(immediate=True) as conn:
         set_hub_setting(conn, "public_base_url", normalized)
         audit(
             conn,
@@ -242,7 +242,7 @@ def admin_settings(request:Request,max_members:int=Form(10),csrf_value:str=Form(
     user = require_user(request, admin=True)
     verify_csrf(request, csrf_value)
     cap = max(2, min(200, int(max_members)))
-    with hub_transaction() as conn:
+    with hub_transaction(immediate=True) as conn:
         set_hub_setting(conn, "max_members", str(cap))
         audit(conn, int(user["id"]), "member_cap_update", f"成员上限调整为 {cap}", request)
     flash(request, f"成员上限已更新为 {cap}。")
@@ -300,7 +300,8 @@ def welfare_grant(
             "azure_sword": azure_sword, "heart_mirror": heart_mirror, "cosmos_bag": cosmos_bag,
             "mystic_iron": mystic_iron, "star_sand": star_sand, "primordial_stone": primordial_stone,
         })
-        with hub_transaction() as conn:
+        # immediate：开始即取写锁，"读额度→插入"对并发管理员是原子的，不会超发
+        with hub_transaction(immediate=True) as conn:
             member = conn.execute("SELECT id,display_name FROM accounts WHERE id=? AND role='member' AND active=1", (recipient_id,)).fetchone()
             if not member:
                 raise ValueError("成员不存在或已停用。")

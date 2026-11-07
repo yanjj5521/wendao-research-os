@@ -480,6 +480,18 @@ PERSONAL_MIGRATIONS.append(
 )
 
 
+HUB_MIGRATIONS.append(
+    Migration(
+        version=7,
+        note="资产流水按 (user_id, asset_key) 建索引：余额与每周额度统计不再扫全表",
+        statements=(
+            "CREATE INDEX IF NOT EXISTS idx_hub_assets_user_asset"
+            " ON hub_asset_transactions(user_id,asset_key)",
+        ),
+    )
+)
+
+
 def _validate(migrations: Iterable[Migration], target_version: int) -> list[Migration]:
     ordered = sorted(migrations, key=lambda m: m.version)
     seen: set[int] = set()

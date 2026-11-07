@@ -157,7 +157,7 @@ def red_packet_send(
     user = require_user(request)
     verify_csrf(request, csrf_value)
     try:
-        with hub_transaction() as conn:
+        with hub_transaction(immediate=True) as conn:
             recipient = _recipient(conn, recipient_id, int(user["id"]))
             asset = social_asset(asset_key)
             amount = social_amount(asset, amount)
@@ -400,7 +400,7 @@ def trade_create(
     user = require_user(request)
     verify_csrf(request, csrf_value)
     try:
-        with hub_transaction() as conn:
+        with hub_transaction(immediate=True) as conn:
             recipient = _recipient(conn, recipient_id, int(user["id"]))
             offer_asset = social_asset(offer_asset_key)
             offer_amount = social_amount(offer_asset, offer_amount)
@@ -433,7 +433,7 @@ def trade_accept(request: Request, transfer_id: int, csrf_value: str = Form(...,
     user = require_user(request)
     verify_csrf(request, csrf_value)
     try:
-        with hub_transaction() as conn:
+        with hub_transaction(immediate=True) as conn:
             transfer = _open_transfer(conn, transfer_id)
             if int(transfer["recipient_id"]) != int(user["id"]):
                 raise ValueError("只有接收方可以接受这次交换。")
@@ -457,7 +457,7 @@ def trade_cancel(request: Request, transfer_id: int, csrf_value: str = Form(...,
     user = require_user(request)
     verify_csrf(request, csrf_value)
     try:
-        with hub_transaction() as conn:
+        with hub_transaction(immediate=True) as conn:
             transfer = _open_transfer(conn, transfer_id)
             if int(transfer["sender_id"]) != int(user["id"]):
                 raise ValueError("只有发起方可以取消这次交换。")

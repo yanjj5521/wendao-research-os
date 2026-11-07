@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.12.7"
-description = "问道科研 1.12.7：同步与下载保护、学习插画和动效"
+version = "1.12.8"
+description = "问道科研 1.12.8：多用户并发稳定性与运行速度专项"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

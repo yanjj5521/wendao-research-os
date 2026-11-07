@@ -51,6 +51,28 @@ for router_module in (system, pages, auth, social, market, me, admin, api):
     register_route_names(router_module.router)
 
 
+@app.exception_handler(Exception)
+async def hub_unhandled_error(request: Request, exc: Exception):
+    """未捕获异常也走友好页：多用户并发时，一个成员的报错不该吓到其他成员。"""
+    import traceback as _tb
+
+    _tb.print_exception(type(exc), exc, exc.__traceback__)
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "服务器内部错误"}, status_code=500)
+    return templates.TemplateResponse(
+        request=request,
+        name="error.html",
+        context=hub_context(
+            request,
+            "error",
+            status_code=500,
+            title="程序遇到内部错误",
+            message="已记录错误；你的资料不受影响。可返回首页继续，或稍后重试。",
+        ),
+        status_code=500,
+    )
+
+
 @app.exception_handler(StarletteHTTPException)
 async def hub_http_error(request: Request, exc: StarletteHTTPException):
     """Keep HTML users out of raw JSON error pages.
