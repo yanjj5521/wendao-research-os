@@ -79,3 +79,9 @@ native/headnet/headnet.building
 
 # Local service sockets
 *.sock
+
+# 构建产物与发布包：全部可由 tools/build.py 重建，或已发布到 GitHub Releases
+build/
+dist/
+out/
+release-staging-*/
