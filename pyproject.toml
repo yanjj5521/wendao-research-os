@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wendao-research-v3"
-version = "1.12.9"
-description = "问道科研 1.12.9：体积压缩（去 PyMuPDF/openpyxl）、导航整合与文案精简"
+version = "1.13.0"
+description = "问道科研 1.13.0：SPECS→碳水泥阅读计划（内置规范、统一记录、随手记与阶段验收）"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

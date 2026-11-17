@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}阅读计划 · {{ site_name }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', path='/css/reading.css') }}">{% endblock %}
+{% block content %}
+<div class="reading-page">
+  <div class="reading-head">
+    <div>
+      <span class="eyebrow">Reading Plan</span>
+      <h1>{{ plan_data.plan.title }}</h1>
+      <p>{{ plan_data.plan.principle }}</p>
+    </div>
+    <a class="soft-button" href="{{ url_for('reading_page') }}">去三遍读工作台 →</a>
+  </div>
+
+  <section class="reading-panel" style="border-left:4px solid #b8752f">
+    <h2>两条红线（每次阅读都会提醒）</h2>
+    <ol class="step-list">
+      {% for line in plan_data.reminders %}
+      <li><b>!</b><span>{{ line }}</span></li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  {% for stage in plan_data.stages %}
+  <section class="reading-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <h2>{{ stage.key | replace('stage','阶段 ') }} · {{ stage.goal }}</h2>
+      <span class="copy-btn" style="pointer-events:none">{{ "已完成" if stage.done else "进度 " ~ stage.progress ~ "%" }}</span>
+    </div>
+    <div class="reading-bar" style="margin:10px 0 14px"><i style="width: {{ stage.progress }}%"></i></div>
+    {% for item in stage.members %}
+    <details class="plan-item" style="margin-bottom:10px">
+      <summary style="cursor:pointer;list-style:none">
+        <b>{{ item.label }}</b>
+        <small style="color:#8a8378"> · {{ "已关联工作台" if item.linked else "未建档" }}
+          · 统一记录 {{ item.unified_filled }}/{{ item.unified_total }}
+          · {% if item.status == 'done' %}已交付{% elif item.status == 'reading' %}阅读中{% else %}未开始{% endif %}</small>
+      </summary>
+      <div style="padding:10px 4px 0">
+        <p style="margin:2px 0;font-size:13px;line-height:1.7"><b>阅读任务：</b>{{ item.task }}</p>
+        <p style="margin:2px 0 10px;font-size:13px;line-height:1.7"><b>目标与交付物：</b>{{ item.deliverable }}</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <form method="post" action="{{ url_for('reading_plan_status', item_id=item.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <select name="status">
+              <option value="todo" {% if item.status=='todo' %}selected{% endif %}>未开始</option>
+              <option value="reading" {% if item.status=='reading' %}selected{% endif %}>阅读中</option>
+              <option value="done" {% if item.status=='done' %}selected{% endif %}>已交付</option>
+            </select>
+            <button class="soft-button">更新状态</button>
+          </form>
+          {% if not item.linked %}
+          <form method="post" action="{{ url_for('reading_plan_link', item_id=item.id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <button class="primary-button">建档并开始</button>
+          </form>
+          {% else %}
+          <a class="primary-button" href="{{ url_for('reading_page') }}?work_id={{ item.reading_work_id }}">去工作台填写三遍读</a>
+          {% endif %}
+        </div>
+        {% if item.linked %}
+        <details style="margin-top:6px">
+          <summary style="cursor:pointer;font-size:13px">统一记录（每篇五栏）</summary>
+          <form method="post" action="{{ url_for('reading_plan_unified', work_id=item.reading_work_id) }}">
+            <input type="hidden" name="_csrf" value="{{ csrf }}">
+            <div class="reading-fields" style="margin-top:8px">
+              {% for key, hint in plan_data.unified_fields %}
+              <label class="full"><span>{{ hint }}</span>
+                <textarea name="{{ key }}" rows="2">{{ item_unified[item.id][key] if item_unified and item_unified[item.id] else '' }}</textarea>
+              </label>
+              {% endfor %}
+            </div>
+            <div style="margin-top:10px"><button class="primary-button">保存统一记录</button></div>
+          </form>
+        </details>
+        {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </section>
+  {% endfor %}
+
+  <section class="reading-panel">
+    <h2>随手记（要点 / 心得 / 问题）</h2>
+    <p class="hint">阅读中随想随记，系统自动按论文与类型归档；「问题」会汇总到下方待解决清单。</p>
+    <form method="post" action="{{ url_for('reading_plan_note') }}" class="reading-new" style="align-items:flex-start">
+      <input type="hidden" name="_csrf" value="{{ csrf }}">
+      <select name="work_id" required>
+        <option value="">选择论文</option>
+        {% for item in plan_data.entries %}{% if item.linked %}
+        <option value="{{ item.reading_work_id }}">{{ item.label }}</option>
+        {% endif %}{% endfor %}
+      </select>
+      <select name="kind">
+        {% for key, label in plan_data.note_kinds %}<option value="{{ key }}">{{ label }}</option>{% endfor %}
+      </select>
+      <input name="content" placeholder="一句话记录…" style="min-width:260px" required>
+      <button class="primary-button">记录</button>
+    </form>
+    {% if plan_data.notes %}
+    <div style="margin-top:12px;display:grid;gap:6px">
+      {% for n in plan_data.notes[:30] %}
+      <div style="font-size:13px;color:#4a463f"><b>{{ {'point':'要点','insight':'心得','question':'问题'}.get(n.kind, n.kind) }}</b> · {{ n.work_title or '未关联' }} <small style="color:#8a8378">{{ n.created_at[:16].replace('T',' ') }}</small><br>{{ n.content }}</div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </section>
+
+  {% if plan_data.open_questions %}
+  <section class="reading-panel">
+    <h2>待解决问题清单</h2>
+    <p class="hint">跨论文的问题在这里汇总；回答一篇的问题前，先想想它是否已在别篇出现。</p>
+    <ol class="step-list">
+      {% for q in plan_data.open_questions %}
+      <li><b>?</b><span>{{ q.content }} <small style="color:#8a8378">（{{ q.work_title or '' }} · {{ q.created_at[:10] }}）</small></span></li>
+      {% endfor %}
+    </ol>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

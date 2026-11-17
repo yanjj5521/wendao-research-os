@@ -492,6 +492,51 @@ HUB_MIGRATIONS.append(
 )
 
 
+PERSONAL_MIGRATIONS.append(
+    Migration(
+        version=9,
+        note="SPECS 阅读计划：计划/条目表 + 论文统一记录字段",
+        statements=(
+            """
+            CREATE TABLE IF NOT EXISTS reading_plans(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                slug TEXT NOT NULL UNIQUE,
+                title TEXT NOT NULL,
+                principle TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+            """,
+            """
+            CREATE TABLE IF NOT EXISTS reading_plan_items(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                plan_id INTEGER NOT NULL REFERENCES reading_plans(id) ON DELETE CASCADE,
+                seq INTEGER NOT NULL,
+                label TEXT NOT NULL,
+                task TEXT NOT NULL DEFAULT '',
+                deliverable TEXT NOT NULL DEFAULT '',
+                status TEXT NOT NULL DEFAULT 'todo',
+                reading_work_id INTEGER,
+                updated_at TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_plan_items_plan ON reading_plan_items(plan_id, seq)",
+            "ALTER TABLE reading_works ADD COLUMN unified_json TEXT NOT NULL DEFAULT '{}'",
+            "ALTER TABLE reading_works ADD COLUMN plan_item_id INTEGER",
+            """
+            CREATE TABLE IF NOT EXISTS reading_notes(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                work_id INTEGER NOT NULL REFERENCES reading_works(id) ON DELETE CASCADE,
+                kind TEXT NOT NULL,
+                content TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+            """,
+            "CREATE INDEX IF NOT EXISTS idx_reading_notes_work ON reading_notes(work_id, kind)",
+        ),
+    )
+)
+
+
 def _validate(migrations: Iterable[Migration], target_version: int) -> list[Migration]:
     ordered = sorted(migrations, key=lambda m: m.version)
     seen: set[int] = set()

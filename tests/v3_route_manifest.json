@@ -740,6 +740,31 @@
     "name": "reading_new"
   },
   {
+    "method": "GET",
+    "path": "/reading/plan",
+    "name": "reading_plan_page"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/plan/notes",
+    "name": "reading_plan_note"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/plan/unified/{work_id}",
+    "name": "reading_plan_unified"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/plan/{item_id}/link",
+    "name": "reading_plan_link"
+  },
+  {
+    "method": "POST",
+    "path": "/reading/plan/{item_id}/status",
+    "name": "reading_plan_status"
+  },
+  {
     "method": "POST",
     "path": "/reading/{work_id}/delete",
     "name": "reading_delete"

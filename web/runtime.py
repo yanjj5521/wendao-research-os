@@ -142,6 +142,7 @@ NAV_ITEM_DEFINITIONS = {
     "idle": {"endpoint": "idle_page", "icon": "守"},
     "literature_report": {"endpoint": "literature_report_page", "icon": "阅"},
     "reading": {"endpoint": "reading_page", "icon": "读"},
+    "reading_plan": {"endpoint": "reading_plan_page", "icon": "计"},
     "workbench": {"endpoint": "workbench_page", "icon": "工"},
     "library": {"endpoint": "library", "icon": "藏"},
     "search": {"endpoint": "search", "icon": "寻"},

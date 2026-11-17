@@ -10,7 +10,7 @@ from __future__ import annotations
 - 新增 `schema_migrations`，为后续版本升级留出可追溯的入口。
 """
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 DATABASE_FILENAME = "wendao.db"
 
 BASE_SCHEMA_SQL = r"""
@@ -719,10 +719,44 @@ CREATE TABLE IF NOT EXISTS reading_works(
     pass3_note TEXT NOT NULL DEFAULT '',
     qa_json TEXT NOT NULL DEFAULT '{}',
     extract_json TEXT NOT NULL DEFAULT '{}',
+    unified_json TEXT NOT NULL DEFAULT '{}',
+    plan_item_id INTEGER,
     scenario TEXT NOT NULL DEFAULT 'group',
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
 
 CREATE INDEX IF NOT EXISTS idx_reading_works_stage ON reading_works(stage, updated_at DESC);
+
+CREATE TABLE IF NOT EXISTS reading_plans(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT NOT NULL UNIQUE,
+    title TEXT NOT NULL,
+    principle TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS reading_plan_items(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    plan_id INTEGER NOT NULL REFERENCES reading_plans(id) ON DELETE CASCADE,
+    seq INTEGER NOT NULL,
+    label TEXT NOT NULL,
+    task TEXT NOT NULL DEFAULT '',
+    deliverable TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL DEFAULT 'todo',
+    reading_work_id INTEGER,
+    updated_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_plan_items_plan ON reading_plan_items(plan_id, seq);
+
+CREATE TABLE IF NOT EXISTS reading_notes(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    work_id INTEGER NOT NULL REFERENCES reading_works(id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_reading_notes_work ON reading_notes(work_id, kind);
 """
